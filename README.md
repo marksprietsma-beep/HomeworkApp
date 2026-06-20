@@ -85,6 +85,36 @@ Open Prisma Studio for local database inspection:
 npm run prisma:studio
 ```
 
+## Seed local development data
+
+After PostgreSQL is running and migrations are applied, seed a small fake development dataset:
+
+```bash
+npm run db:seed
+```
+
+The seed is safe to rerun. It uses stable fake `example.test` email addresses and updates the same records instead of creating duplicates. After seeding, the local database should contain:
+
+- one teacher-like development user: `Dev Teacher <teacher.dev@example.test>`
+- three student-like development users: `Ada Student`, `Ben Student`, and `Cleo Student`
+- one class: `Development Maths Class`
+- class enrolments linking all three students to `Development Maths Class`
+
+To reset local data completely before reseeding, stop PostgreSQL and delete the local Docker volume, then start PostgreSQL again, apply migrations, and seed:
+
+```bash
+docker compose down -v
+docker compose up -d postgres
+npm run prisma:deploy
+npm run db:seed
+```
+
+Mark can confirm the seed worked by opening Prisma Studio and checking the `User`, `Class`, and `ClassEnrollment` tables:
+
+```bash
+npm run prisma:studio
+```
+
 ## Database connection check
 
 After PostgreSQL is running, dependencies are installed, `.env` exists, and migrations are applied, verify that Prisma can connect:
