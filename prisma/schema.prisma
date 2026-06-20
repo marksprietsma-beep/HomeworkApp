@@ -7,8 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  TEACHER
+  STUDENT
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
   createdAt DateTime @default(now())
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  email            String            @unique
+  displayName      String
+  role             UserRole
+  isDevelopmentUser Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  teachingClasses  Class[]           @relation("ClassTeacher")
+  classEnrollments ClassEnrollment[]
+}
+
+model Class {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique
+  description String
+  teacherId   Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  teacher     User              @relation("ClassTeacher", fields: [teacherId], references: [id])
+  enrollments ClassEnrollment[]
+}
+
+model ClassEnrollment {
+  id        Int      @id @default(autoincrement())
+  classId   Int
+  studentId Int
+  createdAt DateTime @default(now())
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
 }
