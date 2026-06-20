@@ -1,78 +1,45 @@
 # Homework App
 
-Local-first homework app foundation.
+Homework App is a local-first web app foundation for development on Mark's local machine. It is intentionally independent of SharePoint, Supabase, Vercel-specific hosting, authentication, and database setup at this stage.
 
-## Prerequisites
+## Tech stack
 
-- Docker Desktop or another Docker-compatible runtime with Docker Compose support.
-- Node.js 20 or newer and npm.
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
 
-## Local database
+## Local setup
 
-This repository includes a Docker Compose PostgreSQL service for local development. It uses non-secret local-only credentials from `.env.example`.
-
-1. Copy the environment template:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Start PostgreSQL:
-
-   ```bash
-   docker compose up -d postgres
-   ```
-
-3. Install Node dependencies:
-
-   ```bash
-   npm install
-   ```
-
-4. Generate the Prisma client:
-
-   ```bash
-   npm run prisma:generate
-   ```
-
-5. Apply the initial migration:
-
-   ```bash
-   npm run prisma:deploy
-   ```
-
-   To create a new development migration after changing `prisma/schema.prisma`, run:
-
-   ```bash
-   npm run prisma:migrate -- --name your_migration_name
-   ```
-
-6. Check the database connection:
-
-   ```bash
-   npm run db:check
-   ```
-
-7. Optional: open Prisma Studio:
-
-   ```bash
-   npm run prisma:studio
-   ```
-
-## Stopping the database
-
-Stop the local PostgreSQL container while keeping its data volume:
+From a clean clone, install dependencies:
 
 ```bash
-docker compose down
+npm install
 ```
 
-Remove the local database volume and all PostgreSQL data:
+## Run locally
+
+Start the development server:
 
 ```bash
-docker compose down -v
+npm run dev
 ```
 
-## Database schema scope
+Then open [http://localhost:3000](http://localhost:3000) in your browser. The homepage should show the title **Homework App**.
 
-The initial Prisma schema intentionally contains only a minimal `LocalDatabaseCheck` model. The full homework product data model, authentication, student UI, and production hosting are out of scope for this baseline.
+## Checks
+
+Run linting:
+
+```bash
+npm run lint
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+## Environment variables
+
+No environment variables are required for the current local-first foundation, so there is no `.env.example` yet.
