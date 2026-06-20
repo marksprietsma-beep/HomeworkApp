@@ -156,3 +156,16 @@ Copy `.env.example` to `.env` for local development. The required variable is:
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string used by Prisma. |
+
+## Core product data model
+
+The first homework workflow model extends the local development `User`, `Class`, and `ClassEnrollment` tables without adding authentication or UI.
+
+- `User` still represents a simple local teacher or student. Teachers can own classes and create homework assignments. Students can be enrolled in classes and create submissions.
+- `Class` is teacher-managed and now has many `HomeworkAssignment` records.
+- `HomeworkAssignment` belongs to one class, is created by one teacher user, and stores a title, optional description, optional due date, and simple status (`DRAFT`, `PUBLISHED`, or `ARCHIVED`).
+- `HomeworkQuestion` stores ordered questions for an assignment. Each question has a prompt, a simple text `questionType`, and optional points. The ordered question rows keep the generated homework structure queryable without introducing a complex parser yet.
+- `Submission` belongs to one assignment and one student. A student can have one submission per assignment, with simple status (`DRAFT` or `SUBMITTED`) and an optional submission timestamp.
+- `SubmissionAnswer` stores one answer for a submission and can link back to the relevant homework question. The question link is optional so answers can be retained if a question is later removed.
+
+The seed data includes one fake published homework assignment with two text questions and one submitted example answer set for the first development student. This is only for local model testing and can be reseeded safely.

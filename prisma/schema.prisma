@@ -12,6 +12,17 @@ enum UserRole {
   STUDENT
 }
 
+enum HomeworkAssignmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
@@ -19,26 +30,29 @@ model LocalDatabaseCheck {
 }
 
 model User {
-  id               Int               @id @default(autoincrement())
-  email            String            @unique
-  displayName      String
-  role             UserRole
-  isDevelopmentUser Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  teachingClasses  Class[]           @relation("ClassTeacher")
-  classEnrollments ClassEnrollment[]
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  displayName         String
+  role                UserRole
+  isDevelopmentUser   Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  teachingClasses     Class[]              @relation("ClassTeacher")
+  classEnrollments    ClassEnrollment[]
+  createdAssignments  HomeworkAssignment[] @relation("HomeworkAssignmentCreator")
+  homeworkSubmissions Submission[]         @relation("SubmissionStudent")
 }
 
 model Class {
-  id          Int               @id @default(autoincrement())
-  name        String            @unique
-  description String
-  teacherId   Int
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  teacher     User              @relation("ClassTeacher", fields: [teacherId], references: [id])
-  enrollments ClassEnrollment[]
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  description         String
+  teacherId           Int
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  teacher             User                 @relation("ClassTeacher", fields: [teacherId], references: [id])
+  enrollments         ClassEnrollment[]
+  homeworkAssignments HomeworkAssignment[]
 }
 
 model ClassEnrollment {
@@ -50,4 +64,71 @@ model ClassEnrollment {
   student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([classId, studentId])
+}
+
+model HomeworkAssignment {
+  id          Int                      @id @default(autoincrement())
+  classId     Int
+  createdById Int
+  title       String
+  description String?
+  status      HomeworkAssignmentStatus @default(DRAFT)
+  dueAt       DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  class       Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy   User                     @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
+  questions   HomeworkQuestion[]
+  submissions Submission[]
+
+  @@index([classId])
+  @@index([createdById])
+}
+
+model HomeworkQuestion {
+  id           Int                  @id @default(autoincrement())
+  assignmentId Int
+  order        Int
+  prompt       String
+  questionType String               @default("text")
+  points       Int?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  assignment   HomeworkAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  answers      SubmissionAnswer[]
+
+  @@unique([assignmentId, order])
+  @@index([assignmentId])
+}
+
+model Submission {
+  id           Int              @id @default(autoincrement())
+  assignmentId Int
+  studentId    Int
+  status       SubmissionStatus @default(DRAFT)
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  assignment   HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User             @relation("SubmissionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  answers      SubmissionAnswer[]
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+model SubmissionAnswer {
+  id         Int      @id @default(autoincrement())
+  submissionId Int
+  questionId Int?
+  answerText  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  submission  Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question    HomeworkQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+  @@index([questionId])
 }
