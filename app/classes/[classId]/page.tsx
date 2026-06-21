@@ -111,9 +111,12 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-lg font-semibold text-slate-950">
+                      <Link
+                        href={`/classes/${classDetail.id}/assignments/${assignment.id}`}
+                        className="text-lg font-semibold text-slate-950 transition hover:text-amber-700"
+                      >
                         {assignment.title}
-                      </p>
+                      </Link>
                       <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                         {assignment.status} · Due: {formatDate(assignment.dueAt)}
                       </p>
@@ -127,6 +130,12 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
                       {assignment.description}
                     </p>
                   ) : null}
+                  <Link
+                    href={`/classes/${classDetail.id}/assignments/${assignment.id}`}
+                    className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  >
+                    View homework details
+                  </Link>
                 </li>
               ))}
             </ul>
