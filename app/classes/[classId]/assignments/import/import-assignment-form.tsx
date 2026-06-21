@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -74,11 +75,19 @@ function formatPoints(points: number | null) {
 
 export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
   const [rawJson, setRawJson] = useState("");
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
   const parseResult = useMemo(() => parseAssignmentImportJson(rawJson), [rawJson]);
   const formAction = importAssignmentForClass.bind(null, classId);
   const hasInput = rawJson.trim().length > 0;
   const assignment = (parseResult.ok ? parseResult.assignment : null) as AssignmentImportAssignment | null;
   const totalPoints = assignment?.questions.reduce((total, question) => total + (question.points ?? 0), 0) ?? 0;
+
+  function updateImagePreview(questionId: string, file: File | null) {
+    setImagePreviewUrls((current) => ({
+      ...current,
+      [questionId]: file ? URL.createObjectURL(file) : "",
+    }));
+  }
 
   return (
     <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]">
@@ -206,27 +215,44 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                   ) : null}
                   {question.image ? (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                      <p className="font-semibold text-slate-950">Image reference</p>
-                      <dl className="mt-2 grid gap-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Path</dt>
-                          <dd className="mt-1 break-all font-mono text-xs text-slate-800">{question.image.path}</dd>
+                          <p className="font-semibold text-slate-950">Image reference</p>
+                          <p className="mt-1 break-all font-mono text-xs text-slate-800">{question.image.path}</p>
                         </div>
-                        {question.image.caption ? (
-                          <div>
-                            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Caption</dt>
-                            <dd className="mt-1">{question.image.caption}</dd>
-                          </div>
+                        {imagePreviewUrls[question.id] ? (
+                          <img src={imagePreviewUrls[question.id]} alt="Selected import attachment preview" className="h-20 w-28 rounded-xl border border-slate-200 object-cover" />
                         ) : null}
-                        {question.image.altText ? (
-                          <div>
-                            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Alt text</dt>
-                            <dd className="mt-1">{question.image.altText}</dd>
-                          </div>
-                        ) : null}
-                      </dl>
+                      </div>
+                      <label className="mt-3 block text-sm font-semibold text-slate-700">
+                        Attach image
+                        <input
+                          name="questionImageFile"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          onChange={(event) => updateImagePreview(question.id, event.target.files?.[0] ?? null)}
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm file:mr-3 file:rounded-full file:border-0 file:bg-slate-950 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-white focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                        />
+                        <span className="mt-2 block text-xs font-normal text-slate-500">PNG, JPEG, WEBP, or GIF up to 5 MB. The saved question will use the new local /media path.</span>
+                      </label>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm font-semibold text-slate-700">
+                          Caption
+                          <input name="questionImageCaption" defaultValue={question.image.caption} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+                        </label>
+                        <label className="text-sm font-semibold text-slate-700">
+                          Alt text
+                          <input name="questionImageAltText" defaultValue={question.image.altText} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+                        </label>
+                      </div>
                     </div>
-                  ) : null}
+                  ) : (
+                    <>
+                      <input type="hidden" name="questionImageFile" value="" />
+                      <input type="hidden" name="questionImageCaption" value="" />
+                      <input type="hidden" name="questionImageAltText" value="" />
+                    </>
+                  )}
                 </li>
               ))}
             </ol>

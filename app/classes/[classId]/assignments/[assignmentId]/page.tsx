@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
@@ -163,7 +164,16 @@ export default async function HomeworkDetailPage({
                   {question.imagePath ? (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
                       <p className="font-semibold text-slate-950">Image reference</p>
-                      <p className="mt-1 break-all">{question.imagePath}</p>
+                      {question.imagePath.startsWith("/media/") ? (
+                        <Image
+                          src={question.imagePath}
+                          alt={question.imageAltText || question.imageCaption || "Question attachment"}
+                          width={320}
+                          height={224}
+                          className="mt-3 max-h-56 w-full rounded-xl border border-slate-200 object-contain sm:w-80"
+                        />
+                      ) : null}
+                      <p className="mt-3 break-all font-mono text-xs">{question.imagePath}</p>
                       {question.imageCaption ? <p className="mt-2">Caption: {question.imageCaption}</p> : null}
                       {question.imageAltText ? <p className="mt-1">Alt text: {question.imageAltText}</p> : null}
                     </div>

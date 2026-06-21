@@ -4,6 +4,7 @@ import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prism
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { storeAssignmentQuestionImage } from "../../../lib/local-media";
 
 type ParsedQuestion = {
   order: number;
@@ -35,7 +36,11 @@ function parseDueAt(value: FormDataEntryValue | null) {
   return dueAt;
 }
 
-function parseQuestions(formData: FormData): ParsedQuestion[] {
+function isUploadedFile(value: FormDataEntryValue | undefined): value is File {
+  return typeof value === "object" && value !== null && "arrayBuffer" in value && value.size > 0;
+}
+
+async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
   const prompts = formData.getAll("questionPrompt");
   const types = formData.getAll("questionType");
   const optionSets = formData.getAll("questionOptions");
@@ -43,9 +48,9 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
   const imagePaths = formData.getAll("questionImagePath");
   const imageCaptions = formData.getAll("questionImageCaption");
   const imageAltTexts = formData.getAll("questionImageAltText");
+  const imageFiles = formData.getAll("questionImageFile");
 
-  const questions = prompts
-    .map((promptValue, index) => {
+  const parsedQuestions = await Promise.all(prompts.map(async (promptValue, index) => {
       const prompt = typeof promptValue === "string" ? promptValue.trim() : "";
       const requestedType = valueAt(types, index);
       const questionType = Object.values(HomeworkQuestionType).includes(
@@ -62,6 +67,10 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
       const imagePath = valueAt(imagePaths, index);
       const imageCaption = valueAt(imageCaptions, index);
       const imageAltText = valueAt(imageAltTexts, index);
+      const imageFile = imageFiles[index];
+      const storedImage = isUploadedFile(imageFile)
+        ? await storeAssignmentQuestionImage(imageFile, { caption: imageCaption, altText: imageAltText })
+        : null;
 
       return {
         order: index + 1,
@@ -72,12 +81,12 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
             ? { choices }
             : undefined,
         points,
-        imagePath: imagePath || undefined,
-        imageCaption: imageCaption || undefined,
-        imageAltText: imageAltText || undefined,
+        imagePath: storedImage?.path || imagePath || undefined,
+        imageCaption: storedImage?.caption || imageCaption || undefined,
+        imageAltText: storedImage?.altText || imageAltText || undefined,
       };
-    })
-    .filter((question) => question.prompt.length > 0);
+    }));
+  const questions = parsedQuestions.filter((question) => question.prompt.length > 0);
 
   if (questions.length === 0) {
     throw new Error("Add at least one question prompt.");
@@ -115,7 +124,7 @@ export async function createAssignmentForClass(
     ? (statusValue as HomeworkAssignmentStatus)
     : HomeworkAssignmentStatus.DRAFT;
   const dueAt = parseDueAt(formData.get("dueAt"));
-  const questions = parseQuestions(formData);
+  const questions = await parseQuestions(formData);
 
   if (!Number.isInteger(classId)) {
     throw new Error("Choose an existing class.");
