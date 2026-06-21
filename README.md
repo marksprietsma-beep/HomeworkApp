@@ -115,6 +115,20 @@ Mark can confirm the seed worked by opening Prisma Studio and checking the `User
 npm run prisma:studio
 ```
 
+
+## Temporary local role switcher
+
+The homepage includes a **Local development only — not authentication** switcher when the app runs outside production. It reads the seeded Prisma development users and stores the selected user id in a local HTTP-only cookie named `homework_local_dev_user_id`. Server components and route handlers can use `getSelectedLocalDevelopmentUser()` from `lib/local-dev-user.ts` to read the currently selected fake user during local testing.
+
+To use it locally:
+
+1. Start PostgreSQL, apply migrations, and run `npm run db:seed`.
+2. Start the app with `npm run dev`.
+3. Open [http://localhost:3000](http://localhost:3000).
+4. Use the temporary switcher to view the app as `Dev Teacher`, `Ada Student`, `Ben Student`, or `Cleo Student`. The selected display name and role are shown on the page.
+
+This is intentionally a development convenience only. It is not login, authorization, password handling, SSO, or production security. Remove this switcher, remove the local cookie helper, and replace all calls to `getSelectedLocalDevelopmentUser()` with the real authenticated user/session provider before any production deployment or real student data use.
+
 ## Database connection check
 
 After PostgreSQL is running, dependencies are installed, `.env` exists, and migrations are applied, verify that Prisma can connect:
