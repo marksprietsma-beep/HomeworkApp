@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
+import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
 
 export const dynamic = "force-dynamic";
 
@@ -59,14 +60,20 @@ export default async function HomeworkDetailPage({
     notFound();
   }
 
-  const homework = await getHomeworkDetailData(
-    parsedClassId,
-    parsedAssignmentId,
-  );
+  const [{ selectedUser }, homework] = await Promise.all([
+    getSelectedLocalDevelopmentUser(),
+    getHomeworkDetailData(
+      parsedClassId,
+      parsedAssignmentId,
+    ),
+  ]);
 
   if (!homework) {
     notFound();
   }
+
+  const canViewResponseOverview =
+    selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id;
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
@@ -92,6 +99,14 @@ export default async function HomeworkDetailPage({
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {homework.status} · Due: {formatDate(homework.dueAt)}
             </p>
+            {canViewResponseOverview ? (
+              <Link
+                href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
+                className="mt-5 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              >
+                View response overview
+              </Link>
+            ) : null}
           </div>
           <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
