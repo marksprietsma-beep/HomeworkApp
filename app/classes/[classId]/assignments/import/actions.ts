@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
 import { prisma } from "../../../../../lib/prisma";
+import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
 
 type AssignmentImportQuestion = {
   order: number;
@@ -25,6 +26,15 @@ type AssignmentImportAssignment = {
 
 function dueDateToDateTime(dueDate: string | null) {
   return dueDate ? new Date(`${dueDate}T00:00:00.000Z`) : null;
+}
+
+function valueAt(values: FormDataEntryValue[], index: number) {
+  const value = values[index];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isUploadedFile(value: FormDataEntryValue | undefined): value is File {
+  return typeof value === "object" && value !== null && "arrayBuffer" in value && value.size > 0;
 }
 
 export async function importAssignmentForClass(classId: number, formData: FormData) {
@@ -67,6 +77,33 @@ export async function importAssignmentForClass(classId: number, formData: FormDa
     throw new Error("The selected teacher does not teach this class.");
   }
 
+  const imageFiles = formData.getAll("questionImageFile");
+  const imageCaptions = formData.getAll("questionImageCaption");
+  const imageAltTexts = formData.getAll("questionImageAltText");
+
+  const questions = await Promise.all(importedAssignment.questions.map(async (question: AssignmentImportQuestion, index) => {
+    const caption = valueAt(imageCaptions, index) || question.image?.caption || "";
+    const altText = valueAt(imageAltTexts, index) || question.image?.altText || "";
+    const imageFile = imageFiles[index];
+    const storedImage = isUploadedFile(imageFile)
+      ? await storeAssignmentQuestionImage(imageFile, { caption, altText })
+      : null;
+
+    return {
+      order: question.order,
+      prompt: question.prompt,
+      questionType: question.type as HomeworkQuestionType,
+      points: question.points,
+      options:
+        question.type === "MULTIPLE_CHOICE"
+          ? { choices: question.options.map((option) => option.text) }
+          : undefined,
+      imagePath: storedImage?.path || question.image?.path,
+      imageCaption: storedImage?.caption || caption || undefined,
+      imageAltText: storedImage?.altText || altText || undefined,
+    };
+  }));
+
   const assignment = await prisma.homeworkAssignment.create({
     data: {
       classId,
@@ -76,19 +113,7 @@ export async function importAssignmentForClass(classId: number, formData: FormDa
       status: importedAssignment.status as HomeworkAssignmentStatus,
       dueAt: dueDateToDateTime(importedAssignment.dueDate),
       questions: {
-        create: importedAssignment.questions.map((question: AssignmentImportQuestion) => ({
-          order: question.order,
-          prompt: question.prompt,
-          questionType: question.type as HomeworkQuestionType,
-          points: question.points,
-          options:
-            question.type === "MULTIPLE_CHOICE"
-              ? { choices: question.options.map((option) => option.text) }
-              : undefined,
-          imagePath: question.image?.path,
-          imageCaption: question.image?.caption || undefined,
-          imageAltText: question.image?.altText || undefined,
-        })),
+        create: questions,
       },
     },
     select: { id: true },

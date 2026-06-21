@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ type AssignmentCreateFormProps = {
 type DraftQuestion = {
   id: number;
   questionType: HomeworkQuestionType;
+  imagePreviewUrl?: string;
 };
 
 const questionTypeLabels: Record<HomeworkQuestionType, string> = {
@@ -38,6 +40,16 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
       currentQuestions.length === 1
         ? currentQuestions
         : currentQuestions.filter((question) => question.id !== id),
+    );
+  }
+
+  function updateImagePreview(id: number, file: File | null) {
+    setQuestions((currentQuestions) =>
+      currentQuestions.map((question) =>
+        question.id === id
+          ? { ...question, imagePreviewUrl: file ? URL.createObjectURL(file) : undefined }
+          : question,
+      ),
     );
   }
 
@@ -195,31 +207,37 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                 <input type="hidden" name="questionOptions" value="" />
               )}
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <label className="text-sm font-semibold text-slate-700">
-                  Image path / reference (optional)
-                  <input
-                    name="questionImagePath"
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    placeholder="/images/local-diagram.png"
-                  />
-                </label>
-                <label className="text-sm font-semibold text-slate-700">
-                  Caption (optional)
-                  <input
-                    name="questionImageCaption"
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    placeholder="Diagram caption"
-                  />
-                </label>
-                <label className="text-sm font-semibold text-slate-700">
-                  Alt text (optional)
-                  <input
-                    name="questionImageAltText"
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    placeholder="Describe the image"
-                  />
-                </label>
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                  <label className="block flex-1 text-sm font-semibold text-slate-700">
+                    Attach image (optional)
+                    <input
+                      name="questionImageFile"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={(event) => updateImagePreview(question.id, event.target.files?.[0] ?? null)}
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm file:mr-3 file:rounded-full file:border-0 file:bg-slate-950 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-white focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    />
+                    <span className="mt-2 block text-xs font-normal text-slate-500">PNG, JPEG, WEBP, or GIF up to 5 MB. Files are stored locally.</span>
+                  </label>
+                  {question.imagePreviewUrl ? (
+                    <img src={question.imagePreviewUrl} alt="Selected question attachment preview" className="h-24 w-32 rounded-xl border border-slate-200 object-cover" />
+                  ) : null}
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Existing image path / reference
+                    <input name="questionImagePath" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" placeholder="/media/assignment-question-images/..." />
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    Caption (optional)
+                    <input name="questionImageCaption" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" placeholder="Diagram caption" />
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    Alt text (optional)
+                    <input name="questionImageAltText" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" placeholder="Describe the image" />
+                  </label>
+                </div>
               </div>
             </fieldset>
           ))}
