@@ -129,9 +129,8 @@ function StudentAssignedWorkDashboard({
             Welcome, {selectedUser.displayName}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            This read-only dashboard lists homework assigned through the classes
-            you are enrolled in. Answer entry and submissions will be added in a
-            later step.
+            Open homework assigned through the classes you are enrolled in,
+            enter responses, and return later to update the saved submission.
           </p>
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
@@ -201,6 +200,12 @@ function StudentAssignedWorkDashboard({
                           : `${assignment.totalPoints} points`}
                       </span>
                     </div>
+                    <Link
+                      href={`/assignments/${assignment.id}/work`}
+                      className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      {assignment.submission ? "Continue response" : "Start response"}
+                    </Link>
                   </div>
                   <div className="rounded-xl bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-slate-200 lg:min-w-52">
                     <p className="font-medium text-slate-500">Response</p>
