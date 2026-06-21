@@ -106,10 +106,15 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
               New local homework
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-700">
-              Create an assignment directly in the local database. Multiple choice
-              options are stored as structured question metadata; image fields store
-              references only.
+              Create an assignment directly in the local database, or paste
+              ChatGPT-generated structured JSON and preview it before saving.
             </p>
+            <Link
+              href={`/classes/${classDetail.id}/assignments/import`}
+              className="mt-4 inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+            >
+              Import from JSON
+            </Link>
             <AssignmentCreateForm classId={classDetail.id} />
           </div>
 
