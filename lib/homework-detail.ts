@@ -21,6 +21,10 @@ export type HomeworkDetailData = {
     prompt: string;
     questionType: string;
     points: number | null;
+    options: unknown;
+    imagePath: string | null;
+    imageCaption: string | null;
+    imageAltText: string | null;
   }[];
   submissions: {
     id: number;
@@ -69,6 +73,10 @@ export async function getHomeworkDetailData(
           prompt: true,
           questionType: true,
           points: true,
+          options: true,
+          imagePath: true,
+          imageCaption: true,
+          imageAltText: true,
         },
       },
       submissions: {

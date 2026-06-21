@@ -23,6 +23,12 @@ enum SubmissionStatus {
   SUBMITTED
 }
 
+enum HomeworkQuestionType {
+  OPEN_TEXT
+  LONG_TEXT
+  MULTIPLE_CHOICE
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
@@ -90,7 +96,11 @@ model HomeworkQuestion {
   assignmentId Int
   order        Int
   prompt       String
-  questionType String               @default("text")
+  questionType HomeworkQuestionType @default(OPEN_TEXT)
+  options      Json?
+  imagePath    String?
+  imageCaption String?
+  imageAltText String?
   points       Int?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt

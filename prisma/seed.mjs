@@ -1,4 +1,4 @@
-import { HomeworkAssignmentStatus, PrismaClient, SubmissionStatus, UserRole } from '@prisma/client';
+import { HomeworkAssignmentStatus, HomeworkQuestionType, PrismaClient, SubmissionStatus, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -43,13 +43,13 @@ const homeworkSeed = {
     {
       order: 1,
       prompt: 'What is 1/2 + 1/4?',
-      questionType: 'text',
+      questionType: HomeworkQuestionType.OPEN_TEXT,
       points: 1,
     },
     {
       order: 2,
       prompt: 'Explain how you found your answer.',
-      questionType: 'text',
+      questionType: HomeworkQuestionType.OPEN_TEXT,
       points: 2,
     },
   ],
