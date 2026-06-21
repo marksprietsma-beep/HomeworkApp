@@ -22,6 +22,22 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
+
+function getMultipleChoiceChoices(options: unknown) {
+  if (
+    typeof options === "object" &&
+    options &&
+    "choices" in options &&
+    Array.isArray(options.choices)
+  ) {
+    return options.choices.filter((choice): choice is string =>
+      typeof choice === "string",
+    );
+  }
+
+  return [];
+}
+
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -62,7 +78,7 @@ export default async function HomeworkDetailPage({
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-          Read-only homework detail
+          Homework detail
         </p>
         <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -128,6 +144,29 @@ export default async function HomeworkDetailPage({
                       {question.points ?? "No"} marks
                     </p>
                   </div>
+                  {question.questionType === "MULTIPLE_CHOICE" &&
+                  getMultipleChoiceChoices(question.options).length > 0 ? (
+                    <ul className="mt-4 grid gap-2">
+                      {getMultipleChoiceChoices(question.options).map(
+                        (choice, optionIndex) => (
+                          <li
+                            key={`${question.id}-${optionIndex}`}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                          >
+                            {choice}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  ) : null}
+                  {question.imagePath ? (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                      <p className="font-semibold text-slate-950">Image reference</p>
+                      <p className="mt-1 break-all">{question.imagePath}</p>
+                      {question.imageCaption ? <p className="mt-2">Caption: {question.imageCaption}</p> : null}
+                      {question.imageAltText ? <p className="mt-1">Alt text: {question.imageAltText}</p> : null}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ol>

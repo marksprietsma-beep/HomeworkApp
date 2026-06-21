@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClassDetailData } from "../../../lib/class-detail";
+import { AssignmentCreateForm } from "./assignment-create-form";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-          Read-only class detail
+          Class detail
         </p>
         <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -96,6 +97,20 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
                 Class homework
               </h2>
             </div>
+          </div>
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">
+              Create assignment
+            </p>
+            <h3 className="mt-2 text-xl font-bold text-slate-950">
+              New local homework
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Create an assignment directly in the local database. Multiple choice
+              options are stored as structured question metadata; image fields store
+              references only.
+            </p>
+            <AssignmentCreateForm classId={classDetail.id} />
           </div>
 
           {classDetail.assignments.length === 0 ? (
