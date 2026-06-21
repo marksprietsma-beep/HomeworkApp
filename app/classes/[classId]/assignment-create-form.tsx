@@ -1,9 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { HomeworkAssignmentStatus, HomeworkQuestionType } from "@prisma/client";
-import { createAssignmentForClass } from "./actions";
+import { createAssignmentForClass, type CreateAssignmentFormState } from "./actions";
 
 type AssignmentCreateFormProps = {
   classId: number;
@@ -15,6 +15,8 @@ type DraftQuestion = {
   imagePreviewUrl?: string;
 };
 
+const localMediaMaxBytes = 5 * 1024 * 1024;
+
 const questionTypeLabels: Record<HomeworkQuestionType, string> = {
   OPEN_TEXT: "Open text",
   LONG_TEXT: "Long text",
@@ -25,8 +27,13 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
   const [questions, setQuestions] = useState<DraftQuestion[]>([
     { id: 1, questionType: HomeworkQuestionType.OPEN_TEXT },
   ]);
+  const [clientError, setClientError] = useState<string | null>(null);
 
-  const formAction = createAssignmentForClass.bind(null, classId);
+  const initialFormState: CreateAssignmentFormState = { error: null };
+  const [formState, formAction, isPending] = useActionState(
+    createAssignmentForClass.bind(null, classId),
+    initialFormState,
+  );
 
   function addQuestion() {
     setQuestions((currentQuestions) => [
@@ -44,6 +51,8 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
   }
 
   function updateImagePreview(id: number, file: File | null) {
+    setClientError(null);
+
     setQuestions((currentQuestions) =>
       currentQuestions.map((question) =>
         question.id === id
@@ -215,7 +224,18 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                       name="questionImageFile"
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/gif"
-                      onChange={(event) => updateImagePreview(question.id, event.target.files?.[0] ?? null)}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+
+                        if (file && file.size > localMediaMaxBytes) {
+                          event.target.value = "";
+                          updateImagePreview(question.id, null);
+                          setClientError("Image file must be 5 MB or smaller.");
+                          return;
+                        }
+
+                        updateImagePreview(question.id, file);
+                      }}
                       className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm file:mr-3 file:rounded-full file:border-0 file:bg-slate-950 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-white focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     />
                     <span className="mt-2 block text-xs font-normal text-slate-500">PNG, JPEG, WEBP, or GIF up to 5 MB. Files are stored locally.</span>
@@ -244,11 +264,18 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
         </div>
       </div>
 
+      {clientError || formState.error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
+          {clientError || formState.error}
+        </div>
+      ) : null}
+
       <button
         type="submit"
-        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:justify-self-start"
+        disabled={isPending}
+        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:justify-self-start"
       >
-        Create assignment
+        {isPending ? "Creating…" : "Create assignment"}
       </button>
     </form>
   );

@@ -26,7 +26,7 @@ Server-side local media helpers validate files before writing them:
 
 - Allowed image formats: PNG, JPEG/JPG, WEBP, and GIF.
 - Detection uses image file signatures rather than trusting the browser-provided MIME type or original filename.
-- Maximum file size: 5 MB.
+- Maximum file size: 5 MB. Manual assignment uploads use a 6 MB Server Action request limit so a 5 MB file plus multipart form overhead can reach server-side validation.
 - Empty files are rejected.
 - Filenames are generated as `YYYY-MM-DD-random-uuid.ext`; the original uploaded filename is not trusted.
 - Paths are constrained to `assignment-question-images/` and cannot traverse outside the configured media root.

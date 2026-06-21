@@ -4,7 +4,11 @@ import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prism
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
-import { storeAssignmentQuestionImage } from "../../../lib/local-media";
+import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
+
+export type CreateAssignmentFormState = {
+  error: string | null;
+};
 
 type ParsedQuestion = {
   order: number;
@@ -50,7 +54,8 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
   const imageAltTexts = formData.getAll("questionImageAltText");
   const imageFiles = formData.getAll("questionImageFile");
 
-  const parsedQuestions = await Promise.all(prompts.map(async (promptValue, index) => {
+  const parsedQuestions = await Promise.all(
+    prompts.map(async (promptValue, index) => {
       const prompt = typeof promptValue === "string" ? promptValue.trim() : "";
       const requestedType = valueAt(types, index);
       const questionType = Object.values(HomeworkQuestionType).includes(
@@ -85,7 +90,8 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
         imageCaption: storedImage?.caption || imageCaption || undefined,
         imageAltText: storedImage?.altText || imageAltText || undefined,
       };
-    }));
+    }),
+  );
   const questions = parsedQuestions.filter((question) => question.prompt.length > 0);
 
   if (questions.length === 0) {
@@ -113,59 +119,72 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
 
 export async function createAssignmentForClass(
   classId: number,
+  _previousState: CreateAssignmentFormState,
   formData: FormData,
-) {
-  const title = String(formData.get("title") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const statusValue = String(formData.get("status") ?? HomeworkAssignmentStatus.DRAFT);
-  const status = Object.values(HomeworkAssignmentStatus).includes(
-    statusValue as HomeworkAssignmentStatus,
-  )
-    ? (statusValue as HomeworkAssignmentStatus)
-    : HomeworkAssignmentStatus.DRAFT;
-  const dueAt = parseDueAt(formData.get("dueAt"));
-  const questions = await parseQuestions(formData);
+): Promise<CreateAssignmentFormState> {
+  let assignmentId: number;
 
-  if (!Number.isInteger(classId)) {
-    throw new Error("Choose an existing class.");
-  }
+  try {
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const statusValue = String(formData.get("status") ?? HomeworkAssignmentStatus.DRAFT);
+    const status = Object.values(HomeworkAssignmentStatus).includes(
+      statusValue as HomeworkAssignmentStatus,
+    )
+      ? (statusValue as HomeworkAssignmentStatus)
+      : HomeworkAssignmentStatus.DRAFT;
+    const dueAt = parseDueAt(formData.get("dueAt"));
+    const questions = await parseQuestions(formData);
 
-  if (title.length === 0) {
-    throw new Error("Enter an assignment title.");
-  }
+    if (!Number.isInteger(classId)) {
+      throw new Error("Choose an existing class.");
+    }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+    if (title.length === 0) {
+      throw new Error("Enter an assignment title.");
+    }
 
-  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-    throw new Error("Switch to the seeded teacher user to create assignments.");
-  }
+    const { selectedUser } = await getSelectedLocalDevelopmentUser();
 
-  const classItem = await prisma.class.findFirst({
-    where: {
-      id: classId,
-      teacherId: selectedUser.id,
-    },
-    select: { id: true },
-  });
+    if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
+      throw new Error("Switch to the seeded teacher user to create assignments.");
+    }
 
-  if (!classItem) {
-    throw new Error("The selected teacher does not teach this class.");
-  }
-
-  const assignment = await prisma.homeworkAssignment.create({
-    data: {
-      classId,
-      createdById: selectedUser.id,
-      title,
-      description: description || null,
-      status,
-      dueAt,
-      questions: {
-        create: questions,
+    const classItem = await prisma.class.findFirst({
+      where: {
+        id: classId,
+        teacherId: selectedUser.id,
       },
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
 
-  redirect(`/classes/${classId}/assignments/${assignment.id}`);
+    if (!classItem) {
+      throw new Error("The selected teacher does not teach this class.");
+    }
+
+    const assignment = await prisma.homeworkAssignment.create({
+      data: {
+        classId,
+        createdById: selectedUser.id,
+        title,
+        description: description || null,
+        status,
+        dueAt,
+        questions: {
+          create: questions,
+        },
+      },
+      select: { id: true },
+    });
+
+    assignmentId = assignment.id;
+  } catch (error) {
+    if (error instanceof LocalMediaValidationError || error instanceof Error) {
+      return { error: error.message };
+    }
+
+    return { error: "Could not create the assignment. Please try again." };
+  }
+
+  redirect(`/classes/${classId}/assignments/${assignmentId}`);
 }
