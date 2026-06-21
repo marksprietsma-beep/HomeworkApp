@@ -365,10 +365,18 @@ function DashboardShell({
                               {assignment.status}
                             </p>
                           </div>
-                          <p className="text-sm text-slate-600">
-                            {assignment.questionCount} questions ·{" "}
-                            {assignment.submissionCount} submissions
-                          </p>
+                          <div className="flex flex-col gap-2 text-sm text-slate-600 sm:items-end">
+                            <p>
+                              {assignment.questionCount} questions ·{" "}
+                              {assignment.submissionCount} submissions
+                            </p>
+                            <Link
+                              href={`/classes/${classItem.id}/assignments/${assignment.id}/responses`}
+                              className="font-semibold text-slate-950 underline-offset-4 hover:underline"
+                            >
+                              Response overview
+                            </Link>
+                          </div>
                         </li>
                       ))}
                     </ul>
