@@ -100,6 +100,137 @@ function SummaryCard({
   );
 }
 
+function formatDueDate(dueAt: Date | null) {
+  if (!dueAt) {
+    return "No due date";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(dueAt);
+}
+
+function StudentAssignedWorkDashboard({
+  selectedUser,
+  dashboardData,
+}: {
+  selectedUser: NonNullable<LocalDevelopmentSwitcherProps["selectedUser"]>;
+  dashboardData: LocalDashboardData;
+}) {
+  return (
+    <section className="mt-10 w-full rounded-3xl border border-slate-200 bg-white/80 p-6 text-left shadow-sm sm:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            Assigned work
+          </p>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">
+            Welcome, {selectedUser.displayName}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            This read-only dashboard lists homework assigned through the classes
+            you are enrolled in. Answer entry and submissions will be added in a
+            later step.
+          </p>
+        </div>
+        <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+            Viewing as
+          </p>
+          <p className="mt-2 text-lg font-semibold">{selectedUser.displayName}</p>
+          <p className="text-sm text-amber-200">{selectedUser.role}</p>
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard
+          label="Classes enrolled"
+          value={dashboardData.totals.classes}
+        />
+        <SummaryCard
+          label="Assigned work"
+          value={dashboardData.assignedWork.length}
+        />
+        <SummaryCard label="Questions" value={dashboardData.totals.questions} />
+        <SummaryCard
+          label="Responses found"
+          value={
+            dashboardData.assignedWork.filter((assignment) => assignment.submission)
+              .length
+          }
+        />
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-slate-950">Your assignments</h3>
+        {dashboardData.assignedWork.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+            No assigned work was found for this participant yet. Switch to a
+            teacher user to create or import assignments, or enrol this
+            participant in a class with homework.
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-4">
+            {dashboardData.assignedWork.map((assignment) => (
+              <article
+                key={assignment.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {assignment.className}
+                    </p>
+                    <h4 className="mt-2 text-xl font-semibold text-slate-950">
+                      {assignment.title}
+                    </h4>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                        {assignment.status}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                        Due: {formatDueDate(assignment.dueAt)}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                        {assignment.questionCount} questions
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                        {assignment.totalPoints === null
+                          ? "Points not set"
+                          : `${assignment.totalPoints} points`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-slate-200 lg:min-w-52">
+                    <p className="font-medium text-slate-500">Response</p>
+                    {assignment.submission ? (
+                      <>
+                        <p className="mt-1 font-semibold text-slate-950">
+                          {assignment.submission.status}
+                        </p>
+                        <p className="text-slate-600">
+                          {assignment.submission.submittedAt
+                            ? `Submitted ${formatDueDate(assignment.submission.submittedAt)}`
+                            : "Saved but not submitted"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 font-semibold text-slate-950">
+                        No response yet
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function DashboardShell({
   selectedUser,
   dashboardData,
@@ -107,8 +238,16 @@ function DashboardShell({
   selectedUser: NonNullable<LocalDevelopmentSwitcherProps["selectedUser"]>;
   dashboardData: LocalDashboardData;
 }) {
-  const classLabel =
-    selectedUser.role === "TEACHER" ? "Classes you teach" : "Classes you are in";
+  if (selectedUser.role === "STUDENT") {
+    return (
+      <StudentAssignedWorkDashboard
+        selectedUser={selectedUser}
+        dashboardData={dashboardData}
+      />
+    );
+  }
+
+  const classLabel = "Classes you teach";
 
   return (
     <section className="mt-10 w-full rounded-3xl border border-slate-200 bg-white/80 p-6 text-left shadow-sm sm:p-8">
