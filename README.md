@@ -149,6 +149,10 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser. The homepage should show the title **Homework App**.
 
+## Assignment import JSON
+
+The stable ChatGPT assignment import contract is documented in [`docs/assignment-import-json-v1.md`](docs/assignment-import-json-v1.md). It defines the paste-friendly JSON shape, complete valid and invalid examples, and the validation rules planned for the future MAR-120 parser.
+
 ## Checks
 
 Run linting:
