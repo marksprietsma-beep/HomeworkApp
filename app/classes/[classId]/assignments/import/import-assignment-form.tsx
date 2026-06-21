@@ -62,6 +62,16 @@ const placeholderJson = `{
   }
 }`;
 
+const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
+  OPEN_TEXT: "Open text",
+  LONG_TEXT: "Long text",
+  MULTIPLE_CHOICE: "Multiple choice",
+};
+
+function formatPoints(points: number | null) {
+  return points ? `${points} pt${points === 1 ? "" : "s"}` : "No points";
+}
+
 export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
   const [rawJson, setRawJson] = useState("");
   const parseResult = useMemo(() => parseAssignmentImportJson(rawJson), [rawJson]);
@@ -71,8 +81,8 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
   const totalPoints = assignment?.questions.reduce((total, question) => total + (question.points ?? 0), 0) ?? 0;
 
   return (
-    <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
+    <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]">
+      <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8 xl:sticky xl:top-6 xl:self-start">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
           Paste JSON
         </p>
@@ -87,16 +97,24 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
           value={rawJson}
           onChange={(event) => setRawJson(event.target.value)}
           rows={24}
-          className="mt-5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          className="mt-5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 xl:min-h-[34rem]"
           placeholder={placeholderJson}
           aria-label="Assignment import JSON"
         />
       </section>
 
       <aside className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-          Validation & preview
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+              Validation & preview
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-950">Review before saving</h2>
+          </div>
+          {assignment ? (
+            <p className="text-sm font-semibold text-emerald-700">Ready to create</p>
+          ) : null}
+        </div>
         {!hasInput ? (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
             Paste JSON to see validation feedback and a save preview.
@@ -115,46 +133,108 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
         ) : assignment ? (
           <form action={formAction} className="mt-5 grid gap-5">
             <input type="hidden" name="rawJson" value={rawJson} />
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-              JSON is valid. Review the preview, then confirm to save it locally.
+            <div className="sticky top-3 z-10 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-slate-200/70 backdrop-blur">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-emerald-900">
+                  JSON is valid. Review the full preview, then save when ready.
+                </p>
+                <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                  Confirm and create
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-950">{assignment.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{assignment.instructions}</p>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                {assignment.status} · Due: {assignment.dueDate ?? "No due date"} · Total: {totalPoints} pts
-              </p>
-            </div>
-            <ol className="grid gap-4">
-              {assignment.questions.map((question: AssignmentImportQuestion) => (
-                <li key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Question {question.order} · {question.type} · {question.points ? `${question.points} pts` : "No points"}
+                    Assignment summary
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-950">{question.prompt}</p>
+                  <h3 className="mt-2 text-xl font-bold text-slate-950">{assignment.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">{assignment.instructions}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:min-w-80 lg:grid-cols-2">
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Status</p>
+                    <p className="mt-1 font-bold text-slate-950">{assignment.status}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Due</p>
+                    <p className="mt-1 font-bold text-slate-950">{assignment.dueDate ?? "No due date"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Questions</p>
+                    <p className="mt-1 font-bold text-slate-950">{assignment.questions.length}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Points</p>
+                    <p className="mt-1 font-bold text-slate-950">{totalPoints || "Not set"}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <ol className="grid gap-3">
+              {assignment.questions.map((question: AssignmentImportQuestion) => (
+                <li key={question.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">
+                        {question.order}
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-slate-950">Question {question.order}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {questionTypeLabels[question.type]}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="w-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
+                      {formatPoints(question.points)}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-950">{question.prompt}</p>
                   {question.options.length > 0 ? (
-                    <ul className="mt-3 grid gap-2">
+                    <ul className="mt-4 grid gap-2 sm:grid-cols-2">
                       {question.options.map((option) => (
-                        <li key={option.id} className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
-                          <span className="font-semibold">{option.id}.</span> {option.text}
+                        <li key={option.id} className="flex gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                          <span className="font-bold uppercase text-slate-950">{option.id}.</span>
+                          <span>{option.text}</span>
                         </li>
                       ))}
                     </ul>
                   ) : null}
                   {question.image ? (
-                    <div className="mt-3 rounded-xl bg-white p-3 text-sm text-slate-700">
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                       <p className="font-semibold text-slate-950">Image reference</p>
-                      <p className="mt-1 break-all">{question.image.path}</p>
-                      {question.image.caption ? <p className="mt-1">Caption: {question.image.caption}</p> : null}
-                      {question.image.altText ? <p className="mt-1">Alt text: {question.image.altText}</p> : null}
+                      <dl className="mt-2 grid gap-2">
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Path</dt>
+                          <dd className="mt-1 break-all font-mono text-xs text-slate-800">{question.image.path}</dd>
+                        </div>
+                        {question.image.caption ? (
+                          <div>
+                            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Caption</dt>
+                            <dd className="mt-1">{question.image.caption}</dd>
+                          </div>
+                        ) : null}
+                        {question.image.altText ? (
+                          <div>
+                            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Alt text</dt>
+                            <dd className="mt-1">{question.image.altText}</dd>
+                          </div>
+                        ) : null}
+                      </dl>
                     </div>
                   ) : null}
                 </li>
               ))}
             </ol>
-            <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-              Confirm and create homework
-            </button>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+              <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                Confirm and create homework
+              </button>
+            </div>
           </form>
         ) : null}
       </aside>
