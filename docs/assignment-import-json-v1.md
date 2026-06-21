@@ -217,6 +217,25 @@ This example is invalid because:
 - `OPEN_TEXT` questions must not include `options`.
 - Image reference metadata is present and parseable, but the question still fails the contract because options only belong on `MULTIPLE_CHOICE` questions.
 
+## Parser implementation
+
+MAR-120 adds reusable parser logic in `lib/assignment-import-parser.mjs`. Call `parseAssignmentImportJson(rawJsonText)` with the raw pasted JSON string. The parser safely parses JSON, validates the v1 contract, and returns one of these result shapes:
+
+```js
+{ ok: true, assignment, errors: [] }
+{ ok: false, assignment: null, errors: [{ path, code, message }] }
+```
+
+The normalised `assignment` trims string fields, converts an omitted `dueDate` to `null`, sorts questions by `order`, keeps optional `marks` as a non-negative integer or `null`, returns text-question `options` as an empty array, and normalises optional image metadata without uploading or storing files.
+
+The parser rejects unknown fields in the root, assignment, question, option, and image objects. This is intentional for v1 so unexpected ChatGPT output is visible before the paste workflow creates database records.
+
+Run the parser fixture check locally with:
+
+```bash
+npm run check:assignment-json-fixtures
+```
+
 ## Fixture smoke check
 
 Run the fixture quality gate locally with:
