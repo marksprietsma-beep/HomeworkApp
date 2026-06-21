@@ -1,0 +1,26 @@
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Text question with options",
+    "instructions": "This example is JSON but violates the v1 contract.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "Explain your thinking in one sentence.",
+        "options": [
+          { "id": "a", "text": "This should not be here." },
+          { "id": "b", "text": "Neither should this." }
+        ],
+        "image": {
+          "path": "images/number-line.png",
+          "caption": "Number line reference",
+          "altText": "A number line from zero to one marked in quarters."
+        }
+      }
+    ]
+  }
+}

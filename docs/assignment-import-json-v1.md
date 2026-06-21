@@ -88,6 +88,9 @@ The image object is metadata only. It should not contain base64 data, external f
 
 ## Complete valid example
 
+The documented valid example below is mirrored in [`docs/fixtures/assignment-import/valid/fractions-check.json`](fixtures/assignment-import/valid/fractions-check.json). Run `npm run check:assignment-json-fixtures` after changing it so the fixture file and this documentation stay in sync.
+
+<!-- fixture: docs/fixtures/assignment-import/valid/fractions-check.json -->
 ```json
 {
   "formatVersion": "assignment-import-v1",
@@ -131,8 +134,13 @@ The image object is metadata only. It should not contain base64 data, external f
 }
 ```
 
-## Invalid example
+## Invalid examples
 
+The invalid examples below are still parseable JSON, but they intentionally violate the v1 import contract. They are mirrored in fixture files and are checked by `npm run check:assignment-json-fixtures`.
+
+### Invalid example: contract violations
+
+<!-- fixture: docs/fixtures/assignment-import/invalid/contract-violations.json -->
 ```json
 {
   "formatVersion": "assignment-import-v1",
@@ -171,6 +179,53 @@ This example is invalid because:
 - Question orders skip `2`, so they are not sequential.
 - `SHORT_TEXT` is not a supported v1 question type.
 - The multiple choice option ID `a` is duplicated within `q1`.
+
+### Invalid example: text question with options
+
+<!-- fixture: docs/fixtures/assignment-import/invalid/text-question-with-options.json -->
+```json
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Text question with options",
+    "instructions": "This example is JSON but violates the v1 contract.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "Explain your thinking in one sentence.",
+        "options": [
+          { "id": "a", "text": "This should not be here." },
+          { "id": "b", "text": "Neither should this." }
+        ],
+        "image": {
+          "path": "images/number-line.png",
+          "caption": "Number line reference",
+          "altText": "A number line from zero to one marked in quarters."
+        }
+      }
+    ]
+  }
+}
+```
+
+This example is invalid because:
+
+- `OPEN_TEXT` questions must not include `options`.
+- Image reference metadata is present and parseable, but the question still fails the contract because options only belong on `MULTIPLE_CHOICE` questions.
+
+## Fixture smoke check
+
+Run the fixture quality gate locally with:
+
+```bash
+npm run check:assignment-json-fixtures
+```
+
+The check parses every valid and invalid fixture as JSON, requires the valid fixtures to pass a small structural smoke check, requires the invalid fixtures to fail that smoke check, and compares the fenced examples in this document with their fixture files. This is deliberately not the full MAR-120 parser and does not write database records.
 
 ## Validation rules for MAR-120
 
