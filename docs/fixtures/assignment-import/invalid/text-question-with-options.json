@@ -12,14 +12,21 @@
         "type": "OPEN_TEXT",
         "prompt": "Explain your thinking in one sentence.",
         "options": [
-          { "id": "a", "text": "This should not be here." },
-          { "id": "b", "text": "Neither should this." }
+          {
+            "id": "a",
+            "text": "This should not be here."
+          },
+          {
+            "id": "b",
+            "text": "Neither should this."
+          }
         ],
         "image": {
           "path": "images/number-line.png",
           "caption": "Number line reference",
           "altText": "A number line from zero to one marked in quarters."
-        }
+        },
+        "points": 2
       }
     ]
   }

@@ -10,6 +10,7 @@ type ParsedQuestion = {
   prompt: string;
   questionType: HomeworkQuestionType;
   options?: { choices: string[] };
+  points?: number;
   imagePath?: string;
   imageCaption?: string;
   imageAltText?: string;
@@ -38,6 +39,7 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
   const prompts = formData.getAll("questionPrompt");
   const types = formData.getAll("questionType");
   const optionSets = formData.getAll("questionOptions");
+  const pointValues = formData.getAll("questionPoints");
   const imagePaths = formData.getAll("questionImagePath");
   const imageCaptions = formData.getAll("questionImageCaption");
   const imageAltTexts = formData.getAll("questionImageAltText");
@@ -51,6 +53,8 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
       )
         ? (requestedType as HomeworkQuestionType)
         : HomeworkQuestionType.OPEN_TEXT;
+      const rawPoints = valueAt(pointValues, index);
+      const points = rawPoints === "" ? undefined : Number(rawPoints);
       const choices = valueAt(optionSets, index)
         .split("\n")
         .map((choice) => choice.trim())
@@ -67,6 +71,7 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
           questionType === HomeworkQuestionType.MULTIPLE_CHOICE
             ? { choices }
             : undefined,
+        points,
         imagePath: imagePath || undefined,
         imageCaption: imageCaption || undefined,
         imageAltText: imageAltText || undefined,
@@ -79,6 +84,10 @@ function parseQuestions(formData: FormData): ParsedQuestion[] {
   }
 
   for (const question of questions) {
+    if (question.points !== undefined && (!Number.isInteger(question.points) || question.points < 1)) {
+      throw new Error("Question points must be positive whole numbers when provided.");
+    }
+
     if (
       question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE &&
       (!question.options || question.options.choices.length < 2)

@@ -13,7 +13,7 @@ type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
-  marks: number | null;
+  points: number | null;
   options: { id: string; text: string }[];
   image: { path: string; caption: string; altText: string } | null;
 };
@@ -39,7 +39,7 @@ const placeholderJson = `{
         "order": 1,
         "type": "OPEN_TEXT",
         "prompt": "Explain why 1/2 is the same as 2/4.",
-        "marks": 2,
+        "points": 2,
         "image": {
           "path": "local-reference/fraction-bars.png",
           "caption": "Fraction bars",
@@ -51,7 +51,7 @@ const placeholderJson = `{
         "order": 2,
         "type": "MULTIPLE_CHOICE",
         "prompt": "Which fraction is equivalent to 3/6?",
-        "marks": 1,
+        "points": 1,
         "options": [
           { "id": "a", "text": "1/2" },
           { "id": "b", "text": "1/3" },
@@ -68,6 +68,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
   const formAction = importAssignmentForClass.bind(null, classId);
   const hasInput = rawJson.trim().length > 0;
   const assignment = (parseResult.ok ? parseResult.assignment : null) as AssignmentImportAssignment | null;
+  const totalPoints = assignment?.questions.reduce((total, question) => total + (question.points ?? 0), 0) ?? 0;
 
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
@@ -121,14 +122,14 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
               <h3 className="text-xl font-bold text-slate-950">{assignment.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-700">{assignment.instructions}</p>
               <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                {assignment.status} · Due: {assignment.dueDate ?? "No due date"}
+                {assignment.status} · Due: {assignment.dueDate ?? "No due date"} · Total: {totalPoints} pts
               </p>
             </div>
             <ol className="grid gap-4">
               {assignment.questions.map((question: AssignmentImportQuestion) => (
                 <li key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Question {question.order} · {question.type} · {question.marks ?? "No"} marks
+                    Question {question.order} · {question.type} · {question.points ? `${question.points} pts` : "No points"}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-950">{question.prompt}</p>
                   {question.options.length > 0 ? (

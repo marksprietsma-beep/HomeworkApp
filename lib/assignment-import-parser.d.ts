@@ -9,7 +9,7 @@ export type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
-  marks: number | null;
+  points: number | null;
   options: { id: string; text: string }[];
   image: { path: string; caption: string; altText: string } | null;
 };

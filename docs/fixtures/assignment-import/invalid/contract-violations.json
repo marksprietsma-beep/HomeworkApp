@@ -12,15 +12,22 @@
         "type": "MULTIPLE_CHOICE",
         "prompt": "Pick one.",
         "options": [
-          { "id": "a", "text": "First answer" },
-          { "id": "a", "text": "Duplicate option id" }
+          {
+            "id": "a",
+            "text": "First answer"
+          },
+          {
+            "id": "a",
+            "text": "Duplicate option id"
+          }
         ]
       },
       {
         "id": "q1",
         "order": 3,
         "type": "SHORT_TEXT",
-        "prompt": "This uses an unsupported type."
+        "prompt": "This uses an unsupported type.",
+        "points": 0
       }
     ]
   }
