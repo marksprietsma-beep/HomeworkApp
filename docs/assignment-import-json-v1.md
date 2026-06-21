@@ -6,7 +6,7 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
-> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
+> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
 
 ## Stable root shape
 
@@ -24,6 +24,7 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
         "order": 1,
         "type": "OPEN_TEXT",
         "prompt": "string",
+        "points": 1,
         "image": {
           "path": "string",
           "caption": "string",
@@ -62,6 +63,7 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | `order` | Yes | integer | 1-based display order. Must be unique and sequential with no gaps. |
 | `type` | Yes | string | Must be `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`. |
 | `prompt` | Yes | string | Student-facing question prompt. Must not be empty after trimming. |
+| `points` | No | integer | Optional point value for this question. When present, it must be a positive integer. |
 | `options` | Required only for `MULTIPLE_CHOICE` | array | Array of option objects. Must be omitted for `OPEN_TEXT` and `LONG_TEXT`. |
 | `image` | No | object or null | Optional image reference metadata. This is only a reference; v1 does not upload or store image files. |
 
@@ -74,7 +76,7 @@ Use `OPEN_TEXT` for short answers, `LONG_TEXT` for paragraph or essay answers, a
 | `id` | Yes | string | Stable option ID within the question, such as `a`, `b`, `c`, `d`. Must be unique within that question. |
 | `text` | Yes | string | Student-facing option text. Must not be empty after trimming. |
 
-The v1 contract does not include a correct answer, rubric, or scoring field. If ChatGPT includes those fields, MAR-120 should reject them or ignore them according to the parser decision documented at implementation time.
+The v1 contract includes optional per-question `points`, but does not include a correct answer, rubric, or automatic scoring field. If ChatGPT includes those fields, MAR-120 should reject them or ignore them according to the parser decision documented at implementation time.
 
 ### Image reference fields
 
@@ -104,7 +106,8 @@ The documented valid example below is mirrored in [`docs/fixtures/assignment-imp
         "id": "q1",
         "order": 1,
         "type": "OPEN_TEXT",
-        "prompt": "Write one equivalent fraction for 1/2."
+        "prompt": "Write one equivalent fraction for 1/2.",
+        "points": 1
       },
       {
         "id": "q2",
@@ -115,7 +118,8 @@ The documented valid example below is mirrored in [`docs/fixtures/assignment-imp
           "path": "teacher-provided fraction wall image",
           "caption": "Fraction wall for comparison",
           "altText": "A fraction wall showing halves, quarters, eighths, and other equal partitions."
-        }
+        },
+        "points": 3
       },
       {
         "id": "q3",
@@ -123,11 +127,24 @@ The documented valid example below is mirrored in [`docs/fixtures/assignment-imp
         "type": "MULTIPLE_CHOICE",
         "prompt": "Which fraction is equal to 0.25?",
         "options": [
-          { "id": "a", "text": "1/2" },
-          { "id": "b", "text": "1/3" },
-          { "id": "c", "text": "1/4" },
-          { "id": "d", "text": "3/4" }
-        ]
+          {
+            "id": "a",
+            "text": "1/2"
+          },
+          {
+            "id": "b",
+            "text": "1/3"
+          },
+          {
+            "id": "c",
+            "text": "1/4"
+          },
+          {
+            "id": "d",
+            "text": "3/4"
+          }
+        ],
+        "points": 1
       }
     ]
   }
@@ -156,15 +173,22 @@ The invalid examples below are still parseable JSON, but they intentionally viol
         "type": "MULTIPLE_CHOICE",
         "prompt": "Pick one.",
         "options": [
-          { "id": "a", "text": "First answer" },
-          { "id": "a", "text": "Duplicate option id" }
+          {
+            "id": "a",
+            "text": "First answer"
+          },
+          {
+            "id": "a",
+            "text": "Duplicate option id"
+          }
         ]
       },
       {
         "id": "q1",
         "order": 3,
         "type": "SHORT_TEXT",
-        "prompt": "This uses an unsupported type."
+        "prompt": "This uses an unsupported type.",
+        "points": 0
       }
     ]
   }
@@ -178,6 +202,7 @@ This example is invalid because:
 - Question IDs are duplicated.
 - Question orders skip `2`, so they are not sequential.
 - `SHORT_TEXT` is not a supported v1 question type.
+- Question points must be positive integers when present.
 - The multiple choice option ID `a` is duplicated within `q1`.
 
 ### Invalid example: text question with options
@@ -198,14 +223,21 @@ This example is invalid because:
         "type": "OPEN_TEXT",
         "prompt": "Explain your thinking in one sentence.",
         "options": [
-          { "id": "a", "text": "This should not be here." },
-          { "id": "b", "text": "Neither should this." }
+          {
+            "id": "a",
+            "text": "This should not be here."
+          },
+          {
+            "id": "b",
+            "text": "Neither should this."
+          }
         ],
         "image": {
           "path": "images/number-line.png",
           "caption": "Number line reference",
           "altText": "A number line from zero to one marked in quarters."
-        }
+        },
+        "points": 2
       }
     ]
   }
@@ -226,7 +258,7 @@ MAR-120 adds reusable parser logic in `lib/assignment-import-parser.mjs`. Call `
 { ok: false, assignment: null, errors: [{ path, code, message }] }
 ```
 
-The normalised `assignment` trims string fields, converts an omitted `dueDate` to `null`, sorts questions by `order`, keeps optional `marks` as a non-negative integer or `null`, returns text-question `options` as an empty array, and normalises optional image metadata without uploading or storing files.
+The normalised `assignment` trims string fields, converts an omitted `dueDate` to `null`, sorts questions by `order`, keeps optional `points` as a positive integer or `null`, returns text-question `options` as an empty array, and normalises optional image metadata without uploading or storing files.
 
 The parser rejects unknown fields in the root, assignment, question, option, and image objects. This is intentional for v1 so unexpected ChatGPT output is visible before the paste workflow creates database records.
 
@@ -263,18 +295,18 @@ MAR-120 should enforce these rules before writing anything to the database:
 11. Question `order` values must be integers, unique, start at `1`, and be sequential with no gaps.
 12. Question `type` must be one of `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`.
 13. Question `prompt` values must be strings with non-empty trimmed values.
-14. `OPEN_TEXT` and `LONG_TEXT` questions must not include `options`.
-15. `MULTIPLE_CHOICE` questions must include an `options` array with at least two options.
-16. Every option must be an object with non-empty string `id` and non-empty string `text`.
-17. Option `id` values must be unique within their question.
-18. If `image` is omitted or `null`, the question has no image reference.
-19. If `image` is present, it must be an object with a non-empty string `path`.
-20. `image.caption` and `image.altText` may be omitted, but when present they must be strings.
-21. The parser should trim string fields before saving where that does not change meaning.
-22. The parser should map `assignment.instructions` to the existing assignment description field unless a later issue adds a dedicated instructions column.
-23. The parser should map `dueDate` to the existing due date/due time field using a consistent local default time, because v1 intentionally accepts only a date.
-24. The parser should store multiple choice options in the existing question options JSON field using the documented `[{ "id": "a", "text": "..." }]` shape.
-25. The parser should store image metadata in the existing question image path, caption, and alt text fields.
+14. Optional question `points` must be a positive integer when present.
+15. `OPEN_TEXT` and `LONG_TEXT` questions must not include `options`.
+16. `MULTIPLE_CHOICE` questions must include an `options` array with at least two options.
+17. Every option must be an object with non-empty string `id` and non-empty string `text`.
+18. Option `id` values must be unique within their question.
+19. If `image` is omitted or `null`, the question has no image reference.
+20. If `image` is present, it must be an object with a non-empty string `path`.
+21. `image.caption` and `image.altText` may be omitted, but when present they must be strings.
+22. The parser should trim string fields before saving where that does not change meaning.
+23. The parser should map `assignment.instructions` to the existing assignment description field unless a later issue adds a dedicated instructions column.
+24. The parser should map `dueDate` to the existing due date/due time field using a consistent local default time, because v1 intentionally accepts only a date.
+25. The parser should store multiple choice options in the existing question options JSON field using the documented `[{ "id": "a", "text": "..." }]` shape.
 
 ## MAR-120 implementation concerns
 

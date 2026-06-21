@@ -39,6 +39,7 @@ export type HomeworkDetailData = {
   totals: {
     questions: number;
     submissions: number;
+    points: number;
   };
 };
 
@@ -119,6 +120,7 @@ export async function getHomeworkDetailData(
     totals: {
       questions: assignment._count.questions,
       submissions: assignment._count.submissions,
+      points: assignment.questions.reduce((total, question) => total + (question.points ?? 0), 0),
     },
   };
 }

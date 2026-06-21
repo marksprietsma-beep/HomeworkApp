@@ -136,7 +136,7 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem]">
+              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem_10rem]">
                 <label className="text-sm font-semibold text-slate-700">
                   Prompt
                   <textarea
@@ -166,6 +166,17 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Points (optional)
+                  <input
+                    name="questionPoints"
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    placeholder="e.g. 2"
+                  />
                 </label>
               </div>
 

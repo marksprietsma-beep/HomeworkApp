@@ -10,7 +10,7 @@ type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
-  marks: number | null;
+  points: number | null;
   options: { id: string; text: string }[];
   image: { path: string; caption: string; altText: string } | null;
 };
@@ -80,7 +80,7 @@ export async function importAssignmentForClass(classId: number, formData: FormDa
           order: question.order,
           prompt: question.prompt,
           questionType: question.type as HomeworkQuestionType,
-          points: question.marks,
+          points: question.points,
           options:
             question.type === "MULTIPLE_CHOICE"
               ? { choices: question.options.map((option) => option.text) }

@@ -13,6 +13,7 @@ const invalidFixtures = [
       "assignment.status must be DRAFT or PUBLISHED",
       "id duplicates \"q1\"",
       "type must be OPEN_TEXT, LONG_TEXT, or MULTIPLE_CHOICE",
+      "points must be a positive integer",
       "id duplicates \"a\"",
       "question orders must be sequential; missing 2",
     ],
