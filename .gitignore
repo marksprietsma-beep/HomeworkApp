@@ -21,3 +21,6 @@ pnpm-debug.log*
 # OS/editor
 .DS_Store
 .vscode/
+
+# local uploaded media (portable data, not source)
+data/uploads/
