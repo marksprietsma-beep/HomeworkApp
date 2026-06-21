@@ -151,9 +151,9 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser. The ho
 
 ## Assignment import JSON
 
-The stable ChatGPT assignment import contract is documented in [`docs/assignment-import-json-v1.md`](docs/assignment-import-json-v1.md). It defines the paste-friendly JSON shape, complete valid and invalid examples, and the validation rules planned for the future MAR-120 parser.
+The stable ChatGPT assignment import contract is documented in [`docs/assignment-import-json-v1.md`](docs/assignment-import-json-v1.md). It defines the paste-friendly JSON shape, complete valid and invalid examples, and the reusable MAR-120 parser behaviour.
 
-Assignment import JSON fixtures live under [`docs/fixtures/assignment-import`](docs/fixtures/assignment-import). Run `npm run check:assignment-json-fixtures` to confirm fixtures parse as JSON, valid fixtures pass the lightweight structural smoke check, invalid fixtures fail it as expected, and the documented examples remain in sync with the fixture files.
+Assignment import JSON fixtures live under [`docs/fixtures/assignment-import`](docs/fixtures/assignment-import). Run `npm run check:assignment-json-fixtures` to confirm valid fixtures pass the reusable parser, invalid fixtures fail for expected reasons, and the documented examples remain in sync with the fixture files.
 
 ## Checks
 

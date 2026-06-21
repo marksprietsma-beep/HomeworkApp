@@ -1,16 +1,28 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
 const repoRoot = process.cwd();
 const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json"];
 const invalidFixtures = [
-  "docs/fixtures/assignment-import/invalid/contract-violations.json",
-  "docs/fixtures/assignment-import/invalid/text-question-with-options.json",
+  {
+    path: "docs/fixtures/assignment-import/invalid/contract-violations.json",
+    expectedErrors: [
+      "assignment.dueDate must be a real YYYY-MM-DD date",
+      "assignment.status must be DRAFT or PUBLISHED",
+      "id duplicates \"q1\"",
+      "type must be OPEN_TEXT, LONG_TEXT, or MULTIPLE_CHOICE",
+      "id duplicates \"a\"",
+      "question orders must be sequential; missing 2",
+    ],
+  },
+  {
+    path: "docs/fixtures/assignment-import/invalid/text-question-with-options.json",
+    expectedErrors: ["options must be omitted unless type is MULTIPLE_CHOICE"],
+  },
 ];
 const docsPath = "docs/assignment-import-json-v1.md";
-const allowedQuestionTypes = new Set(["OPEN_TEXT", "LONG_TEXT", "MULTIPLE_CHOICE"]);
-const allowedStatuses = new Set(["DRAFT", "PUBLISHED"]);
 
 let failureCount = 0;
 
@@ -26,167 +38,6 @@ function pass(message) {
 async function readText(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8");
 }
-
-function parseJson(relativePath, text) {
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`${relativePath} is not valid JSON: ${error.message}`);
-  }
-}
-
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function hasNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function addUnknownFieldErrors(errors, label, value, allowedFields) {
-  for (const field of Object.keys(value)) {
-    if (!allowedFields.has(field)) {
-      errors.push(`${label} has unknown field "${field}"`);
-    }
-  }
-}
-
-function validateAssignmentSmoke(value) {
-  const errors = [];
-
-  if (!isPlainObject(value)) {
-    return ["root must be a JSON object"];
-  }
-
-  addUnknownFieldErrors(errors, "root", value, new Set(["formatVersion", "assignment"]));
-
-  if (value.formatVersion !== "assignment-import-v1") {
-    errors.push("formatVersion must be assignment-import-v1");
-  }
-
-  if (!isPlainObject(value.assignment)) {
-    errors.push("assignment must be an object");
-    return errors;
-  }
-
-  const assignment = value.assignment;
-  addUnknownFieldErrors(
-    errors,
-    "assignment",
-    assignment,
-    new Set(["title", "instructions", "dueDate", "status", "questions"]),
-  );
-
-  if (!hasNonEmptyString(assignment.title)) {
-    errors.push("assignment.title must be a non-empty string");
-  }
-  if (!hasNonEmptyString(assignment.instructions)) {
-    errors.push("assignment.instructions must be a non-empty string");
-  }
-  if (
-    assignment.dueDate !== undefined &&
-    assignment.dueDate !== null &&
-    (typeof assignment.dueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(assignment.dueDate))
-  ) {
-    errors.push("assignment.dueDate must be YYYY-MM-DD, null, or omitted");
-  }
-  if (!allowedStatuses.has(assignment.status)) {
-    errors.push("assignment.status must be DRAFT or PUBLISHED");
-  }
-  if (!Array.isArray(assignment.questions) || assignment.questions.length === 0) {
-    errors.push("assignment.questions must be a non-empty array");
-    return errors;
-  }
-
-  const seenQuestionIds = new Set();
-  const seenOrders = new Set();
-
-  assignment.questions.forEach((question, index) => {
-    const label = `question ${index + 1}`;
-    if (!isPlainObject(question)) {
-      errors.push(`${label} must be an object`);
-      return;
-    }
-
-    addUnknownFieldErrors(errors, label, question, new Set(["id", "order", "type", "prompt", "options", "image"]));
-
-    if (!hasNonEmptyString(question.id)) {
-      errors.push(`${label}.id must be a non-empty string`);
-    } else if (seenQuestionIds.has(question.id)) {
-      errors.push(`${label}.id duplicates "${question.id}"`);
-    } else {
-      seenQuestionIds.add(question.id);
-    }
-
-    if (!Number.isInteger(question.order)) {
-      errors.push(`${label}.order must be an integer`);
-    } else if (seenOrders.has(question.order)) {
-      errors.push(`${label}.order duplicates ${question.order}`);
-    } else {
-      seenOrders.add(question.order);
-    }
-
-    if (!allowedQuestionTypes.has(question.type)) {
-      errors.push(`${label}.type must be OPEN_TEXT, LONG_TEXT, or MULTIPLE_CHOICE`);
-    }
-    if (!hasNonEmptyString(question.prompt)) {
-      errors.push(`${label}.prompt must be a non-empty string`);
-    }
-
-    if (question.type === "MULTIPLE_CHOICE") {
-      if (!Array.isArray(question.options) || question.options.length < 2) {
-        errors.push(`${label}.options must contain at least two options`);
-      } else {
-        const seenOptionIds = new Set();
-        question.options.forEach((option, optionIndex) => {
-          const optionLabel = `${label}.options[${optionIndex}]`;
-          if (!isPlainObject(option)) {
-            errors.push(`${optionLabel} must be an object`);
-            return;
-          }
-          addUnknownFieldErrors(errors, optionLabel, option, new Set(["id", "text"]));
-          if (!hasNonEmptyString(option.id)) {
-            errors.push(`${optionLabel}.id must be a non-empty string`);
-          } else if (seenOptionIds.has(option.id)) {
-            errors.push(`${optionLabel}.id duplicates "${option.id}"`);
-          } else {
-            seenOptionIds.add(option.id);
-          }
-          if (!hasNonEmptyString(option.text)) {
-            errors.push(`${optionLabel}.text must be a non-empty string`);
-          }
-        });
-      }
-    } else if ("options" in question) {
-      errors.push(`${label}.options must be omitted unless type is MULTIPLE_CHOICE`);
-    }
-
-    if (question.image !== undefined && question.image !== null) {
-      if (!isPlainObject(question.image)) {
-        errors.push(`${label}.image must be an object or null`);
-      } else {
-        addUnknownFieldErrors(errors, `${label}.image`, question.image, new Set(["path", "caption", "altText"]));
-        if (!hasNonEmptyString(question.image.path)) {
-          errors.push(`${label}.image.path must be a non-empty string`);
-        }
-        for (const optionalField of ["caption", "altText"]) {
-          if (optionalField in question.image && typeof question.image[optionalField] !== "string") {
-            errors.push(`${label}.image.${optionalField} must be a string when present`);
-          }
-        }
-      }
-    }
-  });
-
-  for (let expectedOrder = 1; expectedOrder <= assignment.questions.length; expectedOrder += 1) {
-    if (!seenOrders.has(expectedOrder)) {
-      errors.push(`question orders must be sequential; missing ${expectedOrder}`);
-    }
-  }
-
-  return errors;
-}
-
 function normalizeJsonText(text) {
   return `${JSON.stringify(JSON.parse(text), null, 2)}\n`;
 }
@@ -199,33 +50,42 @@ function extractDocumentedFixtureBlocks(markdown) {
   }));
 }
 
-async function checkFixture(relativePath, expectedValid) {
+async function checkValidFixture(relativePath) {
   const text = await readText(relativePath);
-  let parsed;
-  try {
-    parsed = parseJson(relativePath, text);
-  } catch (error) {
-    fail(error.message);
+  const result = parseAssignmentImportJson(text);
+
+  if (!result.ok) {
+    fail(`${relativePath} should pass parser validation:\n  - ${result.errors.map((item) => item.message).join("\n  - ")}`);
     return;
   }
 
-  const errors = validateAssignmentSmoke(parsed);
-  if (expectedValid && errors.length > 0) {
-    fail(`${relativePath} should pass the smoke check:\n  - ${errors.join("\n  - ")}`);
-    return;
-  }
-  if (!expectedValid && errors.length === 0) {
-    fail(`${relativePath} is in invalid fixtures but passed the smoke check`);
+  pass(`${relativePath} parsed and produced a normalised assignment with ${result.assignment.questions.length} questions`);
+}
+
+async function checkInvalidFixture(fixture) {
+  const text = await readText(fixture.path);
+  const result = parseAssignmentImportJson(text);
+
+  if (result.ok) {
+    fail(`${fixture.path} is in invalid fixtures but passed parser validation`);
     return;
   }
 
-  pass(`${relativePath} parsed as JSON and ${expectedValid ? "passed" : "failed"} the smoke check as expected`);
+  const messages = result.errors.map((item) => item.message);
+  for (const expectedError of fixture.expectedErrors) {
+    if (!messages.some((message) => message.includes(expectedError))) {
+      fail(`${fixture.path} did not report expected parser error containing: ${expectedError}\nActual errors:\n  - ${messages.join("\n  - ")}`);
+      return;
+    }
+  }
+
+  pass(`${fixture.path} failed parser validation for the expected reasons`);
 }
 
 async function checkDocumentationSync() {
   const markdown = await readText(docsPath);
   const blocks = extractDocumentedFixtureBlocks(markdown);
-  const expectedPaths = new Set([...validFixtures, ...invalidFixtures]);
+  const expectedPaths = new Set([...validFixtures, ...invalidFixtures.map((fixture) => fixture.path)]);
 
   for (const expectedPath of expectedPaths) {
     if (!blocks.some((block) => block.fixturePath === expectedPath)) {
@@ -256,10 +116,10 @@ async function checkDocumentationSync() {
 }
 
 for (const fixturePath of validFixtures) {
-  await checkFixture(fixturePath, true);
+  await checkValidFixture(fixturePath);
 }
-for (const fixturePath of invalidFixtures) {
-  await checkFixture(fixturePath, false);
+for (const fixture of invalidFixtures) {
+  await checkInvalidFixture(fixture);
 }
 await checkDocumentationSync();
 
