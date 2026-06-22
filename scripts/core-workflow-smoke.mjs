@@ -194,8 +194,38 @@ async function smokeDatabaseWorkflow() {
   );
   const visibleFeedback = requireFound(participantView.participantFeedback[0], 'participant feedback visibility');
   const allActions = visibleFeedback.followUpActions.concat(visibleFeedback.questionFeedback.flatMap((question) => question.followUpActions));
-  if (allActions.length !== 3) throw new Error(`Smoke check failed: expected 3 follow-up actions, found ${allActions.length}`);
-  if (!allActions.some((action) => action.status === 'COMPLETED' && action.responseText)) {
+  const uniqueActions = [...new Map(allActions.map((action) => [action.id, action])).values()];
+  const expectedActionIds = new Set([
+    'smoke-acknowledge-feedback',
+    'smoke-reflect-on-feedback',
+    'smoke-answer-follow-up',
+  ]);
+  const uniqueActionIds = new Set(uniqueActions.map((action) => action.sourceActionId));
+  const duplicateActionCount = allActions.length - uniqueActions.length;
+
+  if (uniqueActions.length !== expectedActionIds.size) {
+    throw new Error(
+      `Smoke check failed: expected ${expectedActionIds.size} unique follow-up actions, found ${uniqueActions.length}` +
+        (duplicateActionCount > 0 ? ` (${duplicateActionCount} duplicate inclusion${duplicateActionCount === 1 ? '' : 's'} ignored)` : ''),
+    );
+  }
+  const missingActionIds = [...expectedActionIds].filter((sourceActionId) => !uniqueActionIds.has(sourceActionId));
+  const unexpectedActionIds = [...uniqueActionIds].filter((sourceActionId) => !expectedActionIds.has(sourceActionId));
+  if (missingActionIds.length || unexpectedActionIds.length) {
+    throw new Error(
+      `Smoke check failed: follow-up action ids did not match expected smoke actions` +
+        ` (missing: ${missingActionIds.join(', ') || 'none'}; unexpected: ${unexpectedActionIds.join(', ') || 'none'})`,
+    );
+  }
+
+  const questionFollowUpAction = requireFound(
+    uniqueActions.find((action) => action.sourceActionId === 'smoke-answer-follow-up'),
+    'created smoke question follow-up action',
+  );
+  if (!questionFollowUpAction.participantFeedbackId || !questionFollowUpAction.questionFeedbackId) {
+    throw new Error('Smoke check failed: question follow-up action is not linked to both participant and question feedback');
+  }
+  if (!uniqueActions.some((action) => action.status === 'COMPLETED' && action.responseText)) {
     throw new Error('Smoke check failed: completed feedback action response text was not saved');
   }
 
