@@ -15,17 +15,22 @@ export type DashboardClass = {
     id: number;
     title: string;
     status: string;
+    classId: number;
     questionCount: number;
     submissionCount: number;
+    dueAt: Date | null;
+    createdAt: Date;
   }[];
 };
 
 export type AssignedWorkItem = {
   id: number;
   title: string;
+  classId: number;
   className: string;
   status: string;
   dueAt: Date | null;
+  createdAt: Date;
   questionCount: number;
   totalPoints: number | null;
   submission: {
@@ -71,6 +76,7 @@ export async function getLocalDashboardData(user: {
           title: true,
           status: true,
           dueAt: true,
+          createdAt: true,
           questions: {
             select: {
               points: true,
@@ -118,9 +124,11 @@ export async function getLocalDashboardData(user: {
             return {
               id: assignment.id,
               title: assignment.title,
+              classId: classItem.id,
               className: classItem.name,
               status: assignment.status,
               dueAt: assignment.dueAt,
+              createdAt: assignment.createdAt,
               questionCount: assignment._count.questions,
               totalPoints,
               submission: submission
@@ -159,6 +167,9 @@ export async function getLocalDashboardData(user: {
         id: assignment.id,
         title: assignment.title,
         status: assignment.status,
+        classId: classItem.id,
+        dueAt: assignment.dueAt,
+        createdAt: assignment.createdAt,
         questionCount: assignment._count.questions,
         submissionCount: assignment._count.submissions,
       })),

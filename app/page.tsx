@@ -8,6 +8,14 @@ import {
   getLocalDashboardData,
   type LocalDashboardData,
 } from "../lib/dashboard";
+import {
+  dueFilterOptions,
+  filterAndSortAssignments,
+  parseAssignmentListFilters,
+  sortOptions,
+  statusFilterOptions,
+  type AssignmentListFilters,
+} from "../lib/assignment-list-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -114,10 +122,21 @@ function formatDueDate(dueAt: Date | null) {
 function StudentAssignedWorkDashboard({
   selectedUser,
   dashboardData,
+  filters,
 }: {
   selectedUser: NonNullable<LocalDevelopmentSwitcherProps["selectedUser"]>;
   dashboardData: LocalDashboardData;
+  filters: AssignmentListFilters;
 }) {
+  const classOptions = dashboardData.classes.map((classItem) => ({
+    id: classItem.id,
+    name: classItem.name,
+  }));
+  const studentFilters: AssignmentListFilters = { ...filters, status: "all" };
+  const assignments = filterAndSortAssignments(
+    dashboardData.assignedWork,
+    studentFilters,
+  );
   return (
     <section className="mt-10 w-full rounded-3xl border border-slate-200 bg-white/80 p-6 text-left shadow-sm sm:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -149,13 +168,13 @@ function StudentAssignedWorkDashboard({
         />
         <SummaryCard
           label="Assigned work"
-          value={dashboardData.assignedWork.length}
+          value={assignments.length}
         />
         <SummaryCard label="Questions" value={dashboardData.totals.questions} />
         <SummaryCard
           label="Responses found"
           value={
-            dashboardData.assignedWork.filter((assignment) => assignment.submission)
+            assignments.filter((assignment) => assignment.submission)
               .length
           }
         />
@@ -163,7 +182,8 @@ function StudentAssignedWorkDashboard({
 
       <div className="mt-8">
         <h3 className="text-lg font-semibold text-slate-950">Your assignments</h3>
-        {dashboardData.assignedWork.length === 0 ? (
+        <AssignmentFilterForm filters={studentFilters} classOptions={classOptions} hideStatusFilter />
+        {assignments.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
             No assigned work was found for this participant yet. Switch to a
             teacher user to create or import assignments, or enrol this
@@ -171,7 +191,7 @@ function StudentAssignedWorkDashboard({
           </div>
         ) : (
           <div className="mt-4 grid gap-4">
-            {dashboardData.assignedWork.map((assignment) => (
+            {assignments.map((assignment) => (
               <article
                 key={assignment.id}
                 className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
@@ -239,20 +259,31 @@ function StudentAssignedWorkDashboard({
 function DashboardShell({
   selectedUser,
   dashboardData,
+  filters,
 }: {
   selectedUser: NonNullable<LocalDevelopmentSwitcherProps["selectedUser"]>;
   dashboardData: LocalDashboardData;
+  filters: AssignmentListFilters;
 }) {
   if (selectedUser.role === "STUDENT") {
     return (
       <StudentAssignedWorkDashboard
         selectedUser={selectedUser}
         dashboardData={dashboardData}
+        filters={filters}
       />
     );
   }
 
   const classLabel = "Classes you teach";
+  const classOptions = dashboardData.classes.map((classItem) => ({
+    id: classItem.id,
+    name: classItem.name,
+  }));
+  const filteredClasses = dashboardData.classes.map((classItem) => ({
+    ...classItem,
+    assignments: filterAndSortAssignments(classItem.assignments, filters),
+  }));
 
   return (
     <section className="mt-10 w-full rounded-3xl border border-slate-200 bg-white/80 p-6 text-left shadow-sm sm:p-8">
@@ -303,13 +334,14 @@ function DashboardShell({
 
       <div className="mt-8">
         <h3 className="text-lg font-semibold text-slate-950">{classLabel}</h3>
+        <AssignmentFilterForm filters={filters} classOptions={classOptions} />
         {dashboardData.classes.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
             No classes were found for this local development user yet.
           </div>
         ) : (
           <div className="mt-4 grid gap-4">
-            {dashboardData.classes.map((classItem) => (
+            {filteredClasses.map((classItem) => (
               <article
                 key={classItem.id}
                 className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
@@ -400,13 +432,80 @@ function DashboardShell({
   );
 }
 
-export default async function Home() {
+function AssignmentFilterForm({
+  filters,
+  classOptions,
+  hideClassFilter = false,
+  hideStatusFilter = false,
+}: {
+  filters: AssignmentListFilters;
+  classOptions?: { id: number; name: string }[];
+  hideClassFilter?: boolean;
+  hideStatusFilter?: boolean;
+}) {
+  return (
+    <form className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left sm:grid-cols-2 lg:grid-cols-5">
+      <label className="text-sm font-semibold text-slate-700">
+        Search title
+        <input name="search" defaultValue={filters.search} placeholder="Assignment title" className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" />
+      </label>
+      {hideStatusFilter ? null : (
+        <label className="text-sm font-semibold text-slate-700">
+          Status
+          <select name="status" defaultValue={filters.status} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+            {statusFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {hideClassFilter ? null : (
+        <label className="text-sm font-semibold text-slate-700">
+          Class
+          <select name="classId" defaultValue={filters.classId} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+            <option value="all">All classes</option>
+            {(classOptions ?? []).map((classItem) => (
+              <option key={classItem.id} value={classItem.id}>{classItem.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="text-sm font-semibold text-slate-700">
+        Due date
+        <select name="due" defaultValue={filters.due} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          {dueFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="text-sm font-semibold text-slate-700">
+        Sort
+        <select name="sort" defaultValue={filters.sort} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <div className="flex gap-2 sm:col-span-2 lg:col-span-5">
+        <button type="submit" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Apply filters</button>
+        <Link href="/" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">Reset</Link>
+      </div>
+    </form>
+  );
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   let localDevelopmentUserState: LocalDevelopmentSwitcherProps = {
     selectedUser: null,
     developmentUsers: [],
   };
   let localDevelopmentUserError: string | null = null;
   let dashboardData: LocalDashboardData | null = null;
+  const filters = parseAssignmentListFilters(await searchParams);
 
   if (canUseLocalDevelopmentSwitcher()) {
     try {
@@ -446,6 +545,7 @@ export default async function Home() {
             <DashboardShell
               selectedUser={localDevelopmentUserState.selectedUser}
               dashboardData={dashboardData}
+              filters={filters}
             />
           ) : null}
           <LocalDevelopmentSwitcher {...localDevelopmentUserState} />
