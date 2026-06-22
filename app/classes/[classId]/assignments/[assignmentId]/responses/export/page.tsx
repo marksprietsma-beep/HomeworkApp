@@ -96,6 +96,12 @@ export default async function ResponseExportPage({ params }: ResponseExportPageP
         >
           Assignment detail
         </Link>
+        <Link
+          href={`/classes/${exportData.assignment.class.id}/assignments/${exportData.assignment.id}/feedback/import`}
+          className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+        >
+          Import feedback
+        </Link>
       </div>
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
