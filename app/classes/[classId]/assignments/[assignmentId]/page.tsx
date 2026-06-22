@@ -76,6 +76,7 @@ export default async function HomeworkDetailPage({
 
   const canManagePublishStatus =
     selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id;
+  const canEditAssignment = canManagePublishStatus;
   const canViewResponseOverview = canManagePublishStatus;
   const publishStatusAction = updateAssignmentPublishStatus.bind(
     null,
@@ -138,6 +139,14 @@ export default async function HomeworkDetailPage({
             </div>
             {canViewResponseOverview ? (
               <div className="mt-5 flex flex-wrap gap-3">
+                {canEditAssignment ? (
+                  <Link
+                    href={`/classes/${homework.class.id}/assignments/${homework.id}/edit`}
+                    className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
+                  >
+                    Edit assignment
+                  </Link>
+                ) : null}
                 <Link
                   href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
                   className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
