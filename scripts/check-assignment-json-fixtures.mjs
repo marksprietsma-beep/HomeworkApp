@@ -44,8 +44,9 @@ function normalizeJsonText(text) {
 }
 
 function extractDocumentedFixtureBlocks(markdown) {
+  const normalizedMarkdown = markdown.replace(/\r\n/g, "\n");
   const fixtureBlockRegex = /<!--\s*fixture:\s*([^\s]+)\s*-->\s*```json\n([\s\S]*?)\n```/g;
-  return [...markdown.matchAll(fixtureBlockRegex)].map((match) => ({
+  return [...normalizedMarkdown.matchAll(fixtureBlockRegex)].map((match) => ({
     fixturePath: match[1],
     jsonText: `${match[2]}\n`,
   }));
