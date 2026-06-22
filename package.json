@@ -15,7 +15,8 @@
     "db:seed": "prisma db seed",
     "check:assignment-json-fixtures": "node scripts/check-assignment-json-fixtures.mjs",
     "check:feedback-json-fixtures": "node scripts/check-feedback-json-fixtures.mjs",
-    "smoke:core": "node scripts/core-workflow-smoke.mjs"
+    "smoke:core": "node scripts/core-workflow-smoke.mjs",
+    "db:reset:local": "node scripts/db-reset-local.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
