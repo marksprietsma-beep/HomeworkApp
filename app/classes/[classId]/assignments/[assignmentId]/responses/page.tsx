@@ -108,6 +108,12 @@ export default async function ResponseOverviewPage({
             >
               Export responses
             </Link>
+            <Link
+              href={`/classes/${overview.class.id}/assignments/${overview.id}/feedback/import`}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
+            >
+              Import feedback
+            </Link>
             <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
               Teacher

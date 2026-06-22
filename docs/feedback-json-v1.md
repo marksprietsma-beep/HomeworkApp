@@ -435,3 +435,25 @@ Run the fixture check with:
 ```bash
 npm run check:feedback-json-fixtures
 ```
+
+## Teacher import UI (MAR-146)
+
+Teachers can import feedback for one assignment at
+`/classes/[classId]/assignments/[assignmentId]/feedback/import`. The page is
+linked from the assignment detail, response overview, and response export pages.
+It uses the temporary local development user switcher and is only available to
+the seeded class teacher.
+
+The page validates pasted JSON with the reusable feedback parser against the
+current assignment export context: class, assignment, ordered questions,
+enrolled participants, submissions, and per-question responses. A valid import
+shows a teacher-only preview of source export metadata, assignment/class match,
+participant overall feedback, strengths, targets, question feedback, and required
+follow-up actions before saving.
+
+Saving creates a new `FeedbackImport` and nested `ParticipantFeedback`,
+`QuestionFeedback`, and `FeedbackFollowUpAction` rows. Participant, submission,
+question, and action source IDs from the JSON are preserved in the feedback data
+model. V1 intentionally does not publish feedback to students and does not
+replace prior imports; if an assignment already has imports, the UI warns that a
+new teacher-only import record will be added.
