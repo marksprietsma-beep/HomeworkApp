@@ -100,12 +100,20 @@ export default async function HomeworkDetailPage({
               {homework.status} · Due: {formatDate(homework.dueAt)}
             </p>
             {canViewResponseOverview ? (
-              <Link
-                href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
-                className="mt-5 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-              >
-                View response overview
-              </Link>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
+                  className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                >
+                  View response overview
+                </Link>
+                <Link
+                  href={`/classes/${homework.class.id}/assignments/${homework.id}/responses/export`}
+                  className="inline-flex rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
+                >
+                  Export responses
+                </Link>
+              </div>
             ) : null}
           </div>
           <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
