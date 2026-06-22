@@ -96,65 +96,78 @@ async function smokeDatabaseWorkflow() {
     where: { assignmentId: assignment.id, generatedBy: 'Core workflow smoke test' },
   });
 
-  const feedbackImport = await prisma.feedbackImport.create({
-    data: {
-      assignmentId: assignment.id,
-      feedbackFormat: 'homework-feedback',
-      feedbackVersion: 1,
-      sourceExportFormat: 'homework-assignment-responses-v2',
-      sourceExportVersion: 2,
-      generatedBy: 'Core workflow smoke test',
-      participantFeedback: {
-        create: {
-          assignmentId: assignment.id,
-          studentId: student.id,
-          submissionId: submission.id,
-          sourceParticipantId: student.id,
-          sourceParticipantName: student.displayName,
-          sourceParticipantEmail: student.email,
-          sourceSubmissionId: submission.id,
-          sourceSubmissionStatus: submission.status,
-          overallFeedback: 'Smoke test feedback for the seeded workflow.',
-          strengths: ['Seeded response can receive feedback.'],
-          targets: ['Seeded participant can action feedback.'],
-          followUpActions: {
-            create: [
-              {
-                sourceActionId: 'smoke-acknowledge-feedback',
-                type: 'ACKNOWLEDGEMENT',
-                prompt: 'Acknowledge this smoke-test feedback.',
-                required: true,
-              },
-              {
-                sourceActionId: 'smoke-reflect-on-feedback',
-                type: 'SHORT_REFLECTION',
-                prompt: 'Write one sentence reflecting on this smoke-test feedback.',
-                required: true,
-              },
-            ],
-          },
-          questionFeedback: {
-            create: {
-              questionId: assignment.questions[0].id,
-              sourceQuestionId: assignment.questions[0].id,
-              questionOrder: assignment.questions[0].order,
-              feedback: 'Smoke test question feedback.',
-              strengths: ['Question feedback is linked.'],
-              targets: ['Question action is visible.'],
-              followUpActions: {
-                create: {
-                  sourceActionId: 'smoke-answer-follow-up',
-                  type: 'ANSWER_FOLLOW_UP_QUESTION',
-                  prompt: 'Answer this smoke-test follow-up question.',
+  const feedbackImport = await prisma.$transaction(async (tx) => {
+    const createdFeedbackImport = await tx.feedbackImport.create({
+      data: {
+        assignmentId: assignment.id,
+        feedbackFormat: 'homework-feedback',
+        feedbackVersion: 1,
+        sourceExportFormat: 'homework-assignment-responses-v2',
+        sourceExportVersion: 2,
+        generatedBy: 'Core workflow smoke test',
+        participantFeedback: {
+          create: {
+            assignmentId: assignment.id,
+            studentId: student.id,
+            submissionId: submission.id,
+            sourceParticipantId: student.id,
+            sourceParticipantName: student.displayName,
+            sourceParticipantEmail: student.email,
+            sourceSubmissionId: submission.id,
+            sourceSubmissionStatus: submission.status,
+            overallFeedback: 'Smoke test feedback for the seeded workflow.',
+            strengths: ['Seeded response can receive feedback.'],
+            targets: ['Seeded participant can action feedback.'],
+            followUpActions: {
+              create: [
+                {
+                  sourceActionId: 'smoke-acknowledge-feedback',
+                  type: 'ACKNOWLEDGEMENT',
+                  prompt: 'Acknowledge this smoke-test feedback.',
                   required: true,
                 },
+                {
+                  sourceActionId: 'smoke-reflect-on-feedback',
+                  type: 'SHORT_REFLECTION',
+                  prompt: 'Write one sentence reflecting on this smoke-test feedback.',
+                  required: true,
+                },
+              ],
+            },
+            questionFeedback: {
+              create: {
+                questionId: assignment.questions[0].id,
+                sourceQuestionId: assignment.questions[0].id,
+                questionOrder: assignment.questions[0].order,
+                feedback: 'Smoke test question feedback.',
+                strengths: ['Question feedback is linked.'],
+                targets: ['Question action is visible.'],
               },
             },
           },
         },
       },
-    },
-    include: { participantFeedback: { include: { followUpActions: true, questionFeedback: { include: { followUpActions: true } } } } },
+      include: { participantFeedback: { include: { followUpActions: true, questionFeedback: true } } },
+    });
+
+    const participantFeedback = requireFound(createdFeedbackImport.participantFeedback[0], 'created smoke participant feedback');
+    const questionFeedback = requireFound(participantFeedback.questionFeedback[0], 'created smoke question feedback');
+
+    await tx.feedbackFollowUpAction.create({
+      data: {
+        participantFeedbackId: participantFeedback.id,
+        questionFeedbackId: questionFeedback.id,
+        sourceActionId: 'smoke-answer-follow-up',
+        type: 'ANSWER_FOLLOW_UP_QUESTION',
+        prompt: 'Answer this smoke-test follow-up question.',
+        required: true,
+      },
+    });
+
+    return tx.feedbackImport.findUnique({
+      where: { id: createdFeedbackImport.id },
+      include: { participantFeedback: { include: { followUpActions: true, questionFeedback: { include: { followUpActions: true } } } } },
+    });
   });
 
   const participantFeedback = requireFound(feedbackImport.participantFeedback[0], 'created smoke participant feedback');
