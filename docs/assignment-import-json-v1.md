@@ -157,6 +157,8 @@ The invalid examples below are still parseable JSON, but they intentionally viol
 
 ### Invalid example: contract violations
 
+This example is mirrored in [`docs/fixtures/assignment-import/invalid/contract-violations.json`](fixtures/assignment-import/invalid/contract-violations.json).
+
 <!-- fixture: docs/fixtures/assignment-import/invalid/contract-violations.json -->
 ```json
 {
@@ -206,6 +208,8 @@ This example is invalid because:
 - The multiple choice option ID `a` is duplicated within `q1`.
 
 ### Invalid example: text question with options
+
+This example is mirrored in [`docs/fixtures/assignment-import/invalid/text-question-with-options.json`](fixtures/assignment-import/invalid/text-question-with-options.json).
 
 <!-- fixture: docs/fixtures/assignment-import/invalid/text-question-with-options.json -->
 ```json
