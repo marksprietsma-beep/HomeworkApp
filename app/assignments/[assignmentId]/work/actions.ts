@@ -1,6 +1,6 @@
 "use server";
 
-import { SubmissionStatus } from "@prisma/client";
+import { HomeworkAssignmentStatus, SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
@@ -19,6 +19,7 @@ export async function saveParticipantSubmission(
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: {
       id: assignmentId,
+      status: HomeworkAssignmentStatus.PUBLISHED,
       class: {
         enrollments: {
           some: { studentId: selectedUser.id },
@@ -36,7 +37,7 @@ export async function saveParticipantSubmission(
   });
 
   if (!assignment) {
-    throw new Error("Assignment was not found for the selected participant.");
+    throw new Error("Assignment is not published for the selected participant.");
   }
 
   await prisma.$transaction(async (tx) => {

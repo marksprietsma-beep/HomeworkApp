@@ -1,3 +1,4 @@
+import { HomeworkAssignmentStatus } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type ParticipantWorkData = {
@@ -85,6 +86,7 @@ export async function getParticipantWorkData(
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: {
       id: assignmentId,
+      status: HomeworkAssignmentStatus.PUBLISHED,
       class: {
         enrollments: {
           some: { studentId },
