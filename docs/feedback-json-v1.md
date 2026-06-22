@@ -404,3 +404,13 @@ MAR-145 should enforce these rules before storing feedback or showing it to stud
 - The importer should compare feedback IDs against the current assignment/class context, not trust copied names or emails.
 - The contract intentionally avoids scores, grades, marks, rubric totals, and automatic calculations. If those are added later, they should use a new feedback version.
 - ChatGPT may invent IDs if the prompt is unclear. The MAR-145 parser should reject invented participant, submission, or question IDs rather than silently importing partial feedback.
+
+## Storage model notes
+
+MAR-144 stores imported feedback in a local-first Prisma model before any parser or UI is added. Each import creates a `FeedbackImport` row for the assignment and metadata from this contract, then one `ParticipantFeedback` row per participant feedback item.
+
+Participant feedback links to the local assignment and, where IDs still match local data, to the student and submission. It also keeps copied source participant and submission identifiers as snapshots so imported feedback remains understandable if optional local links cannot be resolved later.
+
+Question-level feedback is stored separately in `QuestionFeedback` and links to the local question where possible while retaining copied source question identifiers and order. Follow-up actions are stored in `FeedbackFollowUpAction` for both overall participant feedback and question feedback, with the v1 action type and a basic `PENDING` or `COMPLETED` status plus `completedAt` when finished.
+
+This storage model is intentionally not a grading model: it stores text feedback, strengths, targets, optional teacher notes, and student follow-up requirements only.

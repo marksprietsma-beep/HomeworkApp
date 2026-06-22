@@ -29,6 +29,17 @@ enum HomeworkQuestionType {
   MULTIPLE_CHOICE
 }
 
+enum FeedbackFollowUpActionType {
+  ACKNOWLEDGEMENT
+  SHORT_REFLECTION
+  ANSWER_FOLLOW_UP_QUESTION
+}
+
+enum FeedbackFollowUpActionStatus {
+  PENDING
+  COMPLETED
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
@@ -36,17 +47,18 @@ model LocalDatabaseCheck {
 }
 
 model User {
-  id                  Int                  @id @default(autoincrement())
-  email               String               @unique
+  id                  Int                   @id @default(autoincrement())
+  email               String                @unique
   displayName         String
   role                UserRole
-  isDevelopmentUser   Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  teachingClasses     Class[]              @relation("ClassTeacher")
+  isDevelopmentUser   Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  teachingClasses     Class[]               @relation("ClassTeacher")
   classEnrollments    ClassEnrollment[]
-  createdAssignments  HomeworkAssignment[] @relation("HomeworkAssignmentCreator")
-  homeworkSubmissions Submission[]         @relation("SubmissionStudent")
+  createdAssignments  HomeworkAssignment[]  @relation("HomeworkAssignmentCreator")
+  homeworkSubmissions Submission[]          @relation("SubmissionStudent")
+  feedbackEntries     ParticipantFeedback[] @relation("ParticipantFeedbackStudent")
 }
 
 model Class {
@@ -73,55 +85,59 @@ model ClassEnrollment {
 }
 
 model HomeworkAssignment {
-  id          Int                      @id @default(autoincrement())
-  classId     Int
-  createdById Int
-  title       String
-  description String?
-  status      HomeworkAssignmentStatus @default(DRAFT)
-  dueAt       DateTime?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  class       Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  createdBy   User                     @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
-  questions   HomeworkQuestion[]
-  submissions Submission[]
+  id                  Int                      @id @default(autoincrement())
+  classId             Int
+  createdById         Int
+  title               String
+  description         String?
+  status              HomeworkAssignmentStatus @default(DRAFT)
+  dueAt               DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  class               Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy           User                     @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
+  questions           HomeworkQuestion[]
+  submissions         Submission[]
+  feedbackImports     FeedbackImport[]
+  participantFeedback ParticipantFeedback[]
 
   @@index([classId])
   @@index([createdById])
 }
 
 model HomeworkQuestion {
-  id           Int                  @id @default(autoincrement())
-  assignmentId Int
-  order        Int
-  prompt       String
-  questionType HomeworkQuestionType @default(OPEN_TEXT)
-  options      Json?
-  imagePath    String?
-  imageCaption String?
-  imageAltText String?
-  points       Int?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  assignment   HomeworkAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  answers      SubmissionAnswer[]
+  id              Int                  @id @default(autoincrement())
+  assignmentId    Int
+  order           Int
+  prompt          String
+  questionType    HomeworkQuestionType @default(OPEN_TEXT)
+  options         Json?
+  imagePath       String?
+  imageCaption    String?
+  imageAltText    String?
+  points          Int?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  assignment      HomeworkAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  answers         SubmissionAnswer[]
+  feedbackEntries QuestionFeedback[]
 
   @@unique([assignmentId, order])
   @@index([assignmentId])
 }
 
 model Submission {
-  id           Int              @id @default(autoincrement())
-  assignmentId Int
-  studentId    Int
-  status       SubmissionStatus @default(DRAFT)
-  submittedAt  DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  assignment   HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  student      User             @relation("SubmissionStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  answers      SubmissionAnswer[]
+  id              Int                   @id @default(autoincrement())
+  assignmentId    Int
+  studentId       Int
+  status          SubmissionStatus      @default(DRAFT)
+  submittedAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  assignment      HomeworkAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student         User                  @relation("SubmissionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  answers         SubmissionAnswer[]
+  feedbackEntries ParticipantFeedback[]
 
   @@unique([assignmentId, studentId])
   @@index([assignmentId])
@@ -129,16 +145,106 @@ model Submission {
 }
 
 model SubmissionAnswer {
-  id         Int      @id @default(autoincrement())
+  id           Int               @id @default(autoincrement())
   submissionId Int
-  questionId Int?
-  answerText  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  submission  Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  question    HomeworkQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionId   Int?
+  answerText   String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  submission   Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question     HomeworkQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
 
   @@unique([submissionId, questionId])
   @@index([submissionId])
   @@index([questionId])
+}
+
+model FeedbackImport {
+  id                      Int                   @id @default(autoincrement())
+  assignmentId            Int
+  feedbackFormat          String                @default("homework-feedback")
+  feedbackVersion         Int                   @default(1)
+  sourceExportFormat      String?
+  sourceExportVersion     Int?
+  sourceExportGeneratedAt DateTime?
+  generatedBy             String?
+  generatedAt             DateTime?
+  importedAt              DateTime              @default(now())
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  assignment              HomeworkAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  participantFeedback     ParticipantFeedback[]
+
+  @@index([assignmentId])
+}
+
+model ParticipantFeedback {
+  id                     Int                      @id @default(autoincrement())
+  feedbackImportId       Int
+  assignmentId           Int
+  studentId              Int?
+  submissionId           Int?
+  sourceParticipantId    Int?
+  sourceParticipantName  String?
+  sourceParticipantEmail String?
+  sourceSubmissionId     Int?
+  sourceSubmissionStatus String?
+  overallFeedback        String
+  strengths              String[]
+  targets                String[]
+  teacherNotes           String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  feedbackImport         FeedbackImport           @relation(fields: [feedbackImportId], references: [id], onDelete: Cascade)
+  assignment             HomeworkAssignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student                User?                    @relation("ParticipantFeedbackStudent", fields: [studentId], references: [id], onDelete: SetNull)
+  submission             Submission?              @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  questionFeedback       QuestionFeedback[]
+  followUpActions        FeedbackFollowUpAction[]
+
+  @@index([feedbackImportId])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([submissionId])
+}
+
+model QuestionFeedback {
+  id                    Int                      @id @default(autoincrement())
+  participantFeedbackId Int
+  questionId            Int?
+  sourceQuestionId      Int?
+  questionOrder         Int?
+  feedback              String
+  strengths             String[]                 @default([])
+  targets               String[]                 @default([])
+  teacherNotes          String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  participantFeedback   ParticipantFeedback      @relation(fields: [participantFeedbackId], references: [id], onDelete: Cascade)
+  question              HomeworkQuestion?        @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  followUpActions       FeedbackFollowUpAction[]
+
+  @@index([participantFeedbackId])
+  @@index([questionId])
+}
+
+model FeedbackFollowUpAction {
+  id                    Int                          @id @default(autoincrement())
+  participantFeedbackId Int
+  questionFeedbackId    Int?
+  sourceActionId        String
+  type                  FeedbackFollowUpActionType
+  prompt                String
+  required              Boolean                      @default(true)
+  status                FeedbackFollowUpActionStatus @default(PENDING)
+  completedAt           DateTime?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  participantFeedback   ParticipantFeedback          @relation(fields: [participantFeedbackId], references: [id], onDelete: Cascade)
+  questionFeedback      QuestionFeedback?            @relation(fields: [questionFeedbackId], references: [id], onDelete: Cascade)
+
+  @@unique([participantFeedbackId, sourceActionId])
+  @@index([participantFeedbackId])
+  @@index([questionFeedbackId])
+  @@index([status])
 }
