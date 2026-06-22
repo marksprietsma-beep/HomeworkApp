@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, type UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type DashboardClass = {
@@ -64,6 +64,7 @@ export async function getLocalDashboardData(user: {
         },
       },
       homeworkAssignments: {
+        where: user.role === "STUDENT" ? { status: HomeworkAssignmentStatus.PUBLISHED } : undefined,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,

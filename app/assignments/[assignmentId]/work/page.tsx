@@ -106,7 +106,27 @@ export default async function ParticipantWorkPage({
   const work = await getParticipantWorkData(parsedAssignmentId, selectedUser.id);
 
   if (!work) {
-    notFound();
+    return (
+      <main className="mx-auto min-h-screen max-w-3xl px-6 py-12">
+        <Link
+          href="/"
+          className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950"
+        >
+          ← Back to assigned work
+        </Link>
+        <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">
+            Assignment unavailable
+          </p>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+            This assignment is not available to students.
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-700">
+            It may still be a teacher draft, may not be assigned to one of your enrolled classes, or may have been removed. Published assignments for your enrolled classes appear on your assigned-work dashboard.
+          </p>
+        </section>
+      </main>
+    );
   }
 
   const saveAction = saveParticipantSubmission.bind(null, work.id);

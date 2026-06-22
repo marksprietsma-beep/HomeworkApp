@@ -1,8 +1,10 @@
+import { HomeworkAssignmentStatus } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
+import { updateAssignmentPublishStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +74,18 @@ export default async function HomeworkDetailPage({
     notFound();
   }
 
-  const canViewResponseOverview =
+  const canManagePublishStatus =
     selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id;
+  const canViewResponseOverview = canManagePublishStatus;
+  const publishStatusAction = updateAssignmentPublishStatus.bind(
+    null,
+    homework.class.id,
+    homework.id,
+  );
+  const nextStatus =
+    homework.status === HomeworkAssignmentStatus.PUBLISHED
+      ? HomeworkAssignmentStatus.DRAFT
+      : HomeworkAssignmentStatus.PUBLISHED;
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
@@ -99,6 +111,31 @@ export default async function HomeworkDetailPage({
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {homework.status} · Due: {formatDate(homework.dueAt)}
             </p>
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-950">
+                Status: <span className="uppercase tracking-[0.14em]">{homework.status}</span>
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Draft assignments stay visible to teachers here, but are hidden from student assigned-work views and blocked on student work pages.
+              </p>
+              {canManagePublishStatus ? (
+                <form action={publishStatusAction} className="mt-3">
+                  <input type="hidden" name="status" value={nextStatus} />
+                  <button
+                    type="submit"
+                    className="inline-flex rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
+                  >
+                    {nextStatus === HomeworkAssignmentStatus.PUBLISHED
+                      ? "Publish assignment"
+                      : "Move back to draft"}
+                  </button>
+                </form>
+              ) : (
+                <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                  Only the teacher who owns this class can change publish status.
+                </p>
+              )}
+            </div>
             {canViewResponseOverview ? (
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
