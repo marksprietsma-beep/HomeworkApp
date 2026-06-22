@@ -3,13 +3,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
 import { getParticipantWorkData } from "../../../../lib/participant-work";
-import { saveParticipantSubmission } from "./actions";
+import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 type ParticipantWorkPageProps = {
   params: Promise<{ assignmentId: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ feedbackAction?: string; saved?: string }>;
 };
 
 function formatDate(date: Date | null) {
@@ -29,6 +29,41 @@ function formatFeedbackActionType(type: string) {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+
+function FeedbackActionCard({ action, assignmentId }: { action: { id: number; type: string; prompt: string; required: boolean; status: string; responseText: string | null; completedAt: Date | null }; assignmentId: number }) {
+  const isCompleted = action.status === "COMPLETED";
+  const completeAction = completeFeedbackFollowUpAction.bind(null, assignmentId, action.id);
+  const needsWrittenResponse = action.type !== "ACKNOWLEDGEMENT";
+
+  return (
+    <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <p className="font-semibold text-slate-950">{formatFeedbackActionType(action.type)} · {action.required ? "Required" : "Optional"}</p>
+      <p className="mt-1 leading-6">{action.prompt}</p>
+      {isCompleted ? (
+        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
+          <p className="text-xs font-bold uppercase tracking-[0.14em]">Completed{action.completedAt ? ` · ${formatDate(action.completedAt)}` : ""}</p>
+          {action.responseText ? <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{action.responseText}</p> : <p className="mt-2 text-sm">Acknowledged.</p>}
+        </div>
+      ) : (
+        <form action={completeAction} className="mt-3 grid gap-3">
+          {needsWrittenResponse ? (
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              Your response
+              <textarea name="responseText" rows={3} required className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" placeholder={action.type === "SHORT_REFLECTION" ? "Write a short reflection or next step..." : "Answer the follow-up question..."} />
+            </label>
+          ) : (
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input name="acknowledged" type="checkbox" required className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400" />
+              <span>I have read and understood this feedback.</span>
+            </label>
+          )}
+          <button type="submit" className="justify-self-start rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Mark action completed</button>
+        </form>
+      )}
+    </li>
+  );
 }
 
 function getMultipleChoiceChoices(options: unknown) {
@@ -51,7 +86,7 @@ export default async function ParticipantWorkPage({
   searchParams,
 }: ParticipantWorkPageProps) {
   const { assignmentId } = await params;
-  const { saved } = await searchParams;
+  const { feedbackAction, saved } = await searchParams;
   const parsedAssignmentId = Number(assignmentId);
 
   if (!Number.isInteger(parsedAssignmentId)) {
@@ -123,6 +158,18 @@ export default async function ParticipantWorkPage({
               Your answers were saved for this assignment and will reload here if
               you return later.
             </p>
+          </div>
+        ) : null}
+
+        {feedbackAction === "completed" ? (
+          <div id="feedback-action-saved" className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <p className="font-semibold">Feedback action completed</p>
+            <p className="mt-1">Your feedback action was saved locally for your teacher to review.</p>
+          </div>
+        ) : feedbackAction === "already-completed" ? (
+          <div id="feedback-action-saved" className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">Feedback action already completed</p>
+            <p className="mt-1">Completed feedback actions are shown read-only.</p>
           </div>
         ) : null}
 
@@ -205,11 +252,7 @@ export default async function ParticipantWorkPage({
                 {work.feedback.followUpActions.length > 0 ? (
                   <ul className="mt-3 grid gap-3 text-sm text-slate-700">
                     {work.feedback.followUpActions.map((action) => (
-                      <li key={action.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="font-semibold text-slate-950">{formatFeedbackActionType(action.type)} · {action.required ? "Required" : "Optional"}</p>
-                        <p className="mt-1 leading-6">{action.prompt}</p>
-                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Status: {action.status} — response tools coming later</p>
-                      </li>
+                      <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} />
                     ))}
                   </ul>
                 ) : (
@@ -267,9 +310,9 @@ export default async function ParticipantWorkPage({
                           {questionFeedback.followUpActions.length > 0 ? (
                             <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                               <p className="font-semibold text-amber-950">Question follow-up</p>
-                              <ul className="mt-2 list-disc space-y-1 pl-5">
+                              <ul className="mt-2 grid gap-3">
                                 {questionFeedback.followUpActions.map((action) => (
-                                  <li key={action.id}>{action.prompt} <span className="text-amber-800">({formatFeedbackActionType(action.type)}, {action.status})</span></li>
+                                  <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} />
                                 ))}
                               </ul>
                             </div>

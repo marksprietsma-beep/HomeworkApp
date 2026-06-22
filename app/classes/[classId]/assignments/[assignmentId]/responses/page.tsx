@@ -166,6 +166,9 @@ export default async function ResponseOverviewPage({
                   <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                     {participant.response ? participant.response.status : "NO RESPONSE"} · {participant.response ? formatDateTime(participant.response.submittedAt ?? participant.response.updatedAt) : "No saved time"}
                   </p>
+                  <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${participant.feedbackActions.total === 0 ? "bg-slate-100 text-slate-600" : participant.feedbackActions.pending === 0 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                    Feedback actions: {participant.feedbackActions.total === 0 ? "none imported" : `${participant.feedbackActions.completed}/${participant.feedbackActions.total} completed (${participant.feedbackActions.pending} pending)`}
+                  </p>
                 </div>
                 {participant.response ? (
                   <Link

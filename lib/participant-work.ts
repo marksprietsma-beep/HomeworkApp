@@ -57,6 +57,8 @@ export type ParticipantWorkData = {
         prompt: string;
         required: boolean;
         status: string;
+        responseText: string | null;
+        completedAt: Date | null;
       }[];
     }[];
     followUpActions: {
@@ -66,6 +68,8 @@ export type ParticipantWorkData = {
       prompt: string;
       required: boolean;
       status: string;
+      responseText: string | null;
+      completedAt: Date | null;
     }[];
   } | null;
   totals: {
@@ -168,6 +172,8 @@ export async function getParticipantWorkData(
                   prompt: true,
                   required: true,
                   status: true,
+                  responseText: true,
+                  completedAt: true,
                 },
               },
             },
@@ -182,6 +188,8 @@ export async function getParticipantWorkData(
               prompt: true,
               required: true,
               status: true,
+              responseText: true,
+              completedAt: true,
             },
           },
         },

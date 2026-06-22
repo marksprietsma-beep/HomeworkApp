@@ -237,6 +237,7 @@ model FeedbackFollowUpAction {
   prompt                String
   required              Boolean                      @default(true)
   status                FeedbackFollowUpActionStatus @default(PENDING)
+  responseText          String?
   completedAt           DateTime?
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
