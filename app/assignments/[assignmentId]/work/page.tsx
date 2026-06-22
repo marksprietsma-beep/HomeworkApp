@@ -23,6 +23,14 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
+function formatFeedbackActionType(type: string) {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function getMultipleChoiceChoices(options: unknown) {
   if (
     typeof options === "object" &&
@@ -128,6 +136,161 @@ export default async function ParticipantWorkPage({
             </p>
           </div>
         ) : null}
+
+        <section id="feedback" className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                Imported feedback
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                Teacher-imported ChatGPT feedback
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                This feedback was imported and saved by your teacher from ChatGPT output.
+                It was not generated live inside this app.
+              </p>
+            </div>
+            {work.feedback ? (
+              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                <p className="font-semibold">Imported {formatDate(work.feedback.feedbackImport.importedAt)}</p>
+                {work.feedback.feedbackImport.generatedBy ? (
+                  <p className="mt-1">Source: {work.feedback.feedbackImport.generatedBy}</p>
+                ) : null}
+                {work.feedback.feedbackImport.generatedAt ? (
+                  <p className="mt-1">Generated: {formatDate(work.feedback.feedbackImport.generatedAt)}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {work.feedback ? (
+            <div className="mt-5 grid gap-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-lg font-semibold text-slate-950">Overall feedback</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {work.feedback.overallFeedback}
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <h3 className="font-semibold text-emerald-950">Strengths</h3>
+                  {work.feedback.strengths.length > 0 ? (
+                    <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-emerald-900">
+                      {work.feedback.strengths.map((strength, index) => (
+                        <li key={`strength-${index}`}>{strength}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-sm text-emerald-900">No strengths were included in the imported feedback.</p>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                  <h3 className="font-semibold text-sky-950">Targets / next steps</h3>
+                  {work.feedback.targets.length > 0 ? (
+                    <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-sky-900">
+                      {work.feedback.targets.map((target, index) => (
+                        <li key={`target-${index}`}>{target}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-sm text-sky-900">No targets were included in the imported feedback.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h3 className="font-semibold text-slate-950">Required follow-up actions</h3>
+                {work.feedback.followUpActions.length > 0 ? (
+                  <ul className="mt-3 grid gap-3 text-sm text-slate-700">
+                    {work.feedback.followUpActions.map((action) => (
+                      <li key={action.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="font-semibold text-slate-950">{formatFeedbackActionType(action.type)} · {action.required ? "Required" : "Optional"}</p>
+                        <p className="mt-1 leading-6">{action.prompt}</p>
+                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Status: {action.status} — response tools coming later</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">No overall follow-up actions were included in the imported feedback.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h3 className="font-semibold text-slate-950">Question-level feedback</h3>
+                {work.feedback.questionFeedback.length > 0 ? (
+                  <div className="mt-3 grid gap-3">
+                    {work.feedback.questionFeedback.map((questionFeedback) => {
+                      const linkedQuestion = questionFeedback.questionId
+                        ? work.questions.find((question) => question.id === questionFeedback.questionId)
+                        : null;
+
+                      return (
+                        <article key={questionFeedback.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="font-semibold text-slate-950">
+                                Question {linkedQuestion?.order ?? questionFeedback.questionOrder ?? "unknown"}
+                              </p>
+                              {linkedQuestion ? (
+                                <a href={`#question-${linkedQuestion.id}`} className="mt-1 inline-flex font-semibold text-slate-950 underline-offset-4 hover:underline">
+                                  Jump to original question prompt
+                                </a>
+                              ) : (
+                                <p className="mt-1 text-slate-500">Original question could not be linked.</p>
+                              )}
+                            </div>
+                          </div>
+                          {linkedQuestion ? (
+                            <blockquote className="mt-3 rounded-xl border-l-4 border-slate-300 bg-white px-4 py-3 text-slate-600">
+                              {linkedQuestion.prompt}
+                            </blockquote>
+                          ) : null}
+                          <p className="mt-3 whitespace-pre-wrap leading-6">{questionFeedback.feedback}</p>
+                          {(questionFeedback.strengths.length > 0 || questionFeedback.targets.length > 0) ? (
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              {questionFeedback.strengths.length > 0 ? (
+                                <div>
+                                  <p className="font-semibold text-emerald-900">Strengths</p>
+                                  <ul className="mt-1 list-disc space-y-1 pl-5">{questionFeedback.strengths.map((strength, index) => <li key={`q-strength-${questionFeedback.id}-${index}`}>{strength}</li>)}</ul>
+                                </div>
+                              ) : null}
+                              {questionFeedback.targets.length > 0 ? (
+                                <div>
+                                  <p className="font-semibold text-sky-900">Targets</p>
+                                  <ul className="mt-1 list-disc space-y-1 pl-5">{questionFeedback.targets.map((target, index) => <li key={`q-target-${questionFeedback.id}-${index}`}>{target}</li>)}</ul>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          {questionFeedback.followUpActions.length > 0 ? (
+                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                              <p className="font-semibold text-amber-950">Question follow-up</p>
+                              <ul className="mt-2 list-disc space-y-1 pl-5">
+                                {questionFeedback.followUpActions.map((action) => (
+                                  <li key={action.id}>{action.prompt} <span className="text-amber-800">({formatFeedbackActionType(action.type)}, {action.status})</span></li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">No question-level feedback was included in the imported feedback.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+              Feedback is not available yet for this assignment. When your teacher imports
+              ChatGPT feedback for your submitted work, it will appear here for your
+              selected participant view only.
+            </div>
+          )}
+        </section>
       </section>
 
       <form action={saveAction} className="mt-8 grid gap-5">
@@ -136,8 +299,9 @@ export default async function ParticipantWorkPage({
 
           return (
             <section
+              id={`question-${question.id}`}
               key={question.id}
-              className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8"
+              className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>

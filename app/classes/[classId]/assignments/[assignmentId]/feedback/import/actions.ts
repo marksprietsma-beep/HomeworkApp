@@ -155,5 +155,5 @@ export async function saveFeedbackImport(
   });
 
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
-  return { ok: true, message: `Saved feedback import #${saved.id}. Feedback remains teacher-only until the participant feedback view is implemented.` };
+  return { ok: true, message: `Saved feedback import #${saved.id}. Students can now view their own imported feedback from their assignment work page.` };
 }

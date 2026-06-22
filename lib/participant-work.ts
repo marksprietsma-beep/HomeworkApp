@@ -31,6 +31,43 @@ export type ParticipantWorkData = {
     submittedAt: Date | null;
     updatedAt: Date;
   } | null;
+  feedback: {
+    id: number;
+    overallFeedback: string;
+    strengths: string[];
+    targets: string[];
+    createdAt: Date;
+    updatedAt: Date;
+    feedbackImport: {
+      importedAt: Date;
+      generatedBy: string | null;
+      generatedAt: Date | null;
+    };
+    questionFeedback: {
+      id: number;
+      questionId: number | null;
+      questionOrder: number | null;
+      feedback: string;
+      strengths: string[];
+      targets: string[];
+      followUpActions: {
+        id: number;
+        sourceActionId: string;
+        type: string;
+        prompt: string;
+        required: boolean;
+        status: string;
+      }[];
+    }[];
+    followUpActions: {
+      id: number;
+      sourceActionId: string;
+      type: string;
+      prompt: string;
+      required: boolean;
+      status: string;
+    }[];
+  } | null;
   totals: {
     questions: number;
     points: number | null;
@@ -92,6 +129,63 @@ export async function getParticipantWorkData(
           },
         },
       },
+      participantFeedback: {
+        where: { studentId },
+        orderBy: [
+          { feedbackImport: { importedAt: "desc" } },
+          { updatedAt: "desc" },
+        ],
+        take: 1,
+        select: {
+          id: true,
+          overallFeedback: true,
+          strengths: true,
+          targets: true,
+          createdAt: true,
+          updatedAt: true,
+          feedbackImport: {
+            select: {
+              importedAt: true,
+              generatedBy: true,
+              generatedAt: true,
+            },
+          },
+          questionFeedback: {
+            orderBy: [{ questionOrder: "asc" }, { id: "asc" }],
+            select: {
+              id: true,
+              questionId: true,
+              questionOrder: true,
+              feedback: true,
+              strengths: true,
+              targets: true,
+              followUpActions: {
+                orderBy: { id: "asc" },
+                select: {
+                  id: true,
+                  sourceActionId: true,
+                  type: true,
+                  prompt: true,
+                  required: true,
+                  status: true,
+                },
+              },
+            },
+          },
+          followUpActions: {
+            where: { questionFeedbackId: null },
+            orderBy: { id: "asc" },
+            select: {
+              id: true,
+              sourceActionId: true,
+              type: true,
+              prompt: true,
+              required: true,
+              status: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -100,6 +194,7 @@ export async function getParticipantWorkData(
   }
 
   const submission = assignment.submissions[0] ?? null;
+  const feedback = assignment.participantFeedback[0] ?? null;
   const answersByQuestionId = new Map(
     submission?.answers
       .filter((answer) => answer.questionId !== null)
@@ -130,6 +225,7 @@ export async function getParticipantWorkData(
           updatedAt: submission.updatedAt,
         }
       : null,
+    feedback,
     totals: {
       questions: assignment.questions.length,
       points: totalPoints,
