@@ -398,7 +398,7 @@ MAR-145 should enforce these rules before storing feedback or showing it to stud
 
 ## MAR-145 and data model concerns
 
-- The current app has exported assignment, participant, submission, and question IDs, but no feedback tables yet. A later data model issue should decide whether feedback is stored as one imported JSON blob, normalised rows, or both.
+- The current app exports assignment, participant, submission, and question IDs and now has normalised feedback tables from MAR-144. MAR-145 should import into those tables rather than storing feedback only as an opaque JSON blob.
 - Teacher-facing notes should be kept separate from student-facing feedback in any future UI to avoid accidentally showing private notes to students.
 - Follow-up action responses will likely need their own persistence model if students must acknowledge, reflect, or answer a follow-up question.
 - The importer should compare feedback IDs against the current assignment/class context, not trust copied names or emails.
