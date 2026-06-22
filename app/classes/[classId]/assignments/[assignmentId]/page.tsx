@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
-import { updateAssignmentPublishStatus } from "./actions";
+import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,9 @@ type HomeworkDetailPageProps = {
   params: Promise<{
     classId: string;
     assignmentId: string;
+  }>;
+  searchParams?: Promise<{
+    duplicated?: string;
   }>;
 };
 
@@ -53,8 +56,10 @@ function StatCard({ label, value }: { label: string; value: number }) {
 
 export default async function HomeworkDetailPage({
   params,
+  searchParams,
 }: HomeworkDetailPageProps) {
   const { classId, assignmentId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const parsedClassId = Number(classId);
   const parsedAssignmentId = Number(assignmentId);
 
@@ -77,8 +82,14 @@ export default async function HomeworkDetailPage({
   const canManagePublishStatus =
     selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id;
   const canEditAssignment = canManagePublishStatus;
+  const canDuplicateAssignment = canManagePublishStatus;
   const canViewResponseOverview = canManagePublishStatus;
   const publishStatusAction = updateAssignmentPublishStatus.bind(
+    null,
+    homework.class.id,
+    homework.id,
+  );
+  const duplicateAction = duplicateAssignmentForClass.bind(
     null,
     homework.class.id,
     homework.id,
@@ -112,6 +123,12 @@ export default async function HomeworkDetailPage({
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {homework.status} · Due: {formatDate(homework.dueAt)}
             </p>
+            {resolvedSearchParams.duplicated === "1" ? (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                <p className="font-semibold">Draft copy created</p>
+                <p className="mt-1">This assignment is a new draft copy. Questions, points, options, and image references were copied; student responses and feedback were not copied.</p>
+              </div>
+            ) : null}
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">
                 Status: <span className="uppercase tracking-[0.14em]">{homework.status}</span>
@@ -146,6 +163,16 @@ export default async function HomeworkDetailPage({
                   >
                     Edit assignment
                   </Link>
+                ) : null}
+                {canDuplicateAssignment ? (
+                  <form action={duplicateAction}>
+                    <button
+                      type="submit"
+                      className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-100"
+                    >
+                      Duplicate as draft
+                    </button>
+                  </form>
                 ) : null}
                 <Link
                   href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
