@@ -154,9 +154,12 @@ export default async function ResponseOverviewPage({
                   </p>
                 </div>
                 {participant.response ? (
-                  <span className="rounded-full border border-dashed border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
-                    Detail view pending MAR-133
-                  </span>
+                  <Link
+                    href={`/classes/${overview.class.id}/assignments/${overview.id}/responses/${participant.response.id}`}
+                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  >
+                    View response
+                  </Link>
                 ) : (
                   <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
                     Not started
