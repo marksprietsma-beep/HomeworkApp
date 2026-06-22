@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { getClassDetailData } from "../../../lib/class-detail";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { AssignmentCreateForm } from "./assignment-create-form";
+import {
+  dueFilterOptions,
+  filterAndSortAssignments,
+  parseAssignmentListFilters,
+  sortOptions,
+  statusFilterOptions,
+} from "../../../lib/assignment-list-filters";
 import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +18,7 @@ type ClassDetailPageProps = {
   params: Promise<{
     classId: string;
   }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function formatDate(date: Date | null) {
@@ -33,8 +41,54 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default async function ClassDetailPage({ params }: ClassDetailPageProps) {
+function AssignmentFilterForm({
+  filters,
+  resetHref,
+}: {
+  filters: ReturnType<typeof parseAssignmentListFilters>;
+  resetHref: string;
+}) {
+  return (
+    <form className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label className="text-sm font-semibold text-slate-700">
+        Search title
+        <input name="search" defaultValue={filters.search} placeholder="Assignment title" className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" />
+      </label>
+      <label className="text-sm font-semibold text-slate-700">
+        Status
+        <select name="status" defaultValue={filters.status} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          {statusFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="text-sm font-semibold text-slate-700">
+        Due date
+        <select name="due" defaultValue={filters.due} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          {dueFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="text-sm font-semibold text-slate-700">
+        Sort
+        <select name="sort" defaultValue={filters.sort} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
+        <button type="submit" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Apply filters</button>
+        <Link href={resetHref} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">Reset</Link>
+      </div>
+    </form>
+  );
+}
+
+export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
   const { classId } = await params;
+  const filters = parseAssignmentListFilters(await searchParams);
   const parsedClassId = Number(classId);
 
   if (!Number.isInteger(parsedClassId)) {
@@ -50,6 +104,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
     notFound();
   }
 
+  const filteredAssignments = filterAndSortAssignments(classDetail.assignments, filters);
   const canManageRoster =
     selectedUser?.role === "TEACHER" && selectedUser.id === classDetail.teacher.id;
   const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
@@ -131,13 +186,15 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
             <AssignmentCreateForm classId={classDetail.id} />
           </div>
 
-          {classDetail.assignments.length === 0 ? (
+          <AssignmentFilterForm filters={filters} resetHref={`/classes/${classDetail.id}`} />
+
+          {filteredAssignments.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
               No assignments exist for this class yet.
             </div>
           ) : (
             <ul className="mt-6 grid gap-4">
-              {classDetail.assignments.map((assignment) => (
+              {filteredAssignments.map((assignment) => (
                 <li
                   key={assignment.id}
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
