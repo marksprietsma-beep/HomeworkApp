@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type ClassDetailData = {
@@ -16,6 +17,11 @@ export type ClassDetailData = {
     email: string;
     role: string;
     enrolledAt: Date;
+  }[];
+  availableStudents: {
+    id: number;
+    displayName: string;
+    email: string;
   }[];
   assignments: {
     id: number;
@@ -85,6 +91,20 @@ export async function getClassDetailData(
     return null;
   }
 
+  const enrolledStudentIds = classItem.enrollments.map((enrollment) => enrollment.studentId);
+  const availableStudents = await prisma.user.findMany({
+    where: {
+      role: UserRole.STUDENT,
+      id: { notIn: enrolledStudentIds.length > 0 ? enrolledStudentIds : [0] },
+    },
+    orderBy: [{ displayName: "asc" }, { email: "asc" }],
+    select: {
+      id: true,
+      displayName: true,
+      email: true,
+    },
+  });
+
   const assignments = classItem.homeworkAssignments.map((assignment) => ({
     id: assignment.id,
     title: assignment.title,
@@ -109,6 +129,7 @@ export async function getClassDetailData(
       role: enrollment.student.role,
       enrolledAt: enrollment.createdAt,
     })),
+    availableStudents,
     assignments,
     totals: {
       enrolledUsers: classItem.enrollments.length,
