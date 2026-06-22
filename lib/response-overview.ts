@@ -32,6 +32,11 @@ export type ResponseOverviewData = {
       submittedAt: Date | null;
       updatedAt: Date;
     } | null;
+    feedbackActions: {
+      total: number;
+      completed: number;
+      pending: number;
+    };
   }[];
 };
 
@@ -76,6 +81,23 @@ export async function getResponseOverviewData(
           points: true,
         },
       },
+      participantFeedback: {
+        orderBy: [
+          { feedbackImport: { importedAt: "desc" } },
+          { updatedAt: "desc" },
+        ],
+        select: {
+          studentId: true,
+          followUpActions: {
+            select: { status: true },
+          },
+          questionFeedback: {
+            select: {
+              followUpActions: { select: { status: true } },
+            },
+          },
+        },
+      },
       submissions: {
         select: {
           id: true,
@@ -106,8 +128,23 @@ export async function getResponseOverviewData(
       question.points === null ? total : (total ?? 0) + question.points,
     null,
   );
+  const feedbackByStudentId = new Map<number, (typeof assignment.participantFeedback)[number]>();
+  for (const feedback of assignment.participantFeedback) {
+    if (feedback.studentId && !feedbackByStudentId.has(feedback.studentId)) {
+      feedbackByStudentId.set(feedback.studentId, feedback);
+    }
+  }
+
   const participants = assignment.class.enrollments.map((enrollment) => {
     const submission = submissionsByStudentId.get(enrollment.student.id) ?? null;
+    const feedback = feedbackByStudentId.get(enrollment.student.id) ?? null;
+    const actions = feedback
+      ? [
+          ...feedback.followUpActions,
+          ...feedback.questionFeedback.flatMap((question) => question.followUpActions),
+        ]
+      : [];
+    const completed = actions.filter((action) => action.status === "COMPLETED").length;
 
     return {
       ...enrollment.student,
@@ -119,6 +156,11 @@ export async function getResponseOverviewData(
             updatedAt: submission.updatedAt,
           }
         : null,
+      feedbackActions: {
+        total: actions.length,
+        completed,
+        pending: actions.length - completed,
+      },
     };
   });
   const responded = participants.filter((participant) => participant.response).length;
