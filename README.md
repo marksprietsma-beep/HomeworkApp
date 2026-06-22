@@ -157,7 +157,9 @@ Assignment import JSON fixtures live under [`docs/fixtures/assignment-import`](d
 
 ## Feedback JSON
 
-The stable ChatGPT feedback output contract is documented in [`docs/feedback-json-v1.md`](docs/feedback-json-v1.md). It defines the teacher-mediated workflow where exported response JSON is reviewed by ChatGPT, then returned as paste-friendly feedback JSON for a future import parser. The contract maps feedback back to assignment, class, participant, submission, and question IDs from the response export, and includes overall feedback, question-level feedback, strengths, targets, optional teacher notes, and optional student follow-up actions.
+The stable ChatGPT feedback output contract is documented in [`docs/feedback-json-v1.md`](docs/feedback-json-v1.md). It defines the teacher-mediated workflow where exported response JSON is reviewed by ChatGPT, then returned as paste-friendly feedback JSON for the reusable MAR-145 parser. The contract maps feedback back to assignment, class, participant, submission, and question IDs from the response export, and includes overall feedback, question-level feedback, strengths, targets, optional teacher notes, and optional student follow-up actions.
+
+Feedback import JSON fixtures live under [`docs/fixtures/feedback-import`](docs/fixtures/feedback-import). Run `npm run check:feedback-json-fixtures` to confirm valid fixtures pass the reusable parser, invalid fixtures fail for expected reasons, and raw invalid JSON returns a structured parse error.
 
 ## Checks
 

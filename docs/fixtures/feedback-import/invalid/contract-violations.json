@@ -1,0 +1,50 @@
+{
+  "feedbackFormat": "homework-feedback-v1",
+  "feedbackVersion": "1",
+  "sourceExport": {
+    "exportFormat": "homework-assignment-responses-v1",
+    "exportVersion": 1
+  },
+  "assignment": {
+    "id": "42"
+  },
+  "class": {
+    "id": 999
+  },
+  "participantFeedback": [
+    {
+      "participant": {
+        "id": 999
+      },
+      "submission": {
+        "id": 999
+      },
+      "overallFeedback": "",
+      "strengths": [],
+      "targets": [
+        "Revise your answer."
+      ],
+      "questionFeedback": [
+        {
+          "questionId": 9999,
+          "feedback": "Good effort.",
+          "followUpActions": [
+            {
+              "id": "duplicate-action",
+              "type": "WRITE_AN_ESSAY",
+              "prompt": "Write more."
+            }
+          ]
+        }
+      ],
+      "followUpActions": [
+        {
+          "id": "duplicate-action",
+          "type": "ACKNOWLEDGEMENT",
+          "prompt": "Read this.",
+          "required": "yes"
+        }
+      ]
+    }
+  ]
+}

@@ -414,3 +414,24 @@ Participant feedback links to the local assignment and, where IDs still match lo
 Question-level feedback is stored separately in `QuestionFeedback` and links to the local question where possible while retaining copied source question identifiers and order. Follow-up actions are stored in `FeedbackFollowUpAction` for both overall participant feedback and question feedback, with the v1 action type and a basic `PENDING` or `COMPLETED` status plus `completedAt` when finished.
 
 This storage model is intentionally not a grading model: it stores text feedback, strengths, targets, optional teacher notes, and student follow-up requirements only.
+
+## MAR-145 parser and fixture check
+
+The reusable parser lives in `lib/feedback-import-parser.mjs` and exposes `parseFeedbackImportJson(rawJsonText, context)`. The input is raw pasted JSON text. The optional `context` should contain the current assignment ID, class ID, exported question IDs, exported participant IDs, and each participant's exported submission ID/response question keys so the parser can reject invented references.
+
+The parser returns either:
+
+- `{ ok: true, feedback, errors: [] }` with trimmed, normalised feedback ready for preview/save work in MAR-146. Omitted follow-up action `required` values are normalised to `true`, and actions receive an initial `status: "PENDING"`.
+- `{ ok: false, feedback: null, errors }` where each error has a JSON-style `path`, stable `code`, and clear `message`.
+
+Fixture coverage lives under `docs/fixtures/feedback-import`:
+
+- `valid/fractions-feedback.json` is a valid feedback document checked against a representative response export context.
+- `invalid/contract-violations.json` is valid JSON that violates the contract and reference checks.
+- `invalid/not-json.json` confirms invalid pasted JSON returns a structured parse error.
+
+Run the fixture check with:
+
+```bash
+npm run check:feedback-json-fixtures
+```

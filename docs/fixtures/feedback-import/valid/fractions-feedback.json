@@ -1,0 +1,73 @@
+{
+  "feedbackFormat": "homework-feedback",
+  "feedbackVersion": 1,
+  "sourceExport": {
+    "exportFormat": "homework-assignment-responses-v2",
+    "exportVersion": 2,
+    "generatedAt": "2026-06-22T10:15:00.000Z"
+  },
+  "assignment": {
+    "id": 42,
+    "title": "Year 7 Fractions Check"
+  },
+  "class": {
+    "id": 7,
+    "name": "Development Maths Class"
+  },
+  "generatedBy": "ChatGPT",
+  "generatedAt": "2026-06-22T10:30:00.000Z",
+  "participantFeedback": [
+    {
+      "participant": {
+        "id": 3,
+        "name": "Ada Student",
+        "email": "ada.student@example.test"
+      },
+      "submission": {
+        "id": 18,
+        "status": "SUBMITTED"
+      },
+      "overallFeedback": "You showed a secure understanding of equivalent fractions.",
+      "strengths": [
+        "You identified an equivalent fraction accurately."
+      ],
+      "targets": [
+        "Show each conversion step when comparing fractions."
+      ],
+      "teacherNotes": "Ready for a short extension task.",
+      "questionFeedback": [
+        {
+          "questionId": 101,
+          "questionOrder": 1,
+          "feedback": "Your equivalent fraction is correct.",
+          "strengths": [
+            "Accurate answer."
+          ],
+          "targets": [
+            "Explain the scaling factor."
+          ],
+          "followUpActions": [
+            {
+              "id": "pf-3-q101-followup",
+              "type": "ANSWER_FOLLOW_UP_QUESTION",
+              "prompt": "What did you multiply the numerator and denominator by?"
+            }
+          ]
+        }
+      ],
+      "followUpActions": [
+        {
+          "id": "pf-3-ack",
+          "type": "ACKNOWLEDGEMENT",
+          "prompt": "Please acknowledge that you have read this feedback.",
+          "required": true
+        },
+        {
+          "id": "pf-3-reflect",
+          "type": "SHORT_REFLECTION",
+          "prompt": "Write one sentence explaining which target you will focus on first."
+        }
+      ]
+    }
+  ]
+}
