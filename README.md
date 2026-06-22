@@ -100,7 +100,25 @@ The seed is safe to rerun. It uses stable fake `example.test` email addresses an
 - one class: `Development Maths Class`
 - class enrolments linking all three students to `Development Maths Class`
 
-To reset local data completely before reseeding, stop PostgreSQL and delete the local Docker volume, then start PostgreSQL again, apply migrations, and seed:
+To reset local development data without deleting the Docker volume or changing migrations, use the guarded local reset command:
+
+```bash
+CONFIRM_LOCAL_RESET=1 npm run db:reset:local
+```
+
+Windows PowerShell example:
+
+```powershell
+$env:CONFIRM_LOCAL_RESET = "1"
+npm run db:reset:local
+Remove-Item Env:CONFIRM_LOCAL_RESET
+```
+
+The reset command deletes rows from these application tables, then runs `npm run db:seed`: `FeedbackFollowUpAction`, `QuestionFeedback`, `ParticipantFeedback`, `FeedbackImport`, `SubmissionAnswer`, `Submission`, `HomeworkQuestion`, `HomeworkAssignment`, `ClassEnrollment`, `Class`, `User`, and `LocalDatabaseCheck`. It preserves the database schema, committed Prisma migrations, and Prisma's migration history table.
+
+Safety checks make the command local-only: it refuses to run when `NODE_ENV=production`, refuses to run unless `CONFIRM_LOCAL_RESET=1` is set, and refuses any `DATABASE_URL` that does not clearly point at the local development PostgreSQL database (`homework_app`) on `localhost`, `127.0.0.1`, `::1`, `postgres`, or `host.docker.internal`.
+
+If the local database itself needs to be rebuilt from scratch, stop PostgreSQL and delete the local Docker volume, then start PostgreSQL again, apply migrations, and seed:
 
 ```bash
 docker compose down -v
