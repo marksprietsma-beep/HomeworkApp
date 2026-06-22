@@ -64,6 +64,7 @@ model User {
 model Class {
   id                  Int                  @id @default(autoincrement())
   name                String               @unique
+  subject             String               @default("General")
   description         String
   teacherId           Int
   createdAt           DateTime             @default(now())

@@ -63,6 +63,9 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
             <h1 className="text-4xl font-bold tracking-tight text-slate-950">
               {classDetail.name}
             </h1>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              {classDetail.subject}
+            </p>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
               {classDetail.description}
             </p>
