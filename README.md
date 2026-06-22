@@ -155,6 +155,10 @@ The stable ChatGPT assignment import contract is documented in [`docs/assignment
 
 Assignment import JSON fixtures live under [`docs/fixtures/assignment-import`](docs/fixtures/assignment-import). Run `npm run check:assignment-json-fixtures` to confirm valid fixtures pass the reusable parser, invalid fixtures fail for expected reasons, and the documented examples remain in sync with the fixture files.
 
+## Feedback JSON
+
+The stable ChatGPT feedback output contract is documented in [`docs/feedback-json-v1.md`](docs/feedback-json-v1.md). It defines the teacher-mediated workflow where exported response JSON is reviewed by ChatGPT, then returned as paste-friendly feedback JSON for a future import parser. The contract maps feedback back to assignment, class, participant, submission, and question IDs from the response export, and includes overall feedback, question-level feedback, strengths, targets, optional teacher notes, and optional student follow-up actions.
+
 ## Checks
 
 Run linting:
