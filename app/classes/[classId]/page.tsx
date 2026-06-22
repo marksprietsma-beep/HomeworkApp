@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClassDetailData } from "../../../lib/class-detail";
+import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { AssignmentCreateForm } from "./assignment-create-form";
+import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +41,19 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
     notFound();
   }
 
-  const classDetail = await getClassDetailData(parsedClassId);
+  const [{ selectedUser }, classDetail] = await Promise.all([
+    getSelectedLocalDevelopmentUser(),
+    getClassDetailData(parsedClassId),
+  ]);
 
   if (!classDetail) {
     notFound();
   }
+
+  const canManageRoster =
+    selectedUser?.role === "TEACHER" && selectedUser.id === classDetail.teacher.id;
+  const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
+  const removeStudentAction = removeStudentFromClassRoster.bind(null, classDetail.id);
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
@@ -82,7 +92,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Enrolled users" value={classDetail.totals.enrolledUsers} />
+          <StatCard label="Enrolled students" value={classDetail.totals.enrolledUsers} />
           <StatCard label="Assignments" value={classDetail.totals.assignments} />
           <StatCard label="Questions" value={classDetail.totals.questions} />
           <StatCard label="Submissions" value={classDetail.totals.submissions} />
@@ -167,23 +177,83 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
 
         <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-            Enrolled users
+            Roster management
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">Members</h2>
+          <h2 className="mt-2 text-2xl font-bold text-slate-950">Students</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Add existing student users to this class or remove them from the
+            roster without deleting their account or historical submissions.
+          </p>
+
+          {canManageRoster ? (
+            <form action={addStudentAction} className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <label htmlFor="studentId" className="text-sm font-semibold text-slate-950">
+                Add a student
+              </label>
+              {classDetail.availableStudents.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-700">
+                  Every existing student user is already enrolled in this class.
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-3">
+                  <select
+                    id="studentId"
+                    name="studentId"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+                    required
+                  >
+                    <option value="">Search/select a student…</option>
+                    {classDetail.availableStudents.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.displayName} · {student.email}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    className="inline-flex justify-center rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+                  >
+                    Add to roster
+                  </button>
+                </div>
+              )}
+            </form>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+              Roster management is only available when the temporary local
+              switcher is viewing as {classDetail.teacher.displayName}, the
+              teacher who owns this class.
+            </div>
+          )}
 
           {classDetail.enrolledUsers.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-              No users are enrolled in this class yet.
+              No students are enrolled in this class yet.
             </div>
           ) : (
             <ul className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
               {classDetail.enrolledUsers.map((user) => (
                 <li key={user.id} className="px-4 py-4">
-                  <p className="font-semibold text-slate-950">{user.displayName}</p>
-                  <p className="mt-1 text-sm text-slate-600">{user.email}</p>
-                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                    {user.role} · Enrolled {formatDate(user.enrolledAt)}
-                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-950">{user.displayName}</p>
+                      <p className="mt-1 text-sm text-slate-600">{user.email}</p>
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                        {user.role} · Enrolled {formatDate(user.enrolledAt)}
+                      </p>
+                    </div>
+                    {canManageRoster ? (
+                      <form action={removeStudentAction}>
+                        <input type="hidden" name="studentId" value={user.id} />
+                        <button
+                          type="submit"
+                          className="rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>

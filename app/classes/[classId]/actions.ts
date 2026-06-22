@@ -1,6 +1,7 @@
 "use server";
 
 import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
@@ -187,4 +188,92 @@ export async function createAssignmentForClass(
   }
 
   redirect(`/classes/${classId}/assignments/${assignmentId}`);
+}
+
+async function requireManagedClass(classId: number) {
+  if (!Number.isInteger(classId)) {
+    throw new Error("Choose an existing class.");
+  }
+
+  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+
+  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
+    throw new Error("Switch to the class teacher user to manage the roster.");
+  }
+
+  const classItem = await prisma.class.findFirst({
+    where: {
+      id: classId,
+      teacherId: selectedUser.id,
+    },
+    select: { id: true },
+  });
+
+  if (!classItem) {
+    throw new Error("Roster management is only available to the teacher who owns this class.");
+  }
+
+  return classItem;
+}
+
+export async function addStudentToClassRoster(classId: number, formData: FormData) {
+  const studentId = Number(formData.get("studentId"));
+
+  await requireManagedClass(classId);
+
+  if (!Number.isInteger(studentId)) {
+    throw new Error("Choose an existing student to add.");
+  }
+
+  const student = await prisma.user.findFirst({
+    where: {
+      id: studentId,
+      role: UserRole.STUDENT,
+    },
+    select: { id: true },
+  });
+
+  if (!student) {
+    throw new Error("Only existing student users can be added to a class roster.");
+  }
+
+  await prisma.classEnrollment.upsert({
+    where: {
+      classId_studentId: {
+        classId,
+        studentId,
+      },
+    },
+    update: {},
+    create: {
+      classId,
+      studentId,
+    },
+  });
+
+  revalidateClassDetail(classId);
+}
+
+export async function removeStudentFromClassRoster(classId: number, formData: FormData) {
+  const studentId = Number(formData.get("studentId"));
+
+  await requireManagedClass(classId);
+
+  if (!Number.isInteger(studentId)) {
+    throw new Error("Choose an enrolled student to remove.");
+  }
+
+  await prisma.classEnrollment.deleteMany({
+    where: {
+      classId,
+      studentId,
+    },
+  });
+
+  revalidateClassDetail(classId);
+}
+
+function revalidateClassDetail(classId: number) {
+  revalidatePath("/");
+  revalidatePath(`/classes/${classId}`);
 }
