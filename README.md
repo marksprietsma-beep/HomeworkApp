@@ -195,3 +195,43 @@ The first homework workflow model extends the local development `User`, `Class`,
 - `SubmissionAnswer` stores one answer for a submission and can link back to the relevant homework question. The question link is optional so answers can be retained if a question is later removed.
 
 The seed data includes one fake published homework assignment with two text questions and one submitted example answer set for the first development student. This is only for local model testing and can be reseeded safely.
+
+## Core workflow smoke test
+
+Run the local core workflow smoke test after starting PostgreSQL and creating `.env` from `.env.example`:
+
+```bash
+docker compose up -d postgres
+npm run smoke:core
+```
+
+The smoke script is intentionally local and deterministic. It uses the existing PostgreSQL container and automates this diagnostic path:
+
+- `npm run prisma:generate`
+- `npm run prisma:deploy`, including the feedback-action response-text migration `20260622110000_add_feedback_action_response_text`
+- `npm run db:seed`
+- `npm run db:check`
+- assignment JSON fixture validation
+- feedback JSON fixture validation
+- database assertions for the seeded teacher, class, assignment, participant submission, response overview data, feedback import data, and feedback follow-up action response text
+- `npm run lint`
+- `npm run build`
+- compiled route-artifact checks for:
+  - seeded teacher dashboard: `/`
+  - participant work page: `/assignments/[assignmentId]/work`
+  - teacher response overview: `/classes/[classId]/assignments/[assignmentId]/responses`
+  - teacher response detail: `/classes/[classId]/assignments/[assignmentId]/responses/[submissionId]`
+  - teacher response export: `/classes/[classId]/assignments/[assignmentId]/responses/export`
+  - teacher feedback import: `/classes/[classId]/assignments/[assignmentId]/feedback/import`
+
+The script creates a throwaway feedback import with `generatedBy: "Core workflow smoke test"`, deletes any previous smoke-test feedback import for the seeded assignment, and then verifies that a participant feedback follow-up action can be completed with saved response text. This keeps the smoke data idempotent while exercising the full imported-feedback/action part of the local workflow.
+
+Manual browser check, if Mark wants to verify rendered pages after the automated smoke test passes:
+
+1. Run `npm run dev`.
+2. Open [http://localhost:3000](http://localhost:3000) as `Dev Teacher` and confirm the dashboard shows `Development Maths Class`, `Fractions practice`, and response links.
+3. Open the seeded assignment response overview, detail, export, and feedback import links from the teacher dashboard/assignment pages.
+4. Switch to `Ada Student`, open `Fractions practice`, and confirm the submitted answers, imported smoke-test feedback, and feedback actions are visible.
+5. Complete or edit one acknowledgement/reflection/follow-up answer in the participant work page, then switch back to `Dev Teacher` and confirm the follow-up action status appears in the response detail/overview surfaces.
+
+Full browser automation is intentionally not included yet because the current repository can get useful coverage from Prisma-backed assertions plus Next build route compilation without adding Playwright or Cypress.
