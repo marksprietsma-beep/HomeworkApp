@@ -3,6 +3,7 @@ import { prisma } from "./prisma";
 export type ClassDetailData = {
   id: number;
   name: string;
+  subject: string;
   description: string;
   teacher: {
     id: number;
@@ -98,6 +99,7 @@ export async function getClassDetailData(
   return {
     id: classItem.id,
     name: classItem.name,
+    subject: classItem.subject,
     description: classItem.description,
     teacher: classItem.teacher,
     enrolledUsers: classItem.enrollments.map((enrollment) => ({

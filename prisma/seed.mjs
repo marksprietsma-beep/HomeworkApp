@@ -32,6 +32,7 @@ const students = [
 
 const classSeed = {
   name: 'Development Maths Class',
+  subject: 'Maths',
   description: 'Fake local class for testing teacher and student workflows.',
 };
 

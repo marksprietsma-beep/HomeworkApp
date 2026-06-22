@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 export type DashboardClass = {
   id: number;
   name: string;
+  subject: string;
   description: string;
   teacherName: string;
   assignmentCount: number;
@@ -146,6 +147,7 @@ export async function getLocalDashboardData(user: {
     return {
       id: classItem.id,
       name: classItem.name,
+      subject: classItem.subject,
       description: classItem.description,
       teacherName: classItem.teacher.displayName,
       assignmentCount: classItem._count.homeworkAssignments,

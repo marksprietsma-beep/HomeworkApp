@@ -268,6 +268,12 @@ function DashboardShell({
             Reading the current local development user and class data directly
             from Prisma.
           </p>
+          <Link
+            href="/classes/new"
+            className="mt-4 inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+          >
+            Create class
+          </Link>
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
@@ -313,7 +319,10 @@ function DashboardShell({
                     <h4 className="text-xl font-semibold text-slate-950">
                       {classItem.name}
                     </h4>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                      {classItem.subject}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-600">
                       {classItem.description}
                     </p>
                     <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
