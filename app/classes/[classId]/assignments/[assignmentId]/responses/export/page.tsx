@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
 import { getAssignmentResponseExportData } from "../../../../../../../lib/response-export";
+import { ExportCopyBlock } from "./export-copy-block";
 
 export const dynamic = "force-dynamic";
 
@@ -11,28 +12,6 @@ type ResponseExportPageProps = {
     assignmentId: string;
   }>;
 };
-
-function ExportBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-            {label}
-          </p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">Copy-ready export</h2>
-        </div>
-        <p className="text-sm text-slate-600">Select the text below and copy it into ChatGPT.</p>
-      </div>
-      <textarea
-        className="mt-5 h-[32rem] w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-50 shadow-inner outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
-        readOnly
-        spellCheck={false}
-        value={value}
-      />
-    </section>
-  );
-}
 
 export default async function ResponseExportPage({ params }: ResponseExportPageProps) {
   const { classId, assignmentId } = await params;
@@ -138,8 +117,8 @@ export default async function ResponseExportPage({ params }: ResponseExportPageP
       </section>
 
       <div className="mt-8 grid gap-8">
-        <ExportBlock label="JSON export v2" value={jsonExport} />
-        <ExportBlock label="Markdown export" value={markdown} />
+        <ExportCopyBlock label="JSON export v2" value={jsonExport} copyLabel="Copy JSON" />
+        <ExportCopyBlock label="Markdown export" value={markdown} copyLabel="Copy Markdown" />
       </div>
     </main>
   );
