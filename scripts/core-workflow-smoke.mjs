@@ -1,14 +1,43 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 let prisma;
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-function run(command, args) {
-  console.log(`\n$ ${[command, ...args].join(' ')}`);
-  const result = spawnSync(command, args, { stdio: 'inherit', env: process.env });
-  if (result.status !== 0) {
-    throw new Error(`Command failed: ${[command, ...args].join(' ')}`);
+function formatCommand(command, args) {
+  return [command, ...args].join(' ');
+}
+
+function resolveNpmCommand(args) {
+  if (process.env.npm_execpath) {
+    return {
+      command: process.execPath,
+      args: [process.env.npm_execpath, ...args],
+      displayCommand: formatCommand('npm', args),
+      shell: false,
+    };
   }
+
+  return { command: 'npm', args, displayCommand: formatCommand('npm', args), shell: process.platform === 'win32' };
+}
+
+function run(command, args, { displayCommand = formatCommand(command, args), shell = false } = {}) {
+  console.log(`\n$ ${displayCommand}`);
+  const result = spawnSync(command, args, { stdio: 'inherit', env: process.env, shell });
+  if (result.status !== 0 || result.error) {
+    const diagnostics = [
+      `Command failed: ${displayCommand}`,
+      `  command: ${command}`,
+      `  args: ${JSON.stringify(args)}`,
+      `  status: ${result.status}`,
+      `  signal: ${result.signal}`,
+      `  spawn error: ${result.error ? `${result.error.name}: ${result.error.message}` : 'none'}`,
+    ];
+    throw new Error(diagnostics.join('\n'));
+  }
+}
+
+function runNpmScript(scriptName) {
+  const { command, args, displayCommand, shell } = resolveNpmCommand(['run', scriptName]);
+  run(command, args, { displayCommand, shell });
 }
 
 function requireFound(value, label) {
@@ -168,15 +197,15 @@ async function smokeDatabaseWorkflow() {
 }
 
 async function main() {
-  run(npm, ['run', 'prisma:generate']);
-  run(npm, ['run', 'prisma:deploy']);
-  run(npm, ['run', 'db:seed']);
-  run(npm, ['run', 'db:check']);
-  run(npm, ['run', 'check:assignment-json-fixtures']);
-  run(npm, ['run', 'check:feedback-json-fixtures']);
+  runNpmScript('prisma:generate');
+  runNpmScript('prisma:deploy');
+  runNpmScript('db:seed');
+  runNpmScript('db:check');
+  runNpmScript('check:assignment-json-fixtures');
+  runNpmScript('check:feedback-json-fixtures');
   await smokeDatabaseWorkflow();
-  run(npm, ['run', 'lint']);
-  run(npm, ['run', 'build']);
+  runNpmScript('lint');
+  runNpmScript('build');
 
   requireBuildArtifact('.next/server/app/page.js');
   requireBuildArtifact('.next/server/app/assignments/[assignmentId]/work/page.js');
