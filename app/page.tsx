@@ -301,14 +301,24 @@ function DashboardShell({
             from Prisma. Admin users can view all classes as a foundation for
             future management screens.
           </p>
-          {isTeacher(selectedUser) ? (
-            <Link
-              href="/classes/new"
-              className="mt-4 inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
-            >
-              Create class
-            </Link>
-          ) : null}
+          <div className="mt-4 flex flex-wrap gap-3">
+            {isAdmin(selectedUser) ? (
+              <Link
+                href="/admin/users"
+                className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+              >
+                Manage users
+              </Link>
+            ) : null}
+            {isTeacher(selectedUser) ? (
+              <Link
+                href="/classes/new"
+                className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+              >
+                Create class
+              </Link>
+            ) : null}
+          </div>
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
