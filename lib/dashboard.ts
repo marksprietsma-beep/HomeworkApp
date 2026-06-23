@@ -1,4 +1,11 @@
-import { HomeworkAssignmentStatus, type UserRole } from "@prisma/client";
+import {
+  AccountStatus,
+  ClassStatus,
+  FeedbackFollowUpActionStatus,
+  HomeworkAssignmentStatus,
+  SubmissionStatus,
+  type UserRole,
+} from "@prisma/client";
 import { isAdmin, isStudent, isTeacher } from "./permissions";
 import { prisma } from "./prisma";
 
@@ -24,11 +31,19 @@ export type DashboardClass = {
   }[];
 };
 
+type AssignedWorkStudentStatus =
+  | "not-started"
+  | "submitted"
+  | "feedback-available"
+  | "feedback-actions-pending"
+  | "completed";
+
 export type AssignedWorkItem = {
   id: number;
   title: string;
   classId: number;
   className: string;
+  subject: string;
   status: string;
   dueAt: Date | null;
   createdAt: Date;
@@ -39,6 +54,14 @@ export type AssignedWorkItem = {
     status: string;
     submittedAt: Date | null;
   } | null;
+  feedback: {
+    id: number;
+    importedAt: Date;
+    totalActions: number;
+    pendingActions: number;
+    completedActions: number;
+  } | null;
+  studentStatus: AssignedWorkStudentStatus;
 };
 
 export type LocalDashboardData = {
@@ -58,12 +81,19 @@ export async function getLocalDashboardData(user: {
   role: UserRole;
 }): Promise<LocalDashboardData> {
   const classes = await prisma.class.findMany({
-    where:
-      isAdmin(user)
-        ? undefined
-        : isTeacher(user)
-          ? { teacherId: user.id }
-          : { enrollments: { some: { studentId: user.id } } },
+    where: isAdmin(user)
+      ? undefined
+      : isTeacher(user)
+        ? { teacherId: user.id }
+        : {
+            status: ClassStatus.ACTIVE,
+            enrollments: {
+              some: {
+                studentId: user.id,
+                student: { accountStatus: AccountStatus.ACTIVE },
+              },
+            },
+          },
     orderBy: { name: "asc" },
     include: {
       teacher: {
@@ -72,7 +102,9 @@ export async function getLocalDashboardData(user: {
         },
       },
       homeworkAssignments: {
-        where: isStudent(user) ? { status: HomeworkAssignmentStatus.PUBLISHED } : undefined,
+        where: isStudent(user)
+          ? { status: HomeworkAssignmentStatus.PUBLISHED }
+          : undefined,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -94,6 +126,24 @@ export async function getLocalDashboardData(user: {
             },
             take: 1,
           },
+          participantFeedback: {
+            where: { studentId: user.id },
+            orderBy: [
+              { feedbackImport: { importedAt: "desc" } },
+              { updatedAt: "desc" },
+            ],
+            take: 1,
+            select: {
+              id: true,
+              feedbackImport: { select: { importedAt: true } },
+              followUpActions: { select: { status: true } },
+              questionFeedback: {
+                select: {
+                  followUpActions: { select: { status: true } },
+                },
+              },
+            },
+          },
           _count: {
             select: {
               questions: true,
@@ -111,40 +161,74 @@ export async function getLocalDashboardData(user: {
     },
   });
 
-  const assignedWork =
-    isStudent(user)
-      ? classes.flatMap((classItem) =>
-          classItem.homeworkAssignments.map((assignment) => {
-            const totalPoints = assignment.questions.reduce<number | null>(
-              (total, question) =>
-                question.points === null
-                  ? total
-                  : (total ?? 0) + question.points,
-              null,
-            );
-            const submission = assignment.submissions[0] ?? null;
+  const assignedWork = isStudent(user)
+    ? classes.flatMap((classItem) =>
+        classItem.homeworkAssignments.map((assignment) => {
+          const totalPoints = assignment.questions.reduce<number | null>(
+            (total, question) =>
+              question.points === null ? total : (total ?? 0) + question.points,
+            null,
+          );
+          const submission = assignment.submissions[0] ?? null;
 
-            return {
-              id: assignment.id,
-              title: assignment.title,
-              classId: classItem.id,
-              className: classItem.name,
-              status: assignment.status,
-              dueAt: assignment.dueAt,
-              createdAt: assignment.createdAt,
-              questionCount: assignment._count.questions,
-              totalPoints,
-              submission: submission
-                ? {
-                    id: submission.id,
-                    status: submission.status,
-                    submittedAt: submission.submittedAt,
-                  }
-                : null,
-            };
-          }),
-        )
-      : [];
+          const feedbackEntry = assignment.participantFeedback[0] ?? null;
+          const feedbackActions = feedbackEntry
+            ? [
+                ...feedbackEntry.followUpActions,
+                ...feedbackEntry.questionFeedback.flatMap(
+                  (question) => question.followUpActions,
+                ),
+              ]
+            : [];
+          const pendingActions = feedbackActions.filter(
+            (action) => action.status === FeedbackFollowUpActionStatus.PENDING,
+          ).length;
+          const completedActions = feedbackActions.filter(
+            (action) =>
+              action.status === FeedbackFollowUpActionStatus.COMPLETED,
+          ).length;
+          const studentStatus: AssignedWorkStudentStatus = feedbackEntry
+            ? pendingActions > 0
+              ? "feedback-actions-pending"
+              : feedbackActions.length > 0
+                ? "completed"
+                : "feedback-available"
+            : submission?.status === SubmissionStatus.SUBMITTED
+              ? "submitted"
+              : "not-started";
+
+          return {
+            id: assignment.id,
+            title: assignment.title,
+            classId: classItem.id,
+            className: classItem.name,
+            subject: classItem.subject,
+            status: assignment.status,
+            dueAt: assignment.dueAt,
+            createdAt: assignment.createdAt,
+            questionCount: assignment._count.questions,
+            totalPoints,
+            submission: submission
+              ? {
+                  id: submission.id,
+                  status: submission.status,
+                  submittedAt: submission.submittedAt,
+                }
+              : null,
+            feedback: feedbackEntry
+              ? {
+                  id: feedbackEntry.id,
+                  importedAt: feedbackEntry.feedbackImport.importedAt,
+                  totalActions: feedbackActions.length,
+                  pendingActions,
+                  completedActions,
+                }
+              : null,
+            studentStatus,
+          };
+        }),
+      )
+    : [];
 
   const dashboardClasses = classes.map((classItem) => {
     const questionCount = classItem.homeworkAssignments.reduce(
