@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { switchLocalDevelopmentUser } from "./actions/local-dev-user";
 import {
   canUseLocalDevelopmentSwitcher,
@@ -17,6 +18,7 @@ import {
   type AssignmentListFilters,
 } from "../lib/assignment-list-filters";
 import { isAdmin, isStudent, isTeacher } from "../lib/permissions";
+import { hasInitialAdminUser } from "../lib/first-run-setup";
 
 export const dynamic = "force-dynamic";
 
@@ -528,6 +530,10 @@ export default async function Home({
   let localDevelopmentUserError: string | null = null;
   let dashboardData: LocalDashboardData | null = null;
   const filters = parseAssignmentListFilters(await searchParams);
+
+  if (!(await hasInitialAdminUser())) {
+    redirect("/setup");
+  }
 
   if (canUseLocalDevelopmentSwitcher()) {
     try {

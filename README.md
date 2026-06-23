@@ -85,9 +85,22 @@ Open Prisma Studio for local database inspection:
 npm run prisma:studio
 ```
 
+## Production clean start and first-run admin setup
+
+For a production-like clean start, apply migrations to an empty database and do **not** run the development seed. This leaves no demo classes, students, assignments, submissions, feedback imports, follow-up actions, or placeholder workflow records.
+
+```bash
+npm run prisma:deploy
+npm run db:clean-start:check
+```
+
+When the app starts with no `ADMIN` user, `/` redirects to `/setup`. The first-run setup form requires an admin display name, email/login identifier, and password. It stores the password with the existing scrypt password hashing helper, marks the account as a real non-development `ADMIN`, and closes the setup path as soon as any `ADMIN` exists. If an `ADMIN` already exists, `/setup` redirects back to `/`.
+
+Use the clean-start path for real deployment preparation. Use the development seed below only for local smoke testing and demo workflow data.
+
 ## Seed local development data
 
-After PostgreSQL is running and migrations are applied, seed a small fake development dataset:
+After PostgreSQL is running and migrations are applied, explicitly seed a small fake development dataset:
 
 ```bash
 npm run db:seed
@@ -95,6 +108,7 @@ npm run db:seed
 
 The seed is safe to rerun. It uses stable fake `example.test` email addresses and updates the same records instead of creating duplicates. After seeding, the local database should contain:
 
+- one development admin: `Dev Admin <admin.dev@example.test>`
 - one teacher-like development user: `Dev Teacher <teacher.dev@example.test>`
 - three student-like development users: `Ada Student`, `Ben Student`, and `Cleo Student`
 - one class: `Development Maths Class`
@@ -151,7 +165,7 @@ To use it locally:
 3. Open [http://localhost:3000](http://localhost:3000).
 4. Use the temporary switcher to view the app as `Dev Admin`, `Dev Teacher`, `Ada Student`, `Ben Student`, or `Cleo Student`. The selected display name and role are shown on the page.
 
-The development-only admin account is seeded as `Dev Admin <admin.dev@example.test>`. Its password hash is a placeholder value so the row shape is ready for local authentication work, but there is no password-based login UI yet. This seeded admin is only for local development and must not be treated as a production first-run setup. Production clean start and first-run admin setup remains future MAR-159 work.
+The development-only admin account is seeded as `Dev Admin <admin.dev@example.test>`. Its password hash is a placeholder value so the row shape is ready for local authentication work, but there is no password-based login UI yet. This seeded admin is only for local development and must not be treated as a production first-run setup. For production-like verification, start from a migrated empty database without running `npm run db:seed`, run `npm run db:clean-start:check`, then complete `/setup`.
 
 This is intentionally a development convenience only. It is not login, authorization, password handling, SSO, or production security. Keep this switcher until real login is usable, then remove the local cookie helper and replace calls to `getSelectedLocalDevelopmentUser()` with the real authenticated user/session provider before any production deployment or real student data use.
 
