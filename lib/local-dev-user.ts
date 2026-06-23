@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { UserRole } from "@prisma/client";
+import { AccountStatus, type UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export const LOCAL_DEV_USER_COOKIE = "homework_local_dev_user_id";
@@ -15,6 +15,7 @@ export async function getLocalDevelopmentUsers(): Promise<LocalDevUser[]> {
   return prisma.user.findMany({
     where: {
       isDevelopmentUser: true,
+      accountStatus: AccountStatus.ACTIVE,
       OR: [
         { email: "admin.dev@example.test" },
         { email: "teacher.dev@example.test" },
@@ -43,7 +44,9 @@ export async function getSelectedLocalDevelopmentUser(): Promise<{
 
   const selectedUser =
     developmentUsers.find((user) => user.id === selectedUserId) ??
-    developmentUsers.find((user) => user.email === "teacher.dev@example.test") ??
+    developmentUsers.find(
+      (user) => user.email === "teacher.dev@example.test",
+    ) ??
     developmentUsers[0] ??
     null;
 

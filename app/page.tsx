@@ -45,9 +45,9 @@ function LocalDevelopmentSwitcher({
             Temporary role/user switcher
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            This uses a local cookie to help test seeded admin, teacher, and student
-            views before real authentication exists. Do not treat this as
-            login, authorization, or production security.
+            This uses a local cookie to help test seeded admin, teacher, and
+            student views before real authentication exists. Do not treat this
+            as login, authorization, or production security.
           </p>
         </div>
         <div className="rounded-xl bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-amber-200">
@@ -96,13 +96,7 @@ function LocalDevelopmentSwitcher({
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-3xl font-bold text-slate-950">{value}</p>
@@ -120,6 +114,143 @@ function formatDueDate(dueAt: Date | null) {
     dateStyle: "medium",
     timeZone: "UTC",
   }).format(dueAt);
+}
+
+const studentStatusLabels: Record<
+  LocalDashboardData["assignedWork"][number]["studentStatus"],
+  string
+> = {
+  "not-started": "Not started",
+  submitted: "Submitted",
+  "feedback-available": "Feedback available",
+  "feedback-actions-pending": "Feedback actions pending",
+  completed: "Completed",
+};
+
+const studentSectionLabels: Record<string, string> = {
+  todo: "To do",
+  submitted: "Submitted",
+  feedback: "Feedback/actions",
+  completed: "Completed",
+};
+
+function getStudentSectionKey(
+  assignment: LocalDashboardData["assignedWork"][number],
+) {
+  if (assignment.studentStatus === "completed") {
+    return "completed";
+  }
+
+  if (
+    assignment.studentStatus === "feedback-available" ||
+    assignment.studentStatus === "feedback-actions-pending"
+  ) {
+    return "feedback";
+  }
+
+  if (assignment.studentStatus === "submitted") {
+    return "submitted";
+  }
+
+  return "todo";
+}
+
+function StudentAssignmentCard({
+  assignment,
+}: {
+  assignment: LocalDashboardData["assignedWork"][number];
+}) {
+  const workHref = `/assignments/${assignment.id}/work`;
+  const hasFeedback = assignment.feedback !== null;
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {assignment.className}
+            {assignment.subject ? ` · ${assignment.subject}` : ""}
+          </p>
+          <h4 className="mt-2 text-xl font-semibold text-slate-950">
+            {assignment.title}
+          </h4>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 shadow-sm ring-1 ring-amber-200">
+              {studentStatusLabels[assignment.studentStatus]}
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+              Published
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+              Due: {formatDueDate(assignment.dueAt)}
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+              {assignment.questionCount} questions
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+              {assignment.totalPoints === null
+                ? "Points not set"
+                : `${assignment.totalPoints} points`}
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={hasFeedback ? `${workHref}#feedback` : workHref}
+              className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              {hasFeedback
+                ? assignment.feedback?.pendingActions
+                  ? "Open feedback actions"
+                  : "View feedback"
+                : assignment.submission
+                  ? "Continue response"
+                  : "Start response"}
+            </Link>
+          </div>
+        </div>
+        <div className="grid gap-3 text-sm lg:min-w-64">
+          <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+            <p className="font-medium text-slate-500">Submission</p>
+            {assignment.submission ? (
+              <>
+                <p className="mt-1 font-semibold text-slate-950">
+                  {assignment.submission.status}
+                </p>
+                <p className="text-slate-600">
+                  {assignment.submission.submittedAt
+                    ? `Submitted ${formatDueDate(assignment.submission.submittedAt)}`
+                    : "Saved but not submitted"}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 font-semibold text-slate-950">
+                No response yet
+              </p>
+            )}
+          </div>
+          <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+            <p className="font-medium text-slate-500">Feedback</p>
+            {assignment.feedback ? (
+              <>
+                <p className="mt-1 font-semibold text-slate-950">
+                  Imported {formatDueDate(assignment.feedback.importedAt)}
+                </p>
+                <p className="text-slate-600">
+                  {assignment.feedback.pendingActions} pending ·{" "}
+                  {assignment.feedback.completedActions}/
+                  {assignment.feedback.totalActions} completed
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 font-semibold text-slate-950">
+                Not available yet
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function StudentAssignedWorkDashboard({
@@ -159,7 +290,9 @@ function StudentAssignedWorkDashboard({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
             Viewing as
           </p>
-          <p className="mt-2 text-lg font-semibold">{selectedUser.displayName}</p>
+          <p className="mt-2 text-lg font-semibold">
+            {selectedUser.displayName}
+          </p>
           <p className="text-sm text-amber-200">{selectedUser.role}</p>
         </div>
       </div>
@@ -169,89 +302,71 @@ function StudentAssignedWorkDashboard({
           label="Classes enrolled"
           value={dashboardData.totals.classes}
         />
-        <SummaryCard
-          label="Assigned work"
-          value={assignments.length}
-        />
+        <SummaryCard label="Assigned work" value={assignments.length} />
         <SummaryCard label="Questions" value={dashboardData.totals.questions} />
         <SummaryCard
           label="Responses found"
           value={
-            assignments.filter((assignment) => assignment.submission)
-              .length
+            assignments.filter((assignment) => assignment.submission).length
           }
         />
       </div>
 
       <div className="mt-8">
-        <h3 className="text-lg font-semibold text-slate-950">Your assignments</h3>
-        <AssignmentFilterForm filters={studentFilters} classOptions={classOptions} hideStatusFilter />
+        <h3 className="text-lg font-semibold text-slate-950">
+          Your assignments
+        </h3>
+        <AssignmentFilterForm
+          filters={studentFilters}
+          classOptions={classOptions}
+          hideStatusFilter
+        />
         {assignments.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-            No assigned work was found for this participant yet. Switch to a
-            teacher user to create or import assignments, or enrol this
-            participant in a class with homework.
+            No published assignments were found for your active enrolled classes
+            yet. When a teacher publishes homework for one of your classes, it
+            will appear here.
           </div>
         ) : (
-          <div className="mt-4 grid gap-4">
-            {assignments.map((assignment) => (
-              <article
-                key={assignment.id}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {assignment.className}
-                    </p>
-                    <h4 className="mt-2 text-xl font-semibold text-slate-950">
-                      {assignment.title}
-                    </h4>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
-                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-                        {assignment.status}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-                        Due: {formatDueDate(assignment.dueAt)}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-                        {assignment.questionCount} questions
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-                        {assignment.totalPoints === null
-                          ? "Points not set"
-                          : `${assignment.totalPoints} points`}
+          <div className="mt-4 grid gap-6">
+            {["todo", "submitted", "feedback", "completed"].map(
+              (sectionKey) => {
+                const sectionAssignments = assignments.filter(
+                  (assignment) =>
+                    getStudentSectionKey(assignment) === sectionKey,
+                );
+
+                return (
+                  <section
+                    key={sectionKey}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="text-base font-semibold text-slate-950">
+                        {studentSectionLabels[sectionKey]}
+                      </h4>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                        {sectionAssignments.length}
                       </span>
                     </div>
-                    <Link
-                      href={`/assignments/${assignment.id}/work`}
-                      className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                    >
-                      {assignment.submission ? "Continue response" : "Start response"}
-                    </Link>
-                  </div>
-                  <div className="rounded-xl bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-slate-200 lg:min-w-52">
-                    <p className="font-medium text-slate-500">Response</p>
-                    {assignment.submission ? (
-                      <>
-                        <p className="mt-1 font-semibold text-slate-950">
-                          {assignment.submission.status}
-                        </p>
-                        <p className="text-slate-600">
-                          {assignment.submission.submittedAt
-                            ? `Submitted ${formatDueDate(assignment.submission.submittedAt)}`
-                            : "Saved but not submitted"}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="mt-1 font-semibold text-slate-950">
-                        No response yet
+                    {sectionAssignments.length === 0 ? (
+                      <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                        Nothing in this section right now.
                       </p>
+                    ) : (
+                      <div className="mt-3 grid gap-4">
+                        {sectionAssignments.map((assignment) => (
+                          <StudentAssignmentCard
+                            key={assignment.id}
+                            assignment={assignment}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                  </section>
+                );
+              },
+            )}
           </div>
         )}
       </div>
@@ -278,7 +393,9 @@ function DashboardShell({
     );
   }
 
-  const classLabel = isAdmin(selectedUser) ? "All classes" : "Classes you teach";
+  const classLabel = isAdmin(selectedUser)
+    ? "All classes"
+    : "Classes you teach";
   const classOptions = dashboardData.classes.map((classItem) => ({
     id: classItem.id,
     name: classItem.name,
@@ -334,7 +451,9 @@ function DashboardShell({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
             Viewing as
           </p>
-          <p className="mt-2 text-lg font-semibold">{selectedUser.displayName}</p>
+          <p className="mt-2 text-lg font-semibold">
+            {selectedUser.displayName}
+          </p>
           <p className="text-sm text-amber-200">{selectedUser.role}</p>
         </div>
       </div>
@@ -471,14 +590,25 @@ function AssignmentFilterForm({
     <form className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left sm:grid-cols-2 lg:grid-cols-5">
       <label className="text-sm font-semibold text-slate-700">
         Search title
-        <input name="search" defaultValue={filters.search} placeholder="Assignment title" className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" />
+        <input
+          name="search"
+          defaultValue={filters.search}
+          placeholder="Assignment title"
+          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+        />
       </label>
       {hideStatusFilter ? null : (
         <label className="text-sm font-semibold text-slate-700">
           Status
-          <select name="status" defaultValue={filters.status} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          <select
+            name="status"
+            defaultValue={filters.status}
+            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+          >
             {statusFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>
@@ -486,33 +616,61 @@ function AssignmentFilterForm({
       {hideClassFilter ? null : (
         <label className="text-sm font-semibold text-slate-700">
           Class
-          <select name="classId" defaultValue={filters.classId} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+          <select
+            name="classId"
+            defaultValue={filters.classId}
+            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+          >
             <option value="all">All classes</option>
             {(classOptions ?? []).map((classItem) => (
-              <option key={classItem.id} value={classItem.id}>{classItem.name}</option>
+              <option key={classItem.id} value={classItem.id}>
+                {classItem.name}
+              </option>
             ))}
           </select>
         </label>
       )}
       <label className="text-sm font-semibold text-slate-700">
         Due date
-        <select name="due" defaultValue={filters.due} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+        <select
+          name="due"
+          defaultValue={filters.due}
+          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+        >
           {dueFilterOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
       </label>
       <label className="text-sm font-semibold text-slate-700">
         Sort
-        <select name="sort" defaultValue={filters.sort} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm">
+        <select
+          name="sort"
+          defaultValue={filters.sort}
+          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"
+        >
           {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
       </label>
       <div className="flex gap-2 sm:col-span-2 lg:col-span-5">
-        <button type="submit" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Apply filters</button>
-        <Link href="/" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">Reset</Link>
+        <button
+          type="submit"
+          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+        >
+          Apply filters
+        </button>
+        <Link
+          href="/"
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950"
+        >
+          Reset
+        </Link>
       </div>
     </form>
   );
@@ -564,7 +722,9 @@ export default async function Home({
       </p>
       {localDevelopmentUserError ? (
         <section className="mt-10 w-full max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-6 text-left text-sm text-red-800">
-          <p className="font-semibold">Local development switcher unavailable</p>
+          <p className="font-semibold">
+            Local development switcher unavailable
+          </p>
           <p className="mt-2">{localDevelopmentUserError}</p>
         </section>
       ) : (
