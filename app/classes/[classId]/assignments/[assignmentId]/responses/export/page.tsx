@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
 import { getAssignmentResponseExportData } from "../../../../../../../lib/response-export";
-import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT } from "../../../../../../../lib/feedback-helper-prompt";
+import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT, buildFullFeedbackPrompt } from "../../../../../../../lib/feedback-helper-prompt";
 import { ExportCopyBlock } from "./export-copy-block";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +68,7 @@ export default async function ResponseExportPage({
 
   const jsonExport = JSON.stringify(exportData, null, 2);
   const feedbackChatGptPrompt = FEEDBACK_HELPER_PROMPT;
+  const fullFeedbackPrompt = buildFullFeedbackPrompt(jsonExport);
 
 
   return (
@@ -145,14 +146,22 @@ export default async function ResponseExportPage({
 
       <div className="mt-8 grid gap-8">
         <ExportCopyBlock
-          label="JSON export v2"
+          label="Full prompt (recommended copy-paste workflow)"
+          value={fullFeedbackPrompt}
+          copyLabel="Copy full ChatGPT feedback prompt"
+          description="Copies the shared feedback-generation instructions plus the response JSON in one block. Paste this into ChatGPT and ask it to return only feedback import JSON."
+        />
+        <ExportCopyBlock
+          label="Response JSON only (debugging/manual use)"
           value={jsonExport}
-          copyLabel="Copy JSON"
+          copyLabel="Copy response JSON only"
+          description="Use this raw export for debugging or manual workflows. For normal feedback generation, copy the full prompt above."
         />
         <ExportCopyBlock
           label="Markdown export"
           value={markdown}
           copyLabel="Copy Markdown"
+          description="Human-readable companion export for review. It is not the feedback import contract."
         />
       </div>
     </main>

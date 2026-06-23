@@ -186,12 +186,14 @@ model FeedbackImport {
   sourceExportGeneratedAt DateTime?
   generatedBy             String?
   generatedAt             DateTime?
+  importPayloadHash       String?
   importedAt              DateTime              @default(now())
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   assignment              HomeworkAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   participantFeedback     ParticipantFeedback[]
 
+  @@unique([assignmentId, importPayloadHash])
   @@index([assignmentId])
 }
 

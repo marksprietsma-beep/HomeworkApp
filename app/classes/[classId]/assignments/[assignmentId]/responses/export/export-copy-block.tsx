@@ -8,9 +8,10 @@ type ExportCopyBlockProps = {
   label: string;
   value: string;
   copyLabel: string;
+  description?: string;
 };
 
-export function ExportCopyBlock({ label, value, copyLabel }: ExportCopyBlockProps) {
+export function ExportCopyBlock({ label, value, copyLabel, description }: ExportCopyBlockProps) {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
 
   async function copyExport() {
@@ -38,7 +39,7 @@ export function ExportCopyBlock({ label, value, copyLabel }: ExportCopyBlockProp
           </p>
           <h2 className="mt-2 text-2xl font-bold text-slate-950">Copy-ready export</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Use the button to copy everything, or select the text below as a fallback.
+            {description ?? "Use the button to copy everything, or select the text below as a fallback."}
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
