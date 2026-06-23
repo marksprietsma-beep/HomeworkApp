@@ -16,6 +16,7 @@ export async function getLocalDevelopmentUsers(): Promise<LocalDevUser[]> {
     where: {
       isDevelopmentUser: true,
       OR: [
+        { email: "admin.dev@example.test" },
         { email: "teacher.dev@example.test" },
         { email: "student.ada.dev@example.test" },
         { email: "student.ben.dev@example.test" },
