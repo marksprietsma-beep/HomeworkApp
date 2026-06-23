@@ -6,7 +6,7 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
-> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
+> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
 
 ## Stable root shape
 
@@ -61,13 +61,13 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | --- | --- | --- | --- |
 | `id` | Yes | string | Stable question ID inside this JSON document, such as `q1`, `q2`, `q3`. Must be unique within the assignment. |
 | `order` | Yes | integer | 1-based display order. Must be unique and sequential with no gaps. |
-| `type` | Yes | string | Must be `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`. |
+| `type` | Yes | string | Must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. |
 | `prompt` | Yes | string | Student-facing question prompt. Must not be empty after trimming. |
 | `points` | No | integer | Optional point value for this question. When present, it must be a positive integer. |
-| `options` | Required only for `MULTIPLE_CHOICE` | array | Array of option objects. Must be omitted for `OPEN_TEXT` and `LONG_TEXT`. |
+| `options` | Required only for `MULTIPLE_CHOICE` | array | Array of option objects. Must be omitted for `OPEN_TEXT`. |
 | `image` | No | object or null | Optional image reference metadata. This is only a reference; v1 does not upload or store image files. |
 
-Use `OPEN_TEXT` for short answers, `LONG_TEXT` for paragraph or essay answers, and `MULTIPLE_CHOICE` when the student should select one option.
+Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions, and `MULTIPLE_CHOICE` when the student should select one option.
 
 ### Multiple choice option fields
 
@@ -112,7 +112,7 @@ The documented valid example below is mirrored in [`docs/fixtures/assignment-imp
       {
         "id": "q2",
         "order": 2,
-        "type": "LONG_TEXT",
+        "type": "OPEN_TEXT",
         "prompt": "Explain how to compare 3/4 and 5/8 without using a calculator.",
         "image": {
           "path": "teacher-provided fraction wall image",
@@ -297,10 +297,10 @@ MAR-120 should enforce these rules before writing anything to the database:
 9. Every question must be an object with `id`, `order`, `type`, and `prompt`.
 10. Question `id` values must be non-empty strings and unique within the assignment.
 11. Question `order` values must be integers, unique, start at `1`, and be sequential with no gaps.
-12. Question `type` must be one of `OPEN_TEXT`, `LONG_TEXT`, or `MULTIPLE_CHOICE`.
+12. Question `type` must be one of `OPEN_TEXT` or `MULTIPLE_CHOICE`.
 13. Question `prompt` values must be strings with non-empty trimmed values.
 14. Optional question `points` must be a positive integer when present.
-15. `OPEN_TEXT` and `LONG_TEXT` questions must not include `options`.
+15. `OPEN_TEXT` questions must not include `options`.
 16. `MULTIPLE_CHOICE` questions must include an `options` array with at least two options.
 17. Every option must be an object with non-empty string `id` and non-empty string `text`.
 18. Option `id` values must be unique within their question.
@@ -363,7 +363,7 @@ Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional
       {
         "id": "q2",
         "order": 2,
-        "type": "LONG_TEXT",
+        "type": "OPEN_TEXT",
         "prompt": "Explain how friction affects a bicycle slowing down.",
         "points": 2
       }

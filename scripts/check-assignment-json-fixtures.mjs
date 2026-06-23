@@ -12,7 +12,7 @@ const invalidFixtures = [
       "assignment.dueDate must be a real YYYY-MM-DD date",
       "assignment.status must be DRAFT or PUBLISHED",
       "id duplicates \"q1\"",
-      "type must be OPEN_TEXT, LONG_TEXT, or MULTIPLE_CHOICE",
+      "type must be OPEN_TEXT or MULTIPLE_CHOICE",
       "points must be a positive integer",
       "id duplicates \"a\"",
       "question orders must be sequential; missing 2",
@@ -88,6 +88,23 @@ async function checkInvalidFixture(fixture) {
   pass(`${fixture.path} failed parser validation for the expected reasons`);
 }
 
+async function checkHelperPromptDoesNotAdvertiseUnsupportedTypes() {
+  const formSource = await readText("app/classes/[classId]/assignments/import/import-assignment-form.tsx");
+  const promptMatch = formSource.match(/const assignmentChatGptPrompt = `([\s\S]*?)`;/);
+
+  if (!promptMatch) {
+    fail("assignment import helper prompt could not be found");
+    return;
+  }
+
+  if (promptMatch[1].includes("LONG_TEXT")) {
+    fail("assignment import helper prompt must not advertise unsupported LONG_TEXT question types");
+    return;
+  }
+
+  pass("assignment import helper prompt only advertises supported question types");
+}
+
 async function checkDocumentationSync() {
   const markdown = await readText(docsPath);
   const blocks = extractDocumentedFixtureBlocks(markdown);
@@ -128,6 +145,7 @@ for (const fixture of invalidFixtures) {
   await checkInvalidFixture(fixture);
 }
 await checkDocumentationSync();
+await checkHelperPromptDoesNotAdvertiseUnsupportedTypes();
 
 if (failureCount > 0) {
   console.error(`\nAssignment JSON fixture check failed with ${failureCount} problem${failureCount === 1 ? "" : "s"}.`);
