@@ -33,5 +33,15 @@ Follow-up action requirements:
 
 Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.`;
 
+export const FEEDBACK_RESPONSE_JSON_SEPARATOR = "Here is the response export JSON to mark:";
+
+export function buildFullFeedbackPrompt(responseJson: string) {
+  return `${FEEDBACK_HELPER_PROMPT}
+
+${FEEDBACK_RESPONSE_JSON_SEPARATOR}
+
+${responseJson}`;
+}
+
 export const FEEDBACK_HELPER_DESCRIPTION =
   "Copy this prompt with the response export. It keeps the manual ChatGPT export/import workflow explicit, preserves IDs, and matches the current feedback JSON contract.";

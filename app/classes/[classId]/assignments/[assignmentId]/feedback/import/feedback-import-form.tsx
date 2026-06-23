@@ -92,6 +92,11 @@ export function FeedbackImportForm({
   const feedback = parseResult.ok
     ? (parseResult.feedback as PreviewFeedback)
     : null;
+  const payloadSaved = Boolean(state.ok && state.submittedRawJson === rawJson);
+
+  function startNewImport() {
+    setRawJson("");
+  }
 
   return (
     <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]">
@@ -144,9 +149,10 @@ export function FeedbackImportForm({
         {existingImportCount > 0 ? (
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             This assignment already has {existingImportCount} feedback import
-            {existingImportCount === 1 ? "" : "s"}. V1 saves each valid import
-            as a new teacher-only import record; it does not replace or publish
-            existing feedback.
+            {existingImportCount === 1 ? "" : "s"}. V1 keeps historical
+            teacher-only import records and does not replace existing feedback,
+            but an exact duplicate payload is blocked so counters do not increase
+            from repeat clicks.
           </div>
         ) : null}
         {state.message ? (
@@ -181,16 +187,36 @@ export function FeedbackImportForm({
             <input type="hidden" name="rawJson" value={rawJson} />
             <div className="sticky top-3 z-10 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-slate-200/70 backdrop-blur">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-semibold text-emerald-900">
-                  JSON is valid. Review the preview, then save when ready.
-                </p>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  {pending ? "Saving…" : "Confirm and save"}
-                </button>
+                <div>
+                  <p className="text-sm font-semibold text-emerald-900">
+                    {payloadSaved
+                      ? "Feedback saved. Import another feedback file to continue."
+                      : "JSON is valid. Review the preview, then save when ready."}
+                  </p>
+                  {payloadSaved ? (
+                    <p className="mt-1 text-xs font-medium text-emerald-800">
+                      This exact pasted payload is protected from repeat saves.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {payloadSaved ? (
+                    <button
+                      type="button"
+                      onClick={startNewImport}
+                      className="rounded-full border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-400"
+                    >
+                      Start new import
+                    </button>
+                  ) : null}
+                  <button
+                    type="submit"
+                    disabled={pending || payloadSaved}
+                    className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {pending ? "Saving…" : payloadSaved ? "Feedback saved" : "Confirm and save"}
+                  </button>
+                </div>
               </div>
             </div>
             <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
