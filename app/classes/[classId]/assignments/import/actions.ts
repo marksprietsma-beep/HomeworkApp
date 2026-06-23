@@ -7,6 +7,15 @@ import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-us
 import { prisma } from "../../../../../lib/prisma";
 import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
 
+type AssignmentImportGlossaryItem = {
+  englishTerm: string;
+  chineseTerm: string;
+  englishDefinition: string;
+  chineseDefinition: string;
+  category: string | null;
+  questionIds: string[];
+};
+
 type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
@@ -22,6 +31,7 @@ type AssignmentImportAssignment = {
   dueDate: string | null;
   status: "DRAFT" | "PUBLISHED";
   questions: AssignmentImportQuestion[];
+  keyVocabulary: AssignmentImportGlossaryItem[];
 };
 
 function dueDateToDateTime(dueDate: string | null) {
@@ -110,6 +120,7 @@ export async function importAssignmentForClass(classId: number, formData: FormDa
       createdById: selectedUser.id,
       title: importedAssignment.title,
       description: importedAssignment.instructions,
+      keyVocabulary: importedAssignment.keyVocabulary.length > 0 ? importedAssignment.keyVocabulary : undefined,
       status: importedAssignment.status as HomeworkAssignmentStatus,
       dueAt: dueDateToDateTime(importedAssignment.dueDate),
       questions: {

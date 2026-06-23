@@ -1,4 +1,5 @@
 import type { UserRole } from "@prisma/client";
+import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
 import { prisma } from "./prisma";
 
 export const RESPONSE_EXPORT_FORMAT = "homework-assignment-responses-v2";
@@ -17,6 +18,7 @@ export type AssignmentResponseExport = {
       name: string;
     };
   };
+  keyVocabulary: AssignmentKeyVocabularyItem[];
   questions: {
     id: number;
     order: number;
@@ -60,6 +62,7 @@ export async function getAssignmentResponseExportData(
       title: true,
       status: true,
       dueAt: true,
+      keyVocabulary: true,
       class: {
         select: {
           id: true,
@@ -130,6 +133,7 @@ export async function getAssignmentResponseExportData(
         name: assignment.class.name,
       },
     },
+    keyVocabulary: normalizeAssignmentKeyVocabulary(assignment.keyVocabulary),
     questions: assignment.questions.map((question) => ({
       id: question.id,
       order: question.order,
@@ -192,9 +196,30 @@ function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
     `- Due: ${exportData.assignment.dueAt ?? "No due date"}`,
     `- Generated: ${exportData.generatedAt}`,
     "",
-    "## Questions",
+    "## Key vocabulary / 关键词",
     "",
   ];
+
+  if (exportData.keyVocabulary.length === 0) {
+    lines.push("No key vocabulary was supplied for this assignment.", "");
+  } else {
+    for (const item of exportData.keyVocabulary) {
+      lines.push(
+        `### ${item.englishTerm} / ${item.chineseTerm}`,
+        "",
+        `- English definition: ${item.englishDefinition}`,
+        `- Chinese definition: ${item.chineseDefinition}`,
+        `- Category: ${item.category ?? "Not set"}`,
+        `- Linked question IDs: ${item.questionIds.length > 0 ? item.questionIds.join(", ") : "None"}`,
+        "",
+      );
+    }
+  }
+
+  lines.push(
+    "## Questions",
+    "",
+  );
 
   if (exportData.questions.length === 0) {
     lines.push("No questions are available for this assignment.", "");

@@ -4,7 +4,7 @@ import process from "node:process";
 import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
 const repoRoot = process.cwd();
-const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json"];
+const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json", "docs/fixtures/assignment-import/valid/bilingual-vocabulary.json"];
 const invalidFixtures = [
   {
     path: "docs/fixtures/assignment-import/invalid/contract-violations.json",
@@ -21,6 +21,10 @@ const invalidFixtures = [
   {
     path: "docs/fixtures/assignment-import/invalid/text-question-with-options.json",
     expectedErrors: ["options must be omitted unless type is MULTIPLE_CHOICE"],
+  },
+  {
+    path: "docs/fixtures/assignment-import/invalid/bad-glossary.json",
+    expectedErrors: ["chineseTerm must be a non-empty string", "category must be a string", "must match an assignment question id"],
   },
 ];
 const docsPath = "docs/assignment-import-json-v1.md";

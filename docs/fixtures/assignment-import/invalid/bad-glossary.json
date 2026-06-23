@@ -1,0 +1,27 @@
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Bad glossary",
+    "instructions": "This glossary should fail validation.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "keyVocabulary": [
+      {
+        "englishTerm": "force",
+        "chineseTerm": "",
+        "englishDefinition": "A push or pull.",
+        "chineseDefinition": "推或拉。",
+        "category": 7,
+        "questionIds": ["missing-question"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "Name one force."
+      }
+    ]
+  }
+}

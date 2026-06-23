@@ -1,10 +1,12 @@
 import { HomeworkAssignmentStatus } from "@prisma/client";
+import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
 import { prisma } from "./prisma";
 
 export type ParticipantWorkData = {
   id: number;
   title: string;
   description: string | null;
+  keyVocabulary: AssignmentKeyVocabularyItem[];
   status: string;
   dueAt: Date | null;
   class: {
@@ -220,6 +222,7 @@ export async function getParticipantWorkData(
     id: assignment.id,
     title: assignment.title,
     description: assignment.description,
+    keyVocabulary: normalizeAssignmentKeyVocabulary(assignment.keyVocabulary),
     status: assignment.status,
     dueAt: assignment.dueAt,
     class: assignment.class,

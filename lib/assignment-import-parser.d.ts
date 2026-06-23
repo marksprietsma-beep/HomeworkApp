@@ -4,6 +4,15 @@ export type AssignmentImportError = {
   message: string;
 };
 
+export type AssignmentImportGlossaryItem = {
+  englishTerm: string;
+  chineseTerm: string;
+  englishDefinition: string;
+  chineseDefinition: string;
+  category: string | null;
+  questionIds: string[];
+};
+
 export type AssignmentImportQuestion = {
   id: string;
   order: number;
@@ -20,6 +29,7 @@ export type AssignmentImportAssignment = {
   dueDate: string | null;
   status: "DRAFT" | "PUBLISHED";
   questions: AssignmentImportQuestion[];
+  keyVocabulary: AssignmentImportGlossaryItem[];
 };
 
 export type AssignmentImportParseResult =
