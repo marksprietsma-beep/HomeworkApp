@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ClassStatus } from "@prisma/client";
 import { useActionState } from "react";
 import { createAdminClass, updateAdminClass, type AdminClassFormState } from "./actions";
@@ -63,7 +64,10 @@ export function EditableClassRow({ classItem, teachers }: { classItem: ManagedCl
       <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Teacher<select name="teacherId" defaultValue={classItem.teacherId} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950">{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.displayName}</option>)}</select></label>
       <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Status<select name="status" defaultValue={classItem.status} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950"><option value={ClassStatus.ACTIVE}>Active</option><option value={ClassStatus.INACTIVE}>Inactive</option></select></label>
       <p className="text-xs font-semibold text-slate-500">{classItem.enrollmentCount} enrolled<br />{classItem.assignmentCount} assignments</p>
-      <button type="submit" disabled={isPending || teachers.length === 0} className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:bg-slate-300">{isPending ? "Saving…" : "Save"}</button>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={isPending || teachers.length === 0} className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:bg-slate-300">{isPending ? "Saving…" : "Save"}</button>
+        <Link href={`/classes/${classItem.id}`} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">Manage roster</Link>
+      </div>
       <div className="lg:col-span-7"><FormMessage state={state} /></div>
     </form></td></tr>
   );

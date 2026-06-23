@@ -1,11 +1,12 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
+import { canManageClasses } from "../../../lib/permissions";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -197,20 +198,17 @@ async function requireManagedClass(classId: number) {
 
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
 
-  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-    throw new Error("Switch to the class teacher user to manage the roster.");
+  if (!canManageClasses(selectedUser)) {
+    throw new Error("Roster enrolment management is only available to ADMIN users.");
   }
 
-  const classItem = await prisma.class.findFirst({
-    where: {
-      id: classId,
-      teacherId: selectedUser.id,
-    },
+  const classItem = await prisma.class.findUnique({
+    where: { id: classId },
     select: { id: true },
   });
 
   if (!classItem) {
-    throw new Error("Roster management is only available to the teacher who owns this class.");
+    throw new Error("Choose an existing class to manage.");
   }
 
   return classItem;
@@ -229,23 +227,31 @@ export async function addStudentToClassRoster(classId: number, formData: FormDat
     where: {
       id: studentId,
       role: UserRole.STUDENT,
+      accountStatus: AccountStatus.ACTIVE,
     },
     select: { id: true },
   });
 
   if (!student) {
-    throw new Error("Only existing student users can be added to a class roster.");
+    throw new Error("Only active STUDENT users can be added to a class roster; teacher, admin, and disabled accounts are not eligible.");
   }
 
-  await prisma.classEnrollment.upsert({
+  const existingEnrollment = await prisma.classEnrollment.findUnique({
     where: {
       classId_studentId: {
         classId,
         studentId,
       },
     },
-    update: {},
-    create: {
+    select: { id: true },
+  });
+
+  if (existingEnrollment) {
+    throw new Error("That student is already enrolled in this class.");
+  }
+
+  await prisma.classEnrollment.create({
+    data: {
       classId,
       studentId,
     },
@@ -276,4 +282,5 @@ export async function removeStudentFromClassRoster(classId: number, formData: Fo
 function revalidateClassDetail(classId: number) {
   revalidatePath("/");
   revalidatePath(`/classes/${classId}`);
+  revalidatePath("/admin/classes");
 }
