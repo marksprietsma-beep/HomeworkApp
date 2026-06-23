@@ -17,6 +17,7 @@ export type ClassDetailData = {
     email: string;
     role: string;
     accountStatus: string;
+    yearGroup: string | null;
     enrolledAt: Date;
   }[];
   availableStudents: {
@@ -24,6 +25,7 @@ export type ClassDetailData = {
     displayName: string;
     email: string;
     accountStatus: string;
+    yearGroup: string | null;
   }[];
   assignments: {
     id: number;
@@ -66,6 +68,7 @@ export async function getClassDetailData(
               email: true,
               role: true,
               accountStatus: true,
+              yearGroup: true,
             },
           },
         },
@@ -107,6 +110,7 @@ export async function getClassDetailData(
       displayName: true,
       email: true,
       accountStatus: true,
+      yearGroup: true,
     },
   });
 
@@ -133,6 +137,7 @@ export async function getClassDetailData(
       email: enrollment.student.email,
       role: enrollment.student.role,
       accountStatus: enrollment.student.accountStatus,
+      yearGroup: enrollment.student.yearGroup,
       enrolledAt: enrollment.createdAt,
     })),
     availableStudents,

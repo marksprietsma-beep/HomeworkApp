@@ -287,12 +287,16 @@ function revalidateClassDetail(classId: number) {
   revalidatePath("/admin/classes");
 }
 
+const SUPPORTED_YEAR_GROUPS = ["Y7", "Y8", "Y9", "Y10", "Y11", "Y12", "Y13"] as const;
+type SupportedYearGroup = (typeof SUPPORTED_YEAR_GROUPS)[number];
+
 export type StudentCsvImportRowStatus = "CREATE" | "ENROLL_EXISTING" | "ALREADY_ENROLLED" | "INVALID" | "CONFLICT";
 
 export type StudentCsvImportPreviewRow = {
   rowNumber: number;
   displayName: string;
   email: string;
+  yearGroup: string;
   externalId: string;
   status: StudentCsvImportRowStatus;
   messages: string[];
@@ -316,6 +320,7 @@ type ParsedCsvRow = {
   rowNumber: number;
   displayName: string;
   email: string;
+  yearGroup: string;
   externalId: string;
   messages: string[];
 };
@@ -367,6 +372,7 @@ function parseStudentCsv(csvText: string): ParsedCsvRow[] {
   const firstNameIndex = headerIndex(headers, ["firstname", "first_name", "forename"]);
   const lastNameIndex = headerIndex(headers, ["lastname", "last_name", "surname"]);
   const emailIndex = headerIndex(headers, ["email", "username", "login", "loginidentifier"]);
+  const yearGroupIndex = headerIndex(headers, ["yeargroup", "year_group", "year", "yearname"]);
   const externalIdIndex = headerIndex(headers, ["studentid", "student_id", "externalid", "external_id"]);
 
   if (displayNameIndex === -1 && (firstNameIndex === -1 || lastNameIndex === -1)) {
@@ -380,14 +386,17 @@ function parseStudentCsv(csvText: string): ParsedCsvRow[] {
     const cells = parseCsvLine(line);
     const displayName = readCell(cells, displayNameIndex) || [readCell(cells, firstNameIndex), readCell(cells, lastNameIndex)].filter(Boolean).join(" ");
     const email = readCell(cells, emailIndex).toLowerCase();
+    const yearGroup = readCell(cells, yearGroupIndex).toUpperCase();
     const externalId = readCell(cells, externalIdIndex);
     const messages: string[] = [];
 
     if (!displayName) messages.push("Missing display name.");
     if (!email) messages.push("Missing email/login identifier.");
     if (email && !email.includes("@")) messages.push("Email/login identifier must be email-style for now.");
+    if (!yearGroup) messages.push("Missing yearGroup.");
+    else if (!SUPPORTED_YEAR_GROUPS.includes(yearGroup as SupportedYearGroup)) messages.push(`Invalid yearGroup ${yearGroup}; use Y7, Y8, Y9, Y10, Y11, Y12, or Y13.`);
 
-    return { rowNumber: index + 2, displayName, email, externalId, messages };
+    return { rowNumber: index + 2, displayName, email, yearGroup, externalId, messages };
   });
 }
 
@@ -449,25 +458,29 @@ export async function importStudentsToClassFromCsv(classId: number, _previousSta
   const csvText = String(formData.get("csvText") ?? "").trim();
   try {
     const rows = await buildStudentCsvPreview(classId, csvText);
-    const summary = { createdUsers: 0, existingStudentsEnrolled: 0, alreadyEnrolled: 0, invalidRows: 0, conflicts: 0 };
+    const summary = { createdUsers: 0, existingStudentsEnrolled: 0, alreadyEnrolled: 0, invalidRows: rows.filter((row) => row.status === "INVALID").length, conflicts: rows.filter((row) => row.status === "CONFLICT").length };
+    const blockingRows = rows.filter((row) => row.status === "INVALID" || row.status === "CONFLICT");
+    if (blockingRows.length > 0) {
+      throw new Error(`CSV import blocked: fix ${blockingRows.length} row${blockingRows.length === 1 ? "" : "s"} with validation errors or conflicts before saving.`);
+    }
 
-    for (const row of rows) {
-      if (row.status === "INVALID") { summary.invalidRows += 1; continue; }
-      if (row.status === "CONFLICT") { summary.conflicts += 1; continue; }
-      if (row.status === "ALREADY_ENROLLED") { summary.alreadyEnrolled += 1; continue; }
-      if (row.status === "ENROLL_EXISTING") {
-        const user = await prisma.user.findUnique({ where: { email: row.email }, select: { id: true } });
-        if (user) {
-          await prisma.classEnrollment.upsert({ where: { classId_studentId: { classId, studentId: user.id } }, update: {}, create: { classId, studentId: user.id } });
+    await prisma.$transaction(async (tx) => {
+      for (const row of rows) {
+        if (row.status === "ALREADY_ENROLLED") { summary.alreadyEnrolled += 1; continue; }
+        if (row.status === "ENROLL_EXISTING") {
+          const user = await tx.user.findUnique({ where: { email: row.email }, select: { id: true } });
+          if (!user) throw new Error(`Existing student ${row.email} could not be found during import.`);
+          await tx.user.update({ where: { id: user.id }, data: { yearGroup: row.yearGroup } });
+          await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
           summary.existingStudentsEnrolled += 1;
         }
+        if (row.status === "CREATE") {
+          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
+          await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
+          summary.createdUsers += 1;
+        }
       }
-      if (row.status === "CREATE") {
-        const user = await prisma.user.create({ data: { displayName: row.displayName, email: row.email, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
-        await prisma.classEnrollment.create({ data: { classId, studentId: user.id } });
-        summary.createdUsers += 1;
-      }
-    }
+    });
 
     revalidateClassDetail(classId);
     return { error: null, success: "CSV import saved.", csvText, rows: await buildStudentCsvPreview(classId, csvText), summary };

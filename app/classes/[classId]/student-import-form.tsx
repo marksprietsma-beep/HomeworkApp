@@ -10,6 +10,7 @@ export function StudentCsvImportForm({ classId }: { classId: number }) {
   const [, importAction, isImporting] = useActionState(importStudentsToClassFromCsv.bind(null, classId), initialState);
   const csvText = state.csvText ?? "";
   const hasImportableRows = state.rows.some((row) => row.status === "CREATE" || row.status === "ENROLL_EXISTING" || row.status === "ALREADY_ENROLLED");
+  const hasBlockingRows = state.rows.some((row) => row.status === "INVALID" || row.status === "CONFLICT");
 
   return (
     <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
@@ -20,15 +21,15 @@ export function StudentCsvImportForm({ classId }: { classId: number }) {
         <ul className="list-disc pl-5">
           <li><span className="font-semibold">displayName</span>, or both <span className="font-semibold">firstName</span> and <span className="font-semibold">lastName</span></li>
           <li><span className="font-semibold">email</span>, or <span className="font-semibold">username</span>/<span className="font-semibold">login</span> as an email-style local login identifier</li>
-          <li>Optional <span className="font-semibold">studentId</span> or <span className="font-semibold">externalId</span> for preview/reference only</li>
+          <li><span className="font-semibold">yearGroup</span> (Y7, Y8, Y9, Y10, Y11, Y12, or Y13)</li>
         </ul>
-        <p className="font-mono text-xs">displayName,email,studentId<br />Aisha Khan,aisha@example.test,S1001</p>
+        <p className="font-mono text-xs">displayName,email,yearGroup<br />Aisha Khan,aisha@example.test,Y7</p>
       </div>
 
       <form action={previewAction} className="mt-4 grid gap-3">
         <label className="text-sm font-semibold text-slate-950">
           CSV text
-          <textarea name="csvText" rows={8} defaultValue={csvText} className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 font-mono text-sm text-slate-950 shadow-sm" placeholder="displayName,email\nAisha Khan,aisha@example.test" />
+          <textarea name="csvText" rows={8} defaultValue={csvText} className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 font-mono text-sm text-slate-950 shadow-sm" placeholder="displayName,email,yearGroup\nAisha Khan,aisha@example.test,Y7" />
         </label>
         <button type="submit" disabled={isPreviewing} className="justify-self-start rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:bg-slate-300">
           {isPreviewing ? "Previewing…" : "Preview CSV"}
@@ -46,7 +47,7 @@ export function StudentCsvImportForm({ classId }: { classId: number }) {
               {state.rows.map((row) => (
                 <tr key={row.rowNumber} className="border-t border-emerald-100 align-top">
                   <td className="px-3 py-2 font-semibold text-slate-700">{row.rowNumber}</td>
-                  <td className="px-3 py-2 text-slate-950">{row.displayName || "—"}{row.externalId ? <span className="block text-slate-500">ID: {row.externalId}</span> : null}</td>
+                  <td className="px-3 py-2 text-slate-950">{row.displayName || "—"}<span className="block text-slate-500">Year group: {row.yearGroup || "—"}</span></td>
                   <td className="px-3 py-2 text-slate-700">{row.email || "—"}</td>
                   <td className="px-3 py-2 font-semibold text-slate-950">{row.status}</td>
                   <td className="px-3 py-2 text-slate-700">{row.messages.length > 0 ? row.messages.join("; ") : "Ready"}</td>
@@ -62,11 +63,12 @@ export function StudentCsvImportForm({ classId }: { classId: number }) {
       {state.rows.length > 0 ? (
         <form action={importAction} className="mt-4">
           <input type="hidden" name="csvText" value={csvText} />
-          <button type="submit" disabled={isImporting || !hasImportableRows} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:bg-slate-300">
+          <button type="submit" disabled={isImporting || !hasImportableRows || hasBlockingRows} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:bg-slate-300">
             {isImporting ? "Importing…" : "Save import"}
           </button>
         </form>
       ) : null}
+      {hasBlockingRows ? <p className="mt-3 text-sm font-semibold text-red-700">Fix all invalid rows and conflicts before saving. Imports are all-or-nothing.</p> : null}
     </section>
   );
 }

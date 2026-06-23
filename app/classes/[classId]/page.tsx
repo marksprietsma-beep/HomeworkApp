@@ -263,7 +263,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                     <option value="">Search/select a student…</option>
                     {classDetail.availableStudents.map((student) => (
                       <option key={student.id} value={student.id}>
-                        {student.displayName} · {student.email} · {student.accountStatus}
+                        {student.displayName} · {student.email} · {student.yearGroup ?? "No year group"} · {student.accountStatus}
                       </option>
                     ))}
                   </select>
@@ -300,7 +300,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className="font-semibold text-slate-950">{user.displayName}</p>
                       <p className="mt-1 text-sm text-slate-600">{user.email}</p>
                       <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                        {user.role} · {user.accountStatus} · Enrolled {formatDate(user.enrolledAt)}
+                        {user.role} · {user.accountStatus} · {user.yearGroup ?? "No year group"} · Enrolled {formatDate(user.enrolledAt)}
                       </p>
                     </div>
                     {canManageRoster ? (

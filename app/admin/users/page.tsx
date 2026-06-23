@@ -55,6 +55,7 @@ export default async function AdminUsersPage() {
       role: true,
       accountStatus: true,
       isDevelopmentUser: true,
+      yearGroup: true,
       _count: {
         select: {
           teachingClasses: true,
@@ -76,7 +77,7 @@ export default async function AdminUsersPage() {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Create local-first teacher and student accounts, review roles and statuses, and deactivate accounts without deleting linked class, assignment, submission, or feedback history.</p>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.4fr]">
+      <div className="mt-8 grid gap-8">
         <CreateManagedUserForm />
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -86,9 +87,9 @@ export default async function AdminUsersPage() {
             </div>
             <p className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{users.length} total</p>
           </div>
-          <div className="mt-5 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.14em] text-slate-500">
+          <div className="mt-5 max-h-[42rem] overflow-auto rounded-2xl border border-slate-200">
+            <table className="min-w-[920px] text-left text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
                 <tr><th className="px-4 py-3">Display name</th><th className="px-4 py-3">Email/login</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Management</th></tr>
               </thead>
               <tbody>
@@ -99,6 +100,7 @@ export default async function AdminUsersPage() {
                     displayName: user.displayName,
                     role: user.role,
                     accountStatus: user.accountStatus,
+                    yearGroup: user.yearGroup,
                     isEditable: user.role !== UserRole.ADMIN && !user.isDevelopmentUser,
                   }} />
                 ))}

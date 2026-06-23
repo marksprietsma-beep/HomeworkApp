@@ -12,6 +12,8 @@ export type AdminUserFormState = {
   success: string | null;
 };
 
+const studentYearGroups = ["", "Y7", "Y8", "Y9", "Y10", "Y11", "Y12", "Y13"] as const;
+
 const manageableRoles = [UserRole.TEACHER, UserRole.STUDENT] as const;
 const statuses = [AccountStatus.ACTIVE, AccountStatus.DISABLED] as const;
 
@@ -29,6 +31,14 @@ function parseManageableRole(value: string) {
     throw new Error("Choose either TEACHER or STUDENT for this manual account.");
   }
   return role;
+}
+
+function parseYearGroup(value: string) {
+  const yearGroup = value.toUpperCase();
+  if (!studentYearGroups.includes(yearGroup as (typeof studentYearGroups)[number])) {
+    throw new Error("Choose a supported year group from Y7 to Y13, or leave it blank.");
+  }
+  return yearGroup || null;
 }
 
 function parseStatus(value: string) {
@@ -66,6 +76,7 @@ export async function createManagedUser(
     const displayName = readTrimmed(formData, "displayName");
     const email = normalizeEmail(readTrimmed(formData, "email"));
     const role = parseManageableRole(readTrimmed(formData, "role"));
+    const yearGroup = parseYearGroup(readTrimmed(formData, "yearGroup"));
     const accountStatus = parseStatus(readTrimmed(formData, "accountStatus") || AccountStatus.ACTIVE);
     const temporaryPassword = String(formData.get("temporaryPassword") ?? "");
 
@@ -93,6 +104,7 @@ export async function createManagedUser(
         email,
         role,
         accountStatus,
+        yearGroup: role === UserRole.STUDENT ? yearGroup : null,
         passwordHash: hashPassword(temporaryPassword),
         isDevelopmentUser: false,
       },
@@ -118,6 +130,7 @@ export async function updateManagedUser(
     const userId = Number(readTrimmed(formData, "userId"));
     const displayName = readTrimmed(formData, "displayName");
     const role = parseManageableRole(readTrimmed(formData, "role"));
+    const yearGroup = parseYearGroup(readTrimmed(formData, "yearGroup"));
     const accountStatus = parseStatus(readTrimmed(formData, "accountStatus"));
 
     if (!Number.isInteger(userId) || userId <= 0) {
@@ -140,7 +153,7 @@ export async function updateManagedUser(
 
     await prisma.user.update({
       where: { id: userId },
-      data: { displayName, role, accountStatus },
+      data: { displayName, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null },
     });
 
     revalidatePath("/admin/users");
@@ -148,5 +161,70 @@ export async function updateManagedUser(
     return { error: null, success: `${displayName} was updated.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not update this user.", success: null };
+  }
+}
+
+
+export async function deleteOrDeactivateManagedUser(
+  _previousState: AdminUserFormState,
+  formData: FormData,
+): Promise<AdminUserFormState> {
+  try {
+    const adminUser = await assertAdminUser();
+    const userId = Number(readTrimmed(formData, "userId"));
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new Error("Choose a valid user to remove.");
+    }
+    if (userId === adminUser?.id) {
+      throw new Error("For safety, you cannot remove or deactivate your own active admin access here.");
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        displayName: true,
+        role: true,
+        isDevelopmentUser: true,
+        accountStatus: true,
+        _count: {
+          select: {
+            teachingClasses: true,
+            classEnrollments: true,
+            createdAssignments: true,
+            homeworkSubmissions: true,
+            feedbackEntries: true,
+          },
+        },
+      },
+    });
+
+    if (!target) throw new Error("This user no longer exists.");
+    if (target.role === UserRole.ADMIN) {
+      const activeAdminCount = await prisma.user.count({ where: { role: UserRole.ADMIN, accountStatus: AccountStatus.ACTIVE } });
+      if (activeAdminCount <= 1) throw new Error("Cannot remove the only active ADMIN user.");
+      throw new Error("Admin removal is blocked in this first management workflow.");
+    }
+    if (target.isDevelopmentUser) {
+      throw new Error("Seeded development users are protected. Create a non-seeded test user to test removal.");
+    }
+
+    const linkedDataCount = Object.values(target._count).reduce((total, count) => total + count, 0);
+    if (linkedDataCount > 0) {
+      if (target.accountStatus === AccountStatus.DISABLED) {
+        return { error: null, success: `${target.displayName} already has linked data and is disabled.` };
+      }
+      await prisma.user.update({ where: { id: userId }, data: { accountStatus: AccountStatus.DISABLED } });
+      revalidatePath("/admin/users");
+      revalidatePath("/");
+      return { error: null, success: `${target.displayName} has linked history, so the account was safely deactivated instead of deleted.` };
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+    revalidatePath("/admin/users");
+    revalidatePath("/");
+    return { error: null, success: `${target.displayName} was permanently deleted because no linked data was found.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not remove this user.", success: null };
   }
 }

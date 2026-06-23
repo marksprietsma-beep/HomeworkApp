@@ -2,7 +2,7 @@
 
 import { AccountStatus, UserRole } from "@prisma/client";
 import { useActionState } from "react";
-import { createManagedUser, updateManagedUser, type AdminUserFormState } from "./actions";
+import { createManagedUser, deleteOrDeactivateManagedUser, updateManagedUser, type AdminUserFormState } from "./actions";
 
 type ManagedUser = {
   id: number;
@@ -10,6 +10,7 @@ type ManagedUser = {
   displayName: string;
   role: UserRole;
   accountStatus: AccountStatus;
+  yearGroup: string | null;
   isEditable: boolean;
 };
 
@@ -48,6 +49,12 @@ export function CreateManagedUserForm() {
             <option value={UserRole.TEACHER}>Teacher</option>
           </select>
         </label>
+        <label className="text-sm font-semibold text-slate-700">Year group (students)
+          <select name="yearGroup" defaultValue="" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm">
+            <option value="">Not set / teacher</option>
+            <option value="Y7">Y7</option><option value="Y8">Y8</option><option value="Y9">Y9</option><option value="Y10">Y10</option><option value="Y11">Y11</option><option value="Y12">Y12</option><option value="Y13">Y13</option>
+          </select>
+        </label>
         <label className="text-sm font-semibold text-slate-700">Account status
           <select name="accountStatus" required defaultValue={AccountStatus.ACTIVE} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm">
             <option value={AccountStatus.ACTIVE}>Active</option>
@@ -66,11 +73,12 @@ export function CreateManagedUserForm() {
 
 export function EditableUserRow({ user }: { user: ManagedUser }) {
   const [state, formAction, isPending] = useActionState(updateManagedUser, initialState);
+  const [deleteState, deleteAction, isDeleting] = useActionState(deleteOrDeactivateManagedUser, initialState);
 
   if (!user.isEditable) {
     return (
       <tr className="border-t border-slate-200 bg-slate-50/70">
-        <td className="px-4 py-3 font-semibold text-slate-950">{user.displayName}</td><td className="px-4 py-3 text-slate-600">{user.email}</td><td className="px-4 py-3">{user.role}</td><td className="px-4 py-3">{user.accountStatus}</td><td className="px-4 py-3 text-sm text-slate-500">Read-only seeded/admin account</td>
+        <td className="px-4 py-3 font-semibold text-slate-950">{user.displayName}</td><td className="px-4 py-3 text-slate-600">{user.email}</td><td className="px-4 py-3">{user.role}{user.yearGroup ? <span className="block text-xs text-slate-500">{user.yearGroup}</span> : null}</td><td className="px-4 py-3">{user.accountStatus}</td><td className="px-4 py-3 text-sm text-slate-500">Read-only seeded/admin account</td>
       </tr>
     );
   }
@@ -78,14 +86,20 @@ export function EditableUserRow({ user }: { user: ManagedUser }) {
   return (
     <tr className="border-t border-slate-200 align-top">
       <td colSpan={5} className="px-4 py-4">
-        <form action={formAction} className="grid gap-3 lg:grid-cols-[1.2fr_1.4fr_0.8fr_0.8fr_auto] lg:items-end">
+        <form action={formAction} className="grid gap-3 lg:grid-cols-[1.1fr_1.3fr_0.7fr_0.7fr_0.8fr_auto_auto] lg:items-end">
           <input type="hidden" name="userId" value={user.id} />
           <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Name<input name="displayName" required defaultValue={user.displayName} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950" /></label>
           <div className="text-sm"><span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Email/login</span><p className="mt-2 break-all font-medium text-slate-700">{user.email}</p></div>
           <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Role<select name="role" defaultValue={user.role} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950"><option value={UserRole.STUDENT}>Student</option><option value={UserRole.TEACHER}>Teacher</option></select></label>
+          <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Year group<select name="yearGroup" defaultValue={user.yearGroup ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950"><option value="">—</option><option value="Y7">Y7</option><option value="Y8">Y8</option><option value="Y9">Y9</option><option value="Y10">Y10</option><option value="Y11">Y11</option><option value="Y12">Y12</option><option value="Y13">Y13</option></select></label>
           <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Status<select name="accountStatus" defaultValue={user.accountStatus} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950"><option value={AccountStatus.ACTIVE}>Active</option><option value={AccountStatus.DISABLED}>Disabled</option></select></label>
           <button type="submit" disabled={isPending} className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:bg-slate-300">{isPending ? "Saving…" : "Save"}</button>
-          <div className="lg:col-span-5"><FormMessage state={state} /></div>
+          <div className="lg:col-span-7"><FormMessage state={state} /></div>
+        </form>
+        <form action={deleteAction} onSubmit={(event) => { if (!window.confirm(`Remove ${user.displayName}? Users with linked history will be deactivated instead of hard-deleted.`)) event.preventDefault(); }} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <input type="hidden" name="userId" value={user.id} />
+          <button type="submit" disabled={isDeleting} className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 disabled:border-slate-200 disabled:text-slate-400">{isDeleting ? "Removing…" : "Delete / deactivate"}</button>
+          <div className="sm:flex-1"><FormMessage state={deleteState} /></div>
         </form>
       </td>
     </tr>
