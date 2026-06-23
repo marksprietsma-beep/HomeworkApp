@@ -1,0 +1,7 @@
+ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'ADMIN';
+
+CREATE TYPE "AccountStatus" AS ENUM ('ACTIVE', 'DISABLED');
+
+ALTER TABLE "User"
+  ADD COLUMN "passwordHash" TEXT,
+  ADD COLUMN "accountStatus" "AccountStatus" NOT NULL DEFAULT 'ACTIVE';

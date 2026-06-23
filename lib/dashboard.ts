@@ -1,4 +1,5 @@
 import { HomeworkAssignmentStatus, type UserRole } from "@prisma/client";
+import { isAdmin, isStudent, isTeacher } from "./permissions";
 import { prisma } from "./prisma";
 
 export type DashboardClass = {
@@ -58,9 +59,11 @@ export async function getLocalDashboardData(user: {
 }): Promise<LocalDashboardData> {
   const classes = await prisma.class.findMany({
     where:
-      user.role === "TEACHER"
-        ? { teacherId: user.id }
-        : { enrollments: { some: { studentId: user.id } } },
+      isAdmin(user)
+        ? undefined
+        : isTeacher(user)
+          ? { teacherId: user.id }
+          : { enrollments: { some: { studentId: user.id } } },
     orderBy: { name: "asc" },
     include: {
       teacher: {
@@ -69,7 +72,7 @@ export async function getLocalDashboardData(user: {
         },
       },
       homeworkAssignments: {
-        where: user.role === "STUDENT" ? { status: HomeworkAssignmentStatus.PUBLISHED } : undefined,
+        where: isStudent(user) ? { status: HomeworkAssignmentStatus.PUBLISHED } : undefined,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -109,7 +112,7 @@ export async function getLocalDashboardData(user: {
   });
 
   const assignedWork =
-    user.role === "STUDENT"
+    isStudent(user)
       ? classes.flatMap((classItem) =>
           classItem.homeworkAssignments.map((assignment) => {
             const totalPoints = assignment.questions.reduce<number | null>(

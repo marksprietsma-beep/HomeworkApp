@@ -16,6 +16,7 @@ import {
   statusFilterOptions,
   type AssignmentListFilters,
 } from "../lib/assignment-list-filters";
+import { isAdmin, isStudent, isTeacher } from "../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ function LocalDevelopmentSwitcher({
             Temporary role/user switcher
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            This uses a local cookie to help test seeded teacher and student
+            This uses a local cookie to help test seeded admin, teacher, and student
             views before real authentication exists. Do not treat this as
             login, authorization, or production security.
           </p>
@@ -265,7 +266,7 @@ function DashboardShell({
   dashboardData: LocalDashboardData;
   filters: AssignmentListFilters;
 }) {
-  if (selectedUser.role === "STUDENT") {
+  if (isStudent(selectedUser)) {
     return (
       <StudentAssignedWorkDashboard
         selectedUser={selectedUser}
@@ -275,7 +276,7 @@ function DashboardShell({
     );
   }
 
-  const classLabel = "Classes you teach";
+  const classLabel = isAdmin(selectedUser) ? "All classes" : "Classes you teach";
   const classOptions = dashboardData.classes.map((classItem) => ({
     id: classItem.id,
     name: classItem.name,
@@ -297,14 +298,17 @@ function DashboardShell({
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Reading the current local development user and class data directly
-            from Prisma.
+            from Prisma. Admin users can view all classes as a foundation for
+            future management screens.
           </p>
-          <Link
-            href="/classes/new"
-            className="mt-4 inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
-          >
-            Create class
-          </Link>
+          {isTeacher(selectedUser) ? (
+            <Link
+              href="/classes/new"
+              className="mt-4 inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+            >
+              Create class
+            </Link>
+          ) : null}
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">

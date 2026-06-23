@@ -1,11 +1,24 @@
-import { HomeworkAssignmentStatus, HomeworkQuestionType, PrismaClient, SubmissionStatus, UserRole } from '@prisma/client';
+import { HomeworkAssignmentStatus, HomeworkQuestionType, PrismaClient, SubmissionStatus, UserRole, AccountStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+const localDevelopmentPasswordHash = 'dev-only-placeholder-password-hash-not-for-production';
+
+const admin = {
+  email: 'admin.dev@example.test',
+  displayName: 'Dev Admin',
+  role: UserRole.ADMIN,
+  passwordHash: localDevelopmentPasswordHash,
+  accountStatus: AccountStatus.ACTIVE,
+  isDevelopmentUser: true,
+};
 
 const teacher = {
   email: 'teacher.dev@example.test',
   displayName: 'Dev Teacher',
   role: UserRole.TEACHER,
+  passwordHash: localDevelopmentPasswordHash,
+  accountStatus: AccountStatus.ACTIVE,
   isDevelopmentUser: true,
 };
 
@@ -14,18 +27,24 @@ const students = [
     email: 'student.ada.dev@example.test',
     displayName: 'Ada Student',
     role: UserRole.STUDENT,
+    passwordHash: localDevelopmentPasswordHash,
+    accountStatus: AccountStatus.ACTIVE,
     isDevelopmentUser: true,
   },
   {
     email: 'student.ben.dev@example.test',
     displayName: 'Ben Student',
     role: UserRole.STUDENT,
+    passwordHash: localDevelopmentPasswordHash,
+    accountStatus: AccountStatus.ACTIVE,
     isDevelopmentUser: true,
   },
   {
     email: 'student.cleo.dev@example.test',
     displayName: 'Cleo Student',
     role: UserRole.STUDENT,
+    passwordHash: localDevelopmentPasswordHash,
+    accountStatus: AccountStatus.ACTIVE,
     isDevelopmentUser: true,
   },
 ];
@@ -57,6 +76,12 @@ const homeworkSeed = {
 };
 
 async function main() {
+  const seededAdmin = await prisma.user.upsert({
+    where: { email: admin.email },
+    update: admin,
+    create: admin,
+  });
+
   const seededTeacher = await prisma.user.upsert({
     where: { email: teacher.email },
     update: teacher,
@@ -191,6 +216,7 @@ async function main() {
   }
 
   console.log('Seeded local development data:');
+  console.log(`- Admin: ${seededAdmin.displayName} <${seededAdmin.email}> (development only)`);
   console.log(`- Teacher: ${seededTeacher.displayName} <${seededTeacher.email}>`);
   console.log(`- Students: ${seededStudents.map((student) => student.displayName).join(', ')}`);
   console.log(`- Class: ${seededClass.name} with ${seededStudents.length} students`);

@@ -134,6 +134,12 @@ npm run prisma:studio
 ```
 
 
+## Auth and role model foundation
+
+The durable user role enum supports three account levels: `ADMIN`, `TEACHER`, and `STUDENT`. The `User` table also includes the safe local-auth foundation fields `email`, `passwordHash`, `accountStatus`, `createdAt`, and `updatedAt`. `email` is the unique login identifier prepared for future local authentication; `passwordHash` is nullable until real login is built; and `accountStatus` currently supports `ACTIVE` and `DISABLED`.
+
+`lib/permissions.ts` is the shared helper layer for future page and route checks. Prefer helpers such as `isAdmin()`, `isTeacher()`, `isStudent()`, `canManageClasses()`, and `canTeachClass()` over open-coded role string comparisons when adding new role-gated behaviour.
+
 ## Temporary local role switcher
 
 The homepage includes a **Local development only — not authentication** switcher when the app runs outside production. It reads the seeded Prisma development users and stores the selected user id in a local HTTP-only cookie named `homework_local_dev_user_id`. Server components and route handlers can use `getSelectedLocalDevelopmentUser()` from `lib/local-dev-user.ts` to read the currently selected fake user during local testing.
@@ -143,9 +149,11 @@ To use it locally:
 1. Start PostgreSQL, apply migrations, and run `npm run db:seed`.
 2. Start the app with `npm run dev`.
 3. Open [http://localhost:3000](http://localhost:3000).
-4. Use the temporary switcher to view the app as `Dev Teacher`, `Ada Student`, `Ben Student`, or `Cleo Student`. The selected display name and role are shown on the page.
+4. Use the temporary switcher to view the app as `Dev Admin`, `Dev Teacher`, `Ada Student`, `Ben Student`, or `Cleo Student`. The selected display name and role are shown on the page.
 
-This is intentionally a development convenience only. It is not login, authorization, password handling, SSO, or production security. Remove this switcher, remove the local cookie helper, and replace all calls to `getSelectedLocalDevelopmentUser()` with the real authenticated user/session provider before any production deployment or real student data use.
+The development-only admin account is seeded as `Dev Admin <admin.dev@example.test>`. Its password hash is a placeholder value so the row shape is ready for local authentication work, but there is no password-based login UI yet. This seeded admin is only for local development and must not be treated as a production first-run setup. Production clean start and first-run admin setup remains future MAR-159 work.
+
+This is intentionally a development convenience only. It is not login, authorization, password handling, SSO, or production security. Keep this switcher until real login is usable, then remove the local cookie helper and replace calls to `getSelectedLocalDevelopmentUser()` with the real authenticated user/session provider before any production deployment or real student data use.
 
 ## Database connection check
 

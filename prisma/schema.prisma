@@ -8,8 +8,14 @@ datasource db {
 }
 
 enum UserRole {
+  ADMIN
   TEACHER
   STUDENT
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
 }
 
 enum HomeworkAssignmentStatus {
@@ -51,6 +57,8 @@ model User {
   email               String                @unique
   displayName         String
   role                UserRole
+  passwordHash        String?
+  accountStatus       AccountStatus         @default(ACTIVE)
   isDevelopmentUser   Boolean               @default(true)
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
