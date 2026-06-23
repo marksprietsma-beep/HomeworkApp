@@ -16,7 +16,40 @@ The app does **not** generate this feedback inside the product in v1. The teache
 
 Mark can paste this into ChatGPT after the exported response JSON:
 
-> Review the exported homework responses and return only valid JSON using the Homework App feedback JSON v1 format. Do not wrap it in Markdown. Use this root shape: `feedbackFormat`, `feedbackVersion`, `sourceExport`, `assignment`, `class`, `participantFeedback`. Set `feedbackFormat` to `homework-feedback` and `feedbackVersion` to `1`. Copy assignment, class, participant, submission, and question IDs exactly from the export wherever available. For each participant with feedback, include overall feedback, strengths, targets, optional teacher notes, optional question-level feedback, and optional student follow-up actions. Follow-up action `type` must be `ACKNOWLEDGEMENT`, `SHORT_REFLECTION`, or `ANSWER_FOLLOW_UP_QUESTION`.
+> Use the exported Homework App response JSON below as the only source data. Return valid importable Homework App feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+> 
+> Required root object shape:
+> - feedbackFormat
+> - feedbackVersion
+> - sourceExport
+> - assignment
+> - class
+> - participantFeedback
+> 
+> Feedback import contract:
+> - Use feedbackFormat "homework-feedback" and feedbackVersion 1.
+> - Copy sourceExport.exportFormat, sourceExport.exportVersion, and sourceExport.generatedAt from the export.
+> - The assignment object must be at the root and include the exported assignment.id exactly. Include assignment.title where available.
+> - The class object must be at the root and include the exported assignment.class.id exactly. Include assignment.class.name where available.
+> - The participantFeedback array must be at the root. Use participantFeedback, not participants.
+> - Do not return root-level participants.
+> - Do not rename participantFeedback to participants.
+> - Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
+> - Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
+> - For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
+> - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
+> - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
+> 
+> Follow-up action requirements:
+> - Every follow-up action requires a stable non-empty string id.
+> - This applies to participant-level followUpActions and question-level followUpActions.
+> - Do not omit follow-up action ids, and do not rely on the importer to invent ids.
+> - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
+> - Each follow-up action must include id, type, prompt, and required.
+> - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
+> - Use required true unless the action is genuinely optional.
+> 
+> Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.
 
 ## Stable root shape
 
@@ -165,7 +198,7 @@ Follow-up actions tell the future student feedback UI what the student must do a
 
 | Field | Required | Type | Notes |
 | --- | --- | --- | --- |
-| `id` | Yes | string | Stable unique ID within the feedback JSON, such as `pf-3-ack` or `pf-3-q101-followup`. |
+| `id` | Yes | string | Stable non-empty unique ID within the feedback JSON. Every participant-level and question-level follow-up action must include one, such as `pf1-action1`, `pf1-q86-action1`, or `pf1-q91-action1`. |
 | `type` | Yes | string | Must be `ACKNOWLEDGEMENT`, `SHORT_REFLECTION`, or `ANSWER_FOLLOW_UP_QUESTION`. |
 | `prompt` | Yes | string | Student-facing instruction or question. Must not be empty after trimming. |
 | `required` | No | boolean | Defaults to `true` if omitted. |

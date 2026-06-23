@@ -29,6 +29,12 @@ const invalidFixtures = [
     expectedErrors: ["Input is not valid JSON"],
   },
   {
+    path: "docs/fixtures/feedback-import/invalid/missing-follow-up-action-ids.json",
+    expectedErrors: [
+      "Each follow-up action must include a stable string id, for example pf1-q86-action1",
+    ],
+  },
+  {
     path: "docs/fixtures/feedback-import/invalid/old-helper-shape.json",
     expectedErrors: [
       "Use root-level participantFeedback, not participants",
@@ -98,6 +104,8 @@ for (const fixture of invalidFixtures) {
 }
 
 const responseExportPage = await readText("app/classes/[classId]/assignments/[assignmentId]/responses/export/page.tsx");
+const feedbackImportForm = await readText("app/classes/[classId]/assignments/[assignmentId]/feedback/import/feedback-import-form.tsx");
+const sharedFeedbackHelper = await readText("lib/feedback-helper-prompt.ts");
 const requiredPromptText = [
   "feedbackFormat",
   "feedbackVersion",
@@ -110,14 +118,26 @@ const requiredPromptText = [
   "Do not rename participantFeedback to participants",
   "Return valid importable feedback JSON only",
   "participant/source participant id",
+  "Every follow-up action requires a stable non-empty string id",
+  "participant-level followUpActions and question-level followUpActions",
+  "pf1-action1",
+  "pf1-q86-action1",
+  "pf1-q91-action1",
+  "Each follow-up action must include id, type, prompt, and required",
 ];
 for (const expectedText of requiredPromptText) {
-  if (!responseExportPage.includes(expectedText)) {
-    fail(`Response export feedback helper prompt is missing required text: ${expectedText}`);
+  if (!sharedFeedbackHelper.includes(expectedText)) {
+    fail(`Shared feedback helper prompt is missing required text: ${expectedText}`);
   }
 }
+if (!responseExportPage.includes("FEEDBACK_HELPER_PROMPT")) {
+  fail("Response export page must use the shared feedback helper prompt");
+}
+if (!feedbackImportForm.includes("FEEDBACK_HELPER_PROMPT")) {
+  fail("Feedback import form must use the shared feedback helper prompt");
+}
 if (failureCount === 0) {
-  pass("response export feedback helper prompt includes import-contract guardrails");
+  pass("shared feedback helper prompt includes import-contract and follow-up action id guardrails");
 }
 
 if (failureCount > 0) {

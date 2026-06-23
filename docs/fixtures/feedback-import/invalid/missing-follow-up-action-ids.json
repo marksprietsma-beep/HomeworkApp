@@ -1,0 +1,53 @@
+{
+  "feedbackFormat": "homework-feedback",
+  "feedbackVersion": 1,
+  "sourceExport": {
+    "exportFormat": "homework-assignment-responses-v2",
+    "exportVersion": 2,
+    "generatedAt": "2026-06-22T10:15:00.000Z"
+  },
+  "assignment": {
+    "id": 42,
+    "title": "Year 7 Fractions Check"
+  },
+  "class": {
+    "id": 7,
+    "name": "Development Maths Class"
+  },
+  "participantFeedback": [
+    {
+      "participant": {
+        "id": 3,
+        "name": "Ada Student"
+      },
+      "submission": {
+        "id": 18,
+        "status": "SUBMITTED"
+      },
+      "overallFeedback": "You showed a secure understanding of equivalent fractions.",
+      "strengths": ["Accurate equivalent fraction work."],
+      "targets": ["Show each conversion step."],
+      "questionFeedback": [
+        {
+          "questionId": 101,
+          "questionOrder": 1,
+          "feedback": "Your equivalent fraction is correct.",
+          "followUpActions": [
+            {
+              "type": "ANSWER_FOLLOW_UP_QUESTION",
+              "prompt": "What did you multiply by?",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "followUpActions": [
+        {
+          "type": "ACKNOWLEDGEMENT",
+          "prompt": "Please acknowledge this feedback.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
