@@ -9,6 +9,15 @@ type ImportAssignmentFormProps = {
   classId: number;
 };
 
+type AssignmentImportGlossaryItem = {
+  englishTerm: string;
+  chineseTerm: string;
+  englishDefinition: string;
+  chineseDefinition: string;
+  category: string | null;
+  questionIds: string[];
+};
+
 type AssignmentImportQuestion = {
   id: string;
   order: number;
@@ -25,6 +34,7 @@ type AssignmentImportAssignment = {
   dueDate: string | null;
   status: "DRAFT" | "PUBLISHED";
   questions: AssignmentImportQuestion[];
+  keyVocabulary: AssignmentImportGlossaryItem[];
 };
 
 const placeholderJson = `{
@@ -34,6 +44,16 @@ const placeholderJson = `{
     "instructions": "Answer each question. Show your working where helpful.",
     "dueDate": "2026-06-30",
     "status": "DRAFT",
+    "keyVocabulary": [
+      {
+        "englishTerm": "equivalent fraction",
+        "chineseTerm": "等值分数",
+        "englishDefinition": "Fractions that name the same amount.",
+        "chineseDefinition": "表示相同数量的分数。",
+        "category": "Maths",
+        "questionIds": ["q1", "q2"]
+      }
+    ],
     "questions": [
       {
         "id": "q1",
@@ -182,6 +202,25 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                 </div>
               </div>
             </section>
+
+            {assignment.keyVocabulary.length > 0 ? (
+              <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Key vocabulary / 关键词</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {assignment.keyVocabulary.map((item) => (
+                    <article key={`${item.englishTerm}-${item.chineseTerm}`} className="rounded-xl border border-emerald-100 bg-white p-4 text-sm shadow-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-bold text-slate-950">{item.englishTerm} / {item.chineseTerm}</h4>
+                        {item.category ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-900">{item.category}</span> : null}
+                      </div>
+                      <p className="mt-2 leading-6 text-slate-700">{item.englishDefinition}</p>
+                      <p className="mt-1 leading-6 text-slate-700">{item.chineseDefinition}</p>
+                      {item.questionIds.length > 0 ? <p className="mt-2 text-xs font-semibold text-slate-500">Linked questions: {item.questionIds.join(", ")}</p> : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <ol className="grid gap-3">
               {assignment.questions.map((question: AssignmentImportQuestion) => (

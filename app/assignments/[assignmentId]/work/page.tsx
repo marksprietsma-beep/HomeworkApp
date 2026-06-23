@@ -356,6 +356,26 @@ export default async function ParticipantWorkPage({
         </section>
       </section>
 
+      {work.keyVocabulary.length > 0 ? (
+        <section className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Key vocabulary / 关键词</p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-950">Words that may help</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {work.keyVocabulary.map((item) => (
+              <article key={`${item.englishTerm}-${item.chineseTerm}`} className="rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-950">{item.englishTerm} / {item.chineseTerm}</h3>
+                  {item.category ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-900">{item.category}</span> : null}
+                </div>
+                <p className="mt-3 leading-6 text-slate-700">{item.englishDefinition}</p>
+                <p className="mt-2 leading-6 text-slate-700">{item.chineseDefinition}</p>
+                {item.questionIds.length > 0 ? <p className="mt-3 text-xs font-semibold text-slate-500">Useful for: {item.questionIds.join(", ")}</p> : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <form action={saveAction} className="mt-8 grid gap-5">
         {work.questions.map((question) => {
           const choices = getMultipleChoiceChoices(question.options);

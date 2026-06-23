@@ -1,0 +1,43 @@
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Year 7 Forces Vocabulary Check",
+    "instructions": "Use the key vocabulary to help answer each question.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "keyVocabulary": [
+      {
+        "englishTerm": "force",
+        "chineseTerm": "力",
+        "englishDefinition": "A push or pull that can change how an object moves.",
+        "chineseDefinition": "可以改变物体运动方式的推或拉。",
+        "category": "Science",
+        "questionIds": ["q1"]
+      },
+      {
+        "englishTerm": "friction",
+        "chineseTerm": "摩擦力",
+        "englishDefinition": "A force that slows movement when surfaces rub together.",
+        "chineseDefinition": "当表面相互摩擦时使运动减慢的力。",
+        "category": "Science",
+        "questionIds": ["q2"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "What is one example of a force?",
+        "points": 1
+      },
+      {
+        "id": "q2",
+        "order": 2,
+        "type": "LONG_TEXT",
+        "prompt": "Explain how friction affects a bicycle slowing down.",
+        "points": 2
+      }
+    ]
+  }
+}

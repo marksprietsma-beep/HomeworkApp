@@ -91,6 +91,7 @@ model HomeworkAssignment {
   createdById         Int
   title               String
   description         String?
+  keyVocabulary       Json?
   status              HomeworkAssignmentStatus @default(DRAFT)
   dueAt               DateTime?
   createdAt           DateTime                 @default(now())

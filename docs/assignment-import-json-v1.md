@@ -318,3 +318,89 @@ MAR-120 should enforce these rules before writing anything to the database:
 - The current assignment model stores `dueAt` as a date-time, while this contract accepts `dueDate` only. MAR-120 needs a deterministic conversion rule.
 - The current question model has no first-class imported question ID column. MAR-120 can use the JSON `id` only during validation/order mapping unless a later issue adds an import identifier.
 - The database currently allows `ARCHIVED`, but this import contract deliberately excludes it to avoid accidentally importing hidden assignments.
+
+## Optional key vocabulary / glossary
+
+Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional array. Each item must include `englishTerm`, `chineseTerm`, `englishDefinition`, and `chineseDefinition`. Optional `category` is a string or null, and optional `questionIds` links terms to imported question `id` values. Use only one of `keyVocabulary` or `glossary` in the same assignment.
+
+### Valid bilingual vocabulary fixture
+
+<!-- fixture: docs/fixtures/assignment-import/valid/bilingual-vocabulary.json -->
+```json
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Year 7 Forces Vocabulary Check",
+    "instructions": "Use the key vocabulary to help answer each question.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "keyVocabulary": [
+      {
+        "englishTerm": "force",
+        "chineseTerm": "力",
+        "englishDefinition": "A push or pull that can change how an object moves.",
+        "chineseDefinition": "可以改变物体运动方式的推或拉。",
+        "category": "Science",
+        "questionIds": ["q1"]
+      },
+      {
+        "englishTerm": "friction",
+        "chineseTerm": "摩擦力",
+        "englishDefinition": "A force that slows movement when surfaces rub together.",
+        "chineseDefinition": "当表面相互摩擦时使运动减慢的力。",
+        "category": "Science",
+        "questionIds": ["q2"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "What is one example of a force?",
+        "points": 1
+      },
+      {
+        "id": "q2",
+        "order": 2,
+        "type": "LONG_TEXT",
+        "prompt": "Explain how friction affects a bicycle slowing down.",
+        "points": 2
+      }
+    ]
+  }
+}
+```
+
+### Invalid glossary fixture
+
+<!-- fixture: docs/fixtures/assignment-import/invalid/bad-glossary.json -->
+```json
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Bad glossary",
+    "instructions": "This glossary should fail validation.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "keyVocabulary": [
+      {
+        "englishTerm": "force",
+        "chineseTerm": "",
+        "englishDefinition": "A push or pull.",
+        "chineseDefinition": "推或拉。",
+        "category": 7,
+        "questionIds": ["missing-question"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "Name one force."
+      }
+    ]
+  }
+}
+```
