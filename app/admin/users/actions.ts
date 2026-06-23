@@ -66,6 +66,55 @@ function isUniqueConstraintError(error: unknown) {
   );
 }
 
+function revalidateUserManagement() {
+  revalidatePath("/admin/users");
+  revalidatePath("/");
+}
+
+async function getForcePurgeCounts(userId: number) {
+  const assignmentRemovalFilter = {
+    OR: [
+      { createdById: userId },
+      { class: { teacherId: userId } },
+    ],
+  };
+  const feedbackRemovalFilter = {
+    OR: [
+      { studentId: userId },
+      { assignment: { createdById: userId } },
+      { assignment: { class: { teacherId: userId } } },
+    ],
+  };
+
+  const [
+    classEnrollments,
+    submissions,
+    participantFeedback,
+    feedbackActions,
+    questionFeedback,
+    assignments,
+    teachingClasses,
+  ] = await Promise.all([
+    prisma.classEnrollment.count({ where: { studentId: userId } }),
+    prisma.submission.count({ where: { OR: [{ studentId: userId }, { assignment: { createdById: userId } }, { assignment: { class: { teacherId: userId } } }] } }),
+    prisma.participantFeedback.count({ where: feedbackRemovalFilter }),
+    prisma.feedbackFollowUpAction.count({ where: { participantFeedback: feedbackRemovalFilter } }),
+    prisma.questionFeedback.count({ where: { participantFeedback: feedbackRemovalFilter } }),
+    prisma.homeworkAssignment.count({ where: assignmentRemovalFilter }),
+    prisma.class.count({ where: { teacherId: userId } }),
+  ]);
+
+  return {
+    classEnrollments,
+    submissions,
+    participantFeedback,
+    feedbackActions,
+    questionFeedback,
+    assignments,
+    teachingClasses,
+  };
+}
+
 export async function createManagedUser(
   _previousState: AdminUserFormState,
   formData: FormData,
@@ -80,43 +129,22 @@ export async function createManagedUser(
     const accountStatus = parseStatus(readTrimmed(formData, "accountStatus") || AccountStatus.ACTIVE);
     const temporaryPassword = String(formData.get("temporaryPassword") ?? "");
 
-    if (!displayName) {
-      throw new Error("Enter a display name.");
-    }
-    if (!email) {
-      throw new Error("Enter an email or login identifier.");
-    }
-    if (!email.includes("@")) {
-      throw new Error("Use an email-style login identifier for now.");
-    }
-    if (temporaryPassword.length < 8) {
-      throw new Error("Enter a temporary password of at least 8 characters.");
-    }
+    if (!displayName) throw new Error("Enter a display name.");
+    if (!email) throw new Error("Enter an email or login identifier.");
+    if (!email.includes("@")) throw new Error("Use an email-style login identifier for now.");
+    if (temporaryPassword.length < 8) throw new Error("Enter a temporary password of at least 8 characters.");
 
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (existing) {
-      throw new Error("A user with this email/login identifier already exists.");
-    }
+    if (existing) throw new Error("A user with this email/login identifier already exists.");
 
     await prisma.user.create({
-      data: {
-        displayName,
-        email,
-        role,
-        accountStatus,
-        yearGroup: role === UserRole.STUDENT ? yearGroup : null,
-        passwordHash: hashPassword(temporaryPassword),
-        isDevelopmentUser: false,
-      },
+      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: hashPassword(temporaryPassword), isDevelopmentUser: false },
     });
 
-    revalidatePath("/admin/users");
-    revalidatePath("/");
+    revalidateUserManagement();
     return { error: null, success: `${displayName} was created.` };
   } catch (error) {
-    if (isUniqueConstraintError(error)) {
-      return { error: "A user with this email/login identifier already exists.", success: null };
-    }
+    if (isUniqueConstraintError(error)) return { error: "A user with this email/login identifier already exists.", success: null };
     return { error: error instanceof Error ? error.message : "Could not create this user.", success: null };
   }
 }
@@ -133,37 +161,45 @@ export async function updateManagedUser(
     const yearGroup = parseYearGroup(readTrimmed(formData, "yearGroup"));
     const accountStatus = parseStatus(readTrimmed(formData, "accountStatus"));
 
-    if (!Number.isInteger(userId) || userId <= 0) {
-      throw new Error("Choose a valid user to update.");
-    }
-    if (userId === adminUser?.id) {
-      throw new Error("Use a future admin profile workflow to edit your own account.");
-    }
-    if (!displayName) {
-      throw new Error("Enter a display name.");
-    }
+    if (!Number.isInteger(userId) || userId <= 0) throw new Error("Choose a valid user to update.");
+    if (userId === adminUser?.id) throw new Error("Use a future admin profile workflow to edit your own account.");
+    if (!displayName) throw new Error("Enter a display name.");
 
     const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    if (!target) {
-      throw new Error("This user no longer exists.");
-    }
-    if (target.role === UserRole.ADMIN) {
-      throw new Error("Seeded/admin accounts are read-only in this first management workflow.");
-    }
+    if (!target) throw new Error("This user no longer exists.");
+    if (target.role === UserRole.ADMIN) throw new Error("Seeded/admin accounts are read-only in this first management workflow.");
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { displayName, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null },
-    });
+    await prisma.user.update({ where: { id: userId }, data: { displayName, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null } });
 
-    revalidatePath("/admin/users");
-    revalidatePath("/");
+    revalidateUserManagement();
     return { error: null, success: `${displayName} was updated.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not update this user.", success: null };
   }
 }
 
+export async function reactivateManagedUser(
+  _previousState: AdminUserFormState,
+  formData: FormData,
+): Promise<AdminUserFormState> {
+  try {
+    const adminUser = await assertAdminUser();
+    const userId = Number(readTrimmed(formData, "userId"));
+    if (!Number.isInteger(userId) || userId <= 0) throw new Error("Choose a valid user to reactivate.");
+    if (userId === adminUser?.id) throw new Error("Your current admin account is already active.");
+
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, role: true, accountStatus: true } });
+    if (!target) throw new Error("This user no longer exists.");
+    if (target.role === UserRole.ADMIN) throw new Error("Admin status changes are blocked in this workflow.");
+    if (target.accountStatus === AccountStatus.ACTIVE) return { error: null, success: `${target.displayName} is already active.` };
+
+    await prisma.user.update({ where: { id: userId }, data: { accountStatus: AccountStatus.ACTIVE } });
+    revalidateUserManagement();
+    return { error: null, success: `${target.displayName} was reactivated.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not reactivate this user.", success: null };
+  }
+}
 
 export async function deleteOrDeactivateManagedUser(
   _previousState: AdminUserFormState,
@@ -173,30 +209,12 @@ export async function deleteOrDeactivateManagedUser(
     const adminUser = await assertAdminUser();
     const userId = Number(readTrimmed(formData, "userId"));
 
-    if (!Number.isInteger(userId) || userId <= 0) {
-      throw new Error("Choose a valid user to remove.");
-    }
-    if (userId === adminUser?.id) {
-      throw new Error("For safety, you cannot remove or deactivate your own active admin access here.");
-    }
+    if (!Number.isInteger(userId) || userId <= 0) throw new Error("Choose a valid user to remove.");
+    if (userId === adminUser?.id) throw new Error("For safety, you cannot remove or deactivate your own active admin access here.");
 
     const target = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        displayName: true,
-        role: true,
-        isDevelopmentUser: true,
-        accountStatus: true,
-        _count: {
-          select: {
-            teachingClasses: true,
-            classEnrollments: true,
-            createdAssignments: true,
-            homeworkSubmissions: true,
-            feedbackEntries: true,
-          },
-        },
-      },
+      select: { displayName: true, role: true, isDevelopmentUser: true, accountStatus: true, _count: { select: { teachingClasses: true, classEnrollments: true, createdAssignments: true, homeworkSubmissions: true, feedbackEntries: true } } },
     });
 
     if (!target) throw new Error("This user no longer exists.");
@@ -205,26 +223,66 @@ export async function deleteOrDeactivateManagedUser(
       if (activeAdminCount <= 1) throw new Error("Cannot remove the only active ADMIN user.");
       throw new Error("Admin removal is blocked in this first management workflow.");
     }
-    if (target.isDevelopmentUser) {
-      throw new Error("Seeded development users are protected. Create a non-seeded test user to test removal.");
-    }
+    if (target.isDevelopmentUser) throw new Error("Seeded development users are protected. Create a non-seeded test user to test removal.");
 
     const linkedDataCount = Object.values(target._count).reduce((total, count) => total + count, 0);
     if (linkedDataCount > 0) {
-      if (target.accountStatus === AccountStatus.DISABLED) {
-        return { error: null, success: `${target.displayName} already has linked data and is disabled.` };
-      }
+      if (target.accountStatus === AccountStatus.DISABLED) return { error: null, success: `${target.displayName} already has linked data and is disabled.` };
       await prisma.user.update({ where: { id: userId }, data: { accountStatus: AccountStatus.DISABLED } });
-      revalidatePath("/admin/users");
-      revalidatePath("/");
+      revalidateUserManagement();
       return { error: null, success: `${target.displayName} has linked history, so the account was safely deactivated instead of deleted.` };
     }
 
     await prisma.user.delete({ where: { id: userId } });
-    revalidatePath("/admin/users");
-    revalidatePath("/");
+    revalidateUserManagement();
     return { error: null, success: `${target.displayName} was permanently deleted because no linked data was found.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not remove this user.", success: null };
+  }
+}
+
+export async function forcePurgeManagedUser(
+  _previousState: AdminUserFormState,
+  formData: FormData,
+): Promise<AdminUserFormState> {
+  try {
+    const adminUser = await assertAdminUser();
+    const userId = Number(readTrimmed(formData, "userId"));
+    const confirmation = readTrimmed(formData, "confirmation");
+
+    if (!Number.isInteger(userId) || userId <= 0) throw new Error("Choose a valid user to force purge.");
+    if (!confirmation) throw new Error("Type DELETE or the user's email before force purging.");
+    if (userId === adminUser?.id) throw new Error("Force purging the currently active admin account is blocked.");
+
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, displayName: true, role: true, isDevelopmentUser: true } });
+    if (!target) throw new Error("This user no longer exists.");
+    if (target.isDevelopmentUser) throw new Error("Seeded development users are protected from force purge.");
+    if (target.role === UserRole.ADMIN) {
+      const activeAdminCount = await prisma.user.count({ where: { role: UserRole.ADMIN, accountStatus: AccountStatus.ACTIVE } });
+      if (activeAdminCount <= 1) throw new Error("Cannot force purge the only active ADMIN user.");
+      throw new Error("Force purging ADMIN accounts is blocked in this workflow.");
+    }
+    if (confirmation !== "DELETE" && normalizeEmail(confirmation) !== target.email) {
+      throw new Error("Confirmation did not match. Type DELETE or the user's email to force purge.");
+    }
+
+    const counts = await getForcePurgeCounts(userId);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.feedbackFollowUpAction.deleteMany({ where: { questionFeedback: { participantFeedback: { studentId: userId } } } });
+      await tx.feedbackFollowUpAction.deleteMany({ where: { participantFeedback: { studentId: userId } } });
+      await tx.questionFeedback.deleteMany({ where: { participantFeedback: { studentId: userId } } });
+      await tx.participantFeedback.deleteMany({ where: { studentId: userId } });
+      await tx.submission.deleteMany({ where: { studentId: userId } });
+      await tx.classEnrollment.deleteMany({ where: { studentId: userId } });
+      await tx.homeworkAssignment.deleteMany({ where: { createdById: userId } });
+      await tx.class.deleteMany({ where: { teacherId: userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    revalidateUserManagement();
+    return { error: null, success: `${target.displayName} was force purged. Removed ${counts.classEnrollments} enrolments, ${counts.submissions} submissions, ${counts.participantFeedback} participant feedback rows, ${counts.questionFeedback} question feedback rows, ${counts.feedbackActions} feedback actions, ${counts.assignments} assignments, and ${counts.teachingClasses} taught classes.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not force purge this user.", success: null };
   }
 }

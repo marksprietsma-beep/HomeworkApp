@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserRole } from "@prisma/client";
+import { AccountStatus, UserRole } from "@prisma/client";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
@@ -47,7 +47,7 @@ export default async function AdminUsersPage() {
   }
 
   const users = await prisma.user.findMany({
-    orderBy: [{ role: "asc" }, { displayName: "asc" }],
+    orderBy: [{ accountStatus: "asc" }, { role: "asc" }, { displayName: "asc" }],
     select: {
       id: true,
       email: true,
@@ -68,6 +68,22 @@ export default async function AdminUsersPage() {
     },
   });
 
+  const activeUsers = users.filter((user) => user.accountStatus === AccountStatus.ACTIVE);
+  const disabledUsers = users.filter((user) => user.accountStatus === AccountStatus.DISABLED);
+
+  function toManagedUser(user: (typeof users)[number]) {
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      accountStatus: user.accountStatus,
+      yearGroup: user.yearGroup,
+      isEditable: user.role !== UserRole.ADMIN && !user.isDevelopmentUser,
+      linkedDataSummary: linkedDataLabel(user._count),
+    };
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
       <Link href="/" className="text-sm font-semibold text-amber-700 hover:text-amber-800">← Back to dashboard</Link>
@@ -82,10 +98,11 @@ export default async function AdminUsersPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Accounts</p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-950">Current users</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Active accounts</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">Active users</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">These accounts remain available for normal class, enrolment, import, and local user-switching workflows.</p>
             </div>
-            <p className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{users.length} total</p>
+            <p className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">{activeUsers.length} active</p>
           </div>
           <div className="mt-5 max-h-[42rem] overflow-auto rounded-2xl border border-slate-200">
             <table className="min-w-[920px] text-left text-sm">
@@ -93,22 +110,30 @@ export default async function AdminUsersPage() {
                 <tr><th className="px-4 py-3">Display name</th><th className="px-4 py-3">Email/login</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Management</th></tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <EditableUserRow key={user.id} user={{
-                    id: user.id,
-                    email: user.email,
-                    displayName: user.displayName,
-                    role: user.role,
-                    accountStatus: user.accountStatus,
-                    yearGroup: user.yearGroup,
-                    isEditable: user.role !== UserRole.ADMIN && !user.isDevelopmentUser,
-                  }} />
-                ))}
+                {activeUsers.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">No active users found.</td></tr> : activeUsers.map((user) => <EditableUserRow key={user.id} user={toManagedUser(user)} />)}
               </tbody>
             </table>
           </div>
-          <div className="mt-6 grid gap-2 text-xs text-slate-500">
-            {users.map((user) => <p key={user.id}><span className="font-semibold text-slate-700">{user.displayName}:</span> {linkedDataLabel(user._count)}</p>)}
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Disabled accounts</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">Disabled users</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Disabled users are kept out of normal workflows until an admin reactivates them.</p>
+            </div>
+            <p className="rounded-full bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700">{disabledUsers.length} disabled</p>
+          </div>
+          <div className="mt-5 max-h-[34rem] overflow-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="min-w-[920px] text-left text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
+                <tr><th className="px-4 py-3">Display name</th><th className="px-4 py-3">Email/login</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Management</th></tr>
+              </thead>
+              <tbody>
+                {disabledUsers.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">No disabled users.</td></tr> : disabledUsers.map((user) => <EditableUserRow key={user.id} user={toManagedUser(user)} />)}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
