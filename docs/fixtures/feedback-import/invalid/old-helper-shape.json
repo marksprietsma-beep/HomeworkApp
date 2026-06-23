@@ -1,0 +1,25 @@
+{
+  "feedbackFormat": "homework-feedback",
+  "feedbackVersion": 1,
+  "sourceExport": {
+    "exportFormat": "homework-assignment-responses-v2",
+    "exportVersion": 2,
+    "generatedAt": "2026-06-23T12:00:00.000Z"
+  },
+  "assignment": {
+    "id": 42,
+    "title": "Fractions check",
+    "class": { "id": 7, "name": "Maths" }
+  },
+  "participants": [
+    {
+      "participant": { "id": 3, "name": "Student" },
+      "submission": { "id": 18 },
+      "overallFeedback": "Good effort.",
+      "strengths": ["Clear working."],
+      "targets": ["Explain each step."],
+      "questionFeedback": [],
+      "followUpActions": []
+    }
+  ]
+}

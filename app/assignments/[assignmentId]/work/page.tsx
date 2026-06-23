@@ -204,34 +204,26 @@ export default async function ParticipantWorkPage({
           </div>
         ) : null}
 
-        <section id="feedback" className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        {work.feedback ? (
+          <section id="feedback" className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                Imported feedback
+                Feedback
               </p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-                Teacher-imported ChatGPT feedback
+                Teacher feedback
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                This feedback was imported and saved by your teacher from ChatGPT output.
-                It was not generated live inside this app.
+                Your teacher has added feedback for this assignment.
               </p>
             </div>
-            {work.feedback ? (
-              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
-                <p className="font-semibold">Imported {formatDate(work.feedback.feedbackImport.importedAt)}</p>
-                {work.feedback.feedbackImport.generatedBy ? (
-                  <p className="mt-1">Source: {work.feedback.feedbackImport.generatedBy}</p>
-                ) : null}
-                {work.feedback.feedbackImport.generatedAt ? (
-                  <p className="mt-1">Generated: {formatDate(work.feedback.feedbackImport.generatedAt)}</p>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+              <p className="font-semibold">Added {formatDate(work.feedback.feedbackImport.importedAt)}</p>
+            </div>
           </div>
 
-          {work.feedback ? (
+
             <div className="mt-5 grid gap-5">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-lg font-semibold text-slate-950">Overall feedback</h3>
@@ -346,14 +338,8 @@ export default async function ParticipantWorkPage({
                 )}
               </div>
             </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-              Feedback is not available yet for this assignment. When your teacher imports
-              ChatGPT feedback for your submitted work, it will appear here for your
-              selected participant view only.
-            </div>
-          )}
-        </section>
+          </section>
+        ) : null}
       </section>
 
       {work.keyVocabulary.length > 0 ? (
