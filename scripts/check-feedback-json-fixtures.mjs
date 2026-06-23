@@ -28,6 +28,14 @@ const invalidFixtures = [
     path: "docs/fixtures/feedback-import/invalid/not-json.json",
     expectedErrors: ["Input is not valid JSON"],
   },
+  {
+    path: "docs/fixtures/feedback-import/invalid/old-helper-shape.json",
+    expectedErrors: [
+      "Use root-level participantFeedback, not participants",
+      "Use root-level class, not assignment.class",
+      "class must be an object",
+    ],
+  },
 ];
 const context = {
   assignmentId: 42,
@@ -87,6 +95,29 @@ for (const fixturePath of validFixtures) {
 }
 for (const fixture of invalidFixtures) {
   await checkInvalidFixture(fixture);
+}
+
+const responseExportPage = await readText("app/classes/[classId]/assignments/[assignmentId]/responses/export/page.tsx");
+const requiredPromptText = [
+  "feedbackFormat",
+  "feedbackVersion",
+  "sourceExport",
+  "assignment",
+  "class",
+  "participantFeedback",
+  "Do not return root-level participants",
+  "Do not nest class inside assignment",
+  "Do not rename participantFeedback to participants",
+  "Return valid importable feedback JSON only",
+  "participant/source participant id",
+];
+for (const expectedText of requiredPromptText) {
+  if (!responseExportPage.includes(expectedText)) {
+    fail(`Response export feedback helper prompt is missing required text: ${expectedText}`);
+  }
+}
+if (failureCount === 0) {
+  pass("response export feedback helper prompt includes import-contract guardrails");
 }
 
 if (failureCount > 0) {

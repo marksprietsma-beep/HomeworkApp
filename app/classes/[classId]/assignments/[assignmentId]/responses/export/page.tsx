@@ -66,19 +66,31 @@ export default async function ResponseExportPage({
   }
 
   const jsonExport = JSON.stringify(exportData, null, 2);
-  const feedbackChatGptPrompt = `Use the exported Homework App response JSON below as the only source data. Return only valid importable Homework App feedback JSON. Do not wrap the answer in Markdown or add commentary.
+  const feedbackChatGptPrompt = `Use the exported Homework App response JSON below as the only source data. Return only valid importable Homework App feedback JSON. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+
+Required root object shape:
+- feedbackFormat
+- feedbackVersion
+- sourceExport
+- assignment
+- class
+- participantFeedback
 
 Feedback requirements:
 - Use feedbackFormat "homework-feedback" and feedbackVersion 1.
 - Copy sourceExport.exportFormat, sourceExport.exportVersion, and sourceExport.generatedAt from the export.
-- Preserve assignment.id, assignment.class.id, participant.id, submission.id, and question.id values exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
-- Include assignment title and class name where available for teacher review.
-- For each participant who should receive feedback, include overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
-- Question-level feedback must use exported question IDs and may include strengths, targets, and follow-up actions.
+- The assignment object must be at the root and include the exported assignment.id exactly. Include assignment.title where available.
+- The class object must be at the root and include the exported assignment.class.id exactly. Include assignment.class.name where available.
+- The participantFeedback array must be at the root. Do not rename participantFeedback to participants.
+- Do not return root-level participants.
+- Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
+- Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
+- For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
+- Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
 - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 
-Return the feedback JSON only. After this prompt, paste the exported response JSON.`;
+Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.`;
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
