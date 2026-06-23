@@ -1,9 +1,11 @@
 "use server";
 
 import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
+import { hashPassword } from "../../../lib/passwords";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { canManageClasses } from "../../../lib/permissions";
@@ -283,4 +285,193 @@ function revalidateClassDetail(classId: number) {
   revalidatePath("/");
   revalidatePath(`/classes/${classId}`);
   revalidatePath("/admin/classes");
+}
+
+export type StudentCsvImportRowStatus = "CREATE" | "ENROLL_EXISTING" | "ALREADY_ENROLLED" | "INVALID" | "CONFLICT";
+
+export type StudentCsvImportPreviewRow = {
+  rowNumber: number;
+  displayName: string;
+  email: string;
+  externalId: string;
+  status: StudentCsvImportRowStatus;
+  messages: string[];
+};
+
+export type StudentCsvImportState = {
+  error: string | null;
+  success: string | null;
+  csvText?: string;
+  rows: StudentCsvImportPreviewRow[];
+  summary: null | {
+    createdUsers: number;
+    existingStudentsEnrolled: number;
+    alreadyEnrolled: number;
+    invalidRows: number;
+    conflicts: number;
+  };
+};
+
+type ParsedCsvRow = {
+  rowNumber: number;
+  displayName: string;
+  email: string;
+  externalId: string;
+  messages: string[];
+};
+
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  if (inQuotes) {
+    throw new Error("CSV contains an unclosed quoted value.");
+  }
+
+  cells.push(cell.trim());
+  return cells;
+}
+
+function headerIndex(headers: string[], names: string[]) {
+  return headers.findIndex((header) => names.includes(header));
+}
+
+function readCell(cells: string[], index: number) {
+  return index >= 0 ? (cells[index] ?? "").trim() : "";
+}
+
+function parseStudentCsv(csvText: string): ParsedCsvRow[] {
+  const lines = csvText.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length < 2) throw new Error("Paste a CSV header row and at least one student row.");
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+  const displayNameIndex = headerIndex(headers, ["displayname", "name", "studentname"]);
+  const firstNameIndex = headerIndex(headers, ["firstname", "first_name", "forename"]);
+  const lastNameIndex = headerIndex(headers, ["lastname", "last_name", "surname"]);
+  const emailIndex = headerIndex(headers, ["email", "username", "login", "loginidentifier"]);
+  const externalIdIndex = headerIndex(headers, ["studentid", "student_id", "externalid", "external_id"]);
+
+  if (displayNameIndex === -1 && (firstNameIndex === -1 || lastNameIndex === -1)) {
+    throw new Error("CSV must include displayName, or both firstName and lastName columns.");
+  }
+  if (emailIndex === -1) {
+    throw new Error("CSV must include email, username, or login column.");
+  }
+
+  return lines.slice(1).map((line, index) => {
+    const cells = parseCsvLine(line);
+    const displayName = readCell(cells, displayNameIndex) || [readCell(cells, firstNameIndex), readCell(cells, lastNameIndex)].filter(Boolean).join(" ");
+    const email = readCell(cells, emailIndex).toLowerCase();
+    const externalId = readCell(cells, externalIdIndex);
+    const messages: string[] = [];
+
+    if (!displayName) messages.push("Missing display name.");
+    if (!email) messages.push("Missing email/login identifier.");
+    if (email && !email.includes("@")) messages.push("Email/login identifier must be email-style for now.");
+
+    return { rowNumber: index + 2, displayName, email, externalId, messages };
+  });
+}
+
+async function buildStudentCsvPreview(classId: number, csvText: string): Promise<StudentCsvImportPreviewRow[]> {
+  await requireManagedClass(classId);
+  const parsedRows = parseStudentCsv(csvText);
+  const seen = new Map<string, number>();
+  for (const row of parsedRows) {
+    if (!row.email) continue;
+    const firstSeen = seen.get(row.email);
+    if (firstSeen) row.messages.push(`Duplicate email/login in CSV; first seen on row ${firstSeen}.`);
+    else seen.set(row.email, row.rowNumber);
+  }
+
+  const users = await prisma.user.findMany({
+    where: { email: { in: [...seen.keys()] } },
+    include: { classEnrollments: { where: { classId }, select: { id: true } } },
+  });
+  const usersByEmail = new Map(users.map((user) => [user.email, user]));
+
+  return parsedRows.map((row) => {
+    const user = usersByEmail.get(row.email);
+    const messages = [...row.messages];
+    let status: StudentCsvImportRowStatus = "CREATE";
+
+    if (messages.length > 0) status = "INVALID";
+    else if (user && user.role !== UserRole.STUDENT) {
+      status = "CONFLICT";
+      messages.push(`Existing account is ${user.role}, not STUDENT.`);
+    } else if (user && user.accountStatus !== AccountStatus.ACTIVE) {
+      status = "CONFLICT";
+      messages.push(`Existing STUDENT account is ${user.accountStatus}, not ACTIVE.`);
+    } else if (user?.classEnrollments.length) {
+      status = "ALREADY_ENROLLED";
+      messages.push("Student is already enrolled in this class; row will be skipped.");
+    } else if (user) {
+      status = "ENROLL_EXISTING";
+      messages.push("Existing active STUDENT will be enrolled.");
+    } else {
+      messages.push("New STUDENT account will be created and enrolled.");
+    }
+
+    return { ...row, status, messages };
+  });
+}
+
+export async function previewStudentCsvImport(classId: number, _previousState: StudentCsvImportState, formData: FormData): Promise<StudentCsvImportState> {
+  const csvText = String(formData.get("csvText") ?? "").trim();
+  try {
+    if (!csvText) throw new Error("Paste CSV text before previewing.");
+    const rows = await buildStudentCsvPreview(classId, csvText);
+    return { error: null, success: `Previewed ${rows.length} CSV row${rows.length === 1 ? "" : "s"}.`, csvText, rows, summary: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not preview CSV.", success: null, csvText, rows: [], summary: null };
+  }
+}
+
+export async function importStudentsToClassFromCsv(classId: number, _previousState: StudentCsvImportState, formData: FormData): Promise<StudentCsvImportState> {
+  const csvText = String(formData.get("csvText") ?? "").trim();
+  try {
+    const rows = await buildStudentCsvPreview(classId, csvText);
+    const summary = { createdUsers: 0, existingStudentsEnrolled: 0, alreadyEnrolled: 0, invalidRows: 0, conflicts: 0 };
+
+    for (const row of rows) {
+      if (row.status === "INVALID") { summary.invalidRows += 1; continue; }
+      if (row.status === "CONFLICT") { summary.conflicts += 1; continue; }
+      if (row.status === "ALREADY_ENROLLED") { summary.alreadyEnrolled += 1; continue; }
+      if (row.status === "ENROLL_EXISTING") {
+        const user = await prisma.user.findUnique({ where: { email: row.email }, select: { id: true } });
+        if (user) {
+          await prisma.classEnrollment.upsert({ where: { classId_studentId: { classId, studentId: user.id } }, update: {}, create: { classId, studentId: user.id } });
+          summary.existingStudentsEnrolled += 1;
+        }
+      }
+      if (row.status === "CREATE") {
+        const user = await prisma.user.create({ data: { displayName: row.displayName, email: row.email, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
+        await prisma.classEnrollment.create({ data: { classId, studentId: user.id } });
+        summary.createdUsers += 1;
+      }
+    }
+
+    revalidateClassDetail(classId);
+    return { error: null, success: "CSV import saved.", csvText, rows: await buildStudentCsvPreview(classId, csvText), summary };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not import CSV.", success: null, csvText, rows: [], summary: null };
+  }
 }
