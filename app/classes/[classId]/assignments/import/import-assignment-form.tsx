@@ -86,7 +86,9 @@ const placeholderJson = `{
 
 const assignmentChatGptPrompt = `Create an assignment for Homework App. Return only valid JSON. Do not wrap the answer in Markdown or add commentary.
 
-Teacher choices to use:
+Separate teacher generation context from student-facing assignment content. Use the teacher choices below to create the homework, but do not copy these choices, metadata, planning notes, syllabus context, question mix, difficulty, marks expectations, or glossary choices into assignment.instructions.
+
+Teacher generation context to use:
 - Subject: [fill in subject]
 - Topic: [fill in topic]
 - Syllabus context or learning objectives: [fill in syllabus/learning objectives]
@@ -100,13 +102,15 @@ Teacher choices to use:
 Use the Homework App assignment import JSON v1 structure:
 - Root object with formatVersion set to "assignment-import-v1" and an assignment object.
 - Assignment fields: title, instructions, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
+- assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."
+- Do not put teacher generation context into assignment.instructions. If metadata genuinely belongs in the JSON, express it through title, questions, points, dueDate, status, or keyVocabulary instead of adding a long teacher-facing paragraph.
 - Questions must have stable string ids such as q1, sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, and optional positive integer points/marks.
 - Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions.
 - MULTIPLE_CHOICE questions must include options with stable ids and text. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
 - Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, category, and questionIds.
 
-Do not include answers, rubrics, scores, explanations outside the JSON, or unsupported fields. Make the content appropriate for the teacher choices above.`;
+Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.`;
 
 const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
   OPEN_TEXT: "Open text",
@@ -162,7 +166,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
         </p>
         <ChatGptJsonHelper
           title="Ask ChatGPT for assignment JSON"
-          description="Generic prompt for any subject. Fill in your topic, year group, question mix, difficulty, marks, and vocabulary needs."
+          description="Generic prompt for any subject. Fill in teacher context, then ask ChatGPT to keep assignment.instructions short and student-facing."
           prompt={assignmentChatGptPrompt}
           docsHref="/docs/assignment-import-json-v1.md"
           docsLabel="Open assignment JSON documentation"
@@ -222,7 +226,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
             <div className="sticky top-3 z-10 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-slate-200/70 backdrop-blur">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-emerald-900">
-                  JSON is valid. Review the full preview, then save when ready.
+                  JSON is valid. Review the student instructions and status, then save when ready.
                 </p>
                 <button
                   type="submit"
@@ -243,8 +247,14 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                   <h3 className="mt-2 text-xl font-bold text-slate-950">
                     {assignment.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Student-facing instructions
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
                     {assignment.instructions}
+                  </p>
+                  <p className="mt-3 text-xs leading-5 text-slate-500">
+                    Keep this concise for students. Teacher generation context should stay out of instructions.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:min-w-80 lg:grid-cols-2">

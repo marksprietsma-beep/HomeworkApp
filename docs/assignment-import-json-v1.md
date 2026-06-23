@@ -6,7 +6,7 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
-> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
+> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
 
 ## Stable root shape
 
@@ -48,7 +48,7 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | Field | Required | Type | Notes |
 | --- | --- | --- | --- |
 | `title` | Yes | string | Short teacher-facing assignment title. Must not be empty after trimming. |
-| `instructions` | Yes | string | Student-facing assignment instructions. Must not be empty after trimming. |
+| `instructions` | Yes | string | Concise student-facing assignment instructions. Must not be empty after trimming. Do not include teacher generation context, syllabus notes, question mix, difficulty, marks expectations, or glossary choices here. |
 | `dueDate` | No | string or null | Optional local due date in `YYYY-MM-DD` format. Use `null` or omit the field when there is no due date. Do not include times or time zones in v1. |
 | `status` | Yes | string | Must be `DRAFT` or `PUBLISHED`. ChatGPT should normally use `DRAFT` unless Mark asks for a published assignment. |
 | `questions` | Yes | array | Ordered list of questions. Must contain at least one question. |

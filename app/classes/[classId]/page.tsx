@@ -1,3 +1,4 @@
+import { HomeworkAssignmentStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClassDetailData } from "../../../lib/class-detail";
@@ -11,6 +12,7 @@ import {
   sortOptions,
   statusFilterOptions,
 } from "../../../lib/assignment-list-filters";
+import { updateAssignmentPublishStatus } from "./assignments/[assignmentId]/actions";
 import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
 import { canManageClasses } from "../../../lib/permissions";
 
@@ -108,6 +110,9 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
 
   const filteredAssignments = filterAndSortAssignments(classDetail.assignments, filters);
   const canManageRoster = canManageClasses(selectedUser);
+  const canPublishAssignments =
+    selectedUser?.role === "ADMIN" ||
+    (selectedUser?.role === "TEACHER" && selectedUser.id === classDetail.teacher.id);
   const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
   const removeStudentAction = removeStudentFromClassRoster.bind(null, classDetail.id);
 
@@ -208,9 +213,18 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       >
                         {assignment.title}
                       </Link>
-                      <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                        {assignment.status} · Due: {formatDate(assignment.dueAt)}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
+                          assignment.status === HomeworkAssignmentStatus.PUBLISHED
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-900"
+                        }`}>
+                          {assignment.status}
+                        </span>
+                        <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                          Due: {formatDate(assignment.dueAt)}
+                        </span>
+                      </div>
                     </div>
                     <p className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
                       {assignment.questionCount} questions · {assignment.submissionCount} submissions
@@ -221,12 +235,25 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       {assignment.description}
                     </p>
                   ) : null}
-                  <Link
-                    href={`/classes/${classDetail.id}/assignments/${assignment.id}`}
-                    className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                  >
-                    View homework details
-                  </Link>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      href={`/classes/${classDetail.id}/assignments/${assignment.id}`}
+                      className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      View homework details
+                    </Link>
+                    {canPublishAssignments && assignment.status === HomeworkAssignmentStatus.DRAFT ? (
+                      <form action={updateAssignmentPublishStatus.bind(null, classDetail.id, assignment.id)}>
+                        <input type="hidden" name="status" value={HomeworkAssignmentStatus.PUBLISHED} />
+                        <button
+                          type="submit"
+                          className="inline-flex rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
+                        >
+                          Publish assignment
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
