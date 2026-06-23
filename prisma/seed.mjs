@@ -1,4 +1,4 @@
-import { HomeworkAssignmentStatus, HomeworkQuestionType, PrismaClient, SubmissionStatus, UserRole, AccountStatus } from '@prisma/client';
+import { ClassStatus, HomeworkAssignmentStatus, HomeworkQuestionType, PrismaClient, SubmissionStatus, UserRole, AccountStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -53,6 +53,7 @@ const classSeed = {
   name: 'Development Maths Class',
   subject: 'Maths',
   description: 'Fake local class for testing teacher and student workflows.',
+  status: ClassStatus.ACTIVE,
 };
 
 const homeworkSeed = {
@@ -104,6 +105,8 @@ async function main() {
     where: { name: classSeed.name },
     update: {
       description: classSeed.description,
+      subject: classSeed.subject,
+      status: classSeed.status,
       teacherId: seededTeacher.id,
     },
     create: {

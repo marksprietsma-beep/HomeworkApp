@@ -25,7 +25,7 @@ export function canManageUsers(user: RoleBearingUser | null | undefined) {
 }
 
 export function canManageClasses(user: RoleBearingUser | null | undefined) {
-  return isAdmin(user) || isTeacher(user);
+  return isAdmin(user);
 }
 
 export function canTeachClass(
