@@ -16,7 +16,7 @@ export type AssignmentImportGlossaryItem = {
 export type AssignmentImportQuestion = {
   id: string;
   order: number;
-  type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
+  type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
   points: number | null;
   options: { id: string; text: string }[];

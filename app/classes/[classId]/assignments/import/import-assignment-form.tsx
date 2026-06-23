@@ -1,10 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
-import { importAssignmentForClass } from "./actions";
+import { importAssignmentForClass, type ImportAssignmentActionState } from "./actions";
 
 type ImportAssignmentFormProps = {
   classId: number;
@@ -22,7 +22,7 @@ type AssignmentImportGlossaryItem = {
 type AssignmentImportQuestion = {
   id: string;
   order: number;
-  type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
+  type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
   points: number | null;
   options: { id: string; text: string }[];
@@ -92,7 +92,7 @@ Teacher choices to use:
 - Syllabus context or learning objectives: [fill in syllabus/learning objectives]
 - Student level/year group: [fill in year group or level]
 - Number of questions: [fill in count]
-- Desired question mix: [for example, short answer, long answer, multiple choice]
+- Desired question mix: [for example, short written answer, longer written answer, multiple choice]
 - Difficulty: [fill in difficulty]
 - Marks/points expectations: [fill in total marks or per-question guidance]
 - Bilingual key vocabulary/glossary wanted? [yes/no; if yes, include English and Chinese terms/definitions]
@@ -100,8 +100,9 @@ Teacher choices to use:
 Use the Homework App assignment import JSON v1 structure:
 - Root object with formatVersion set to "assignment-import-v1" and an assignment object.
 - Assignment fields: title, instructions, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
-- Questions must have stable string ids such as q1, sequential order values, type values of OPEN_TEXT, LONG_TEXT, or MULTIPLE_CHOICE, student-facing prompt text, and optional positive integer points/marks.
-- MULTIPLE_CHOICE questions must include options with stable ids and text. Do not add options to OPEN_TEXT or LONG_TEXT questions.
+- Questions must have stable string ids such as q1, sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, and optional positive integer points/marks.
+- Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions.
+- MULTIPLE_CHOICE questions must include options with stable ids and text. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
 - Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, category, and questionIds.
 
@@ -109,7 +110,6 @@ Do not include answers, rubrics, scores, explanations outside the JSON, or unsup
 
 const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
   OPEN_TEXT: "Open text",
-  LONG_TEXT: "Long text",
   MULTIPLE_CHOICE: "Multiple choice",
 };
 
@@ -126,7 +126,10 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
     () => parseAssignmentImportJson(rawJson),
     [rawJson],
   );
-  const formAction = importAssignmentForClass.bind(null, classId);
+  const [actionState, formAction, isPending] = useActionState<
+    ImportAssignmentActionState,
+    FormData
+  >(importAssignmentForClass.bind(null, classId), null);
   const hasInput = rawJson.trim().length > 0;
   const assignment = (
     parseResult.ok ? parseResult.assignment : null
@@ -210,6 +213,11 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
           </div>
         ) : assignment ? (
           <form action={formAction} className="mt-5 grid gap-5">
+            {actionState ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-800" role="alert">
+                {actionState.message}
+              </div>
+            ) : null}
             <input type="hidden" name="rawJson" value={rawJson} />
             <div className="sticky top-3 z-10 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-slate-200/70 backdrop-blur">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -218,9 +226,10 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                 </p>
                 <button
                   type="submit"
-                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  disabled={isPending}
+                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                  Confirm and create
+                  {isPending ? "Creating…" : "Confirm and create"}
                 </button>
               </div>
             </div>
@@ -439,9 +448,10 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
               <button
                 type="submit"
-                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                disabled={isPending}
+                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                Confirm and create homework
+                {isPending ? "Creating…" : "Confirm and create homework"}
               </button>
             </div>
           </form>

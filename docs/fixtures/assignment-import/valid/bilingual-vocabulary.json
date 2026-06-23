@@ -34,7 +34,7 @@
       {
         "id": "q2",
         "order": 2,
-        "type": "LONG_TEXT",
+        "type": "OPEN_TEXT",
         "prompt": "Explain how friction affects a bicycle slowing down.",
         "points": 2
       }

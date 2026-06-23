@@ -16,7 +16,7 @@
       {
         "id": "q2",
         "order": 2,
-        "type": "LONG_TEXT",
+        "type": "OPEN_TEXT",
         "prompt": "Explain how to compare 3/4 and 5/8 without using a calculator.",
         "image": {
           "path": "teacher-provided fraction wall image",

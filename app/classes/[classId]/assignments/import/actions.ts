@@ -18,7 +18,7 @@ type AssignmentImportGlossaryItem = {
 
 type AssignmentImportQuestion = {
   order: number;
-  type: "OPEN_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE";
+  type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
   points: number | null;
   options: { id: string; text: string }[];
@@ -47,44 +47,59 @@ function isUploadedFile(value: FormDataEntryValue | undefined): value is File {
   return typeof value === "object" && value !== null && "arrayBuffer" in value && value.size > 0;
 }
 
-export async function importAssignmentForClass(classId: number, formData: FormData) {
+export type ImportAssignmentActionState = {
+  ok: false;
+  message: string;
+} | null;
+
+function validationMessage(errors: { path: string; message: string }[]) {
+  return `Fix the assignment JSON before saving: ${errors
+    .map((error) => `${error.path} ${error.message}`)
+    .join("; ")}`;
+}
+
+export async function importAssignmentForClass(
+  classId: number,
+  _previousState: ImportAssignmentActionState,
+  formData: FormData,
+): Promise<ImportAssignmentActionState> {
   if (!Number.isInteger(classId)) {
-    throw new Error("Choose an existing class.");
+    return { ok: false, message: "Choose an existing class before importing assignments." };
   }
 
   const rawJson = String(formData.get("rawJson") ?? "");
   const parseResult = parseAssignmentImportJson(rawJson);
 
   if (!parseResult.ok) {
-    throw new Error(
-      `Fix the assignment JSON before saving: ${parseResult.errors
-        .map((error) => `${error.path} ${error.message}`)
-        .join("; ")}`,
-    );
+    return { ok: false, message: validationMessage(parseResult.errors) };
   }
 
   const importedAssignment = parseResult.assignment as AssignmentImportAssignment | null;
 
   if (!importedAssignment) {
-    throw new Error("Fix the assignment JSON before saving.");
+    return { ok: false, message: "Fix the assignment JSON before saving." };
   }
 
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
 
-  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-    throw new Error("Switch to the seeded teacher user to import assignments.");
+  if (!selectedUser) {
+    return { ok: false, message: "Select an admin or assigned teacher before importing assignments." };
+  }
+
+  if (selectedUser.role === UserRole.STUDENT) {
+    return { ok: false, message: "Students cannot import assignments. Switch to an admin or assigned teacher." };
   }
 
   const classItem = await prisma.class.findFirst({
     where: {
       id: classId,
-      teacherId: selectedUser.id,
+      ...(selectedUser.role === UserRole.ADMIN ? {} : { teacherId: selectedUser.id }),
     },
     select: { id: true },
   });
 
   if (!classItem) {
-    throw new Error("The selected teacher does not teach this class.");
+    return { ok: false, message: "Only admins or the teacher assigned to this class can import assignments." };
   }
 
   const imageFiles = formData.getAll("questionImageFile");
