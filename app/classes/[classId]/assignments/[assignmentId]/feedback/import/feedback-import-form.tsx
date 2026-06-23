@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
+import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT } from "../../../../../../../lib/feedback-helper-prompt";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
 import { saveFeedbackImport } from "./actions";
 
@@ -57,25 +58,8 @@ const placeholderJson = `{
   "participantFeedback": []
 }`;
 
-const feedbackImportChatGptPrompt = `Use the exported Homework App response JSON as source data. Return only valid importable Homework App feedback JSON. Do not wrap the answer in Markdown or add commentary.
+const feedbackImportChatGptPrompt = FEEDBACK_HELPER_PROMPT;
 
-You must preserve IDs exactly from the exported response data:
-- assignment.id
-- assignment.class.id
-- participant.id
-- submission.id where present
-- question.id for question-level feedback
-
-Use the Homework App feedback JSON v1 structure:
-- feedbackFormat must be "homework-feedback" and feedbackVersion must be 1.
-- sourceExport should copy exportFormat, exportVersion, and generatedAt from the reviewed export.
-- assignment and class should include the copied IDs and optional title/name.
-- participantFeedback should include entries for participants who need feedback.
-- Each participant feedback entry should include participant, submission or null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
-- Question-level feedback should include questionId, optional questionOrder, feedback, strengths, targets, and optional followUpActions.
-- Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
-
-Do not change the exported IDs, do not add unsupported fields, and return the feedback JSON only.`;
 
 function List({ items }: { items: string[] }) {
   return items.length ? (
@@ -125,7 +109,7 @@ export function FeedbackImportForm({
         </p>
         <ChatGptJsonHelper
           title="Ask ChatGPT for importable feedback JSON"
-          description="Use this with the response export. The prompt emphasizes ID preservation and the current feedback JSON contract."
+          description={FEEDBACK_HELPER_DESCRIPTION}
           prompt={feedbackImportChatGptPrompt}
           docsHref="/docs/feedback-json-v1.md"
           docsLabel="Open feedback JSON documentation"
