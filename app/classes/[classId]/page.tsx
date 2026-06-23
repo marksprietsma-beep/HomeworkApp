@@ -11,6 +11,7 @@ import {
   statusFilterOptions,
 } from "../../../lib/assignment-list-filters";
 import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
+import { canManageClasses } from "../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,8 +106,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
 
   const filteredAssignments = filterAndSortAssignments(classDetail.assignments, filters);
-  const canManageRoster =
-    selectedUser?.role === "TEACHER" && selectedUser.id === classDetail.teacher.id;
+  const canManageRoster = canManageClasses(selectedUser);
   const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
   const removeStudentAction = removeStudentFromClassRoster.bind(null, classDetail.id);
 
@@ -238,8 +238,8 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           </p>
           <h2 className="mt-2 text-2xl font-bold text-slate-950">Students</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Add existing student users to this class or remove them from the
-            roster without deleting their account or historical submissions.
+            Admins can add existing active student users to this class or remove them from the
+            roster without deleting their account, submissions, or feedback.
           </p>
 
           {canManageRoster ? (
@@ -249,7 +249,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               </label>
               {classDetail.availableStudents.length === 0 ? (
                 <p className="mt-2 text-sm text-slate-700">
-                  Every existing student user is already enrolled in this class.
+                  Every active student user is already enrolled in this class.
                 </p>
               ) : (
                 <div className="mt-3 flex flex-col gap-3">
@@ -262,7 +262,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                     <option value="">Search/select a student…</option>
                     {classDetail.availableStudents.map((student) => (
                       <option key={student.id} value={student.id}>
-                        {student.displayName} · {student.email}
+                        {student.displayName} · {student.email} · {student.accountStatus}
                       </option>
                     ))}
                   </select>
@@ -277,9 +277,10 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             </form>
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-              Roster management is only available when the temporary local
-              switcher is viewing as {classDetail.teacher.displayName}, the
-              teacher who owns this class.
+              Manual enrolment is available to ADMIN users only. Switch the
+              temporary local development user to an ADMIN account to add or
+              remove students. Teachers can still view their class roster and
+              assignments.
             </div>
           )}
 
@@ -296,7 +297,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                       <p className="font-semibold text-slate-950">{user.displayName}</p>
                       <p className="mt-1 text-sm text-slate-600">{user.email}</p>
                       <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                        {user.role} · Enrolled {formatDate(user.enrolledAt)}
+                        {user.role} · {user.accountStatus} · Enrolled {formatDate(user.enrolledAt)}
                       </p>
                     </div>
                     {canManageRoster ? (
@@ -315,6 +316,13 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               ))}
             </ul>
           )}
+
+          <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-900">
+            <p className="font-semibold">Removal behaviour</p>
+            <p className="mt-1">
+              Removing a student only deletes the class enrolment row. The student account, submitted work, and imported feedback remain in the database for historical teacher records. Removed students stop seeing this class in assigned-work views because those views use current enrolments.
+            </p>
+          </div>
         </section>
       </div>
     </main>

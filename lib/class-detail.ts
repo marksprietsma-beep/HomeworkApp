@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { AccountStatus, UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type ClassDetailData = {
@@ -16,12 +16,14 @@ export type ClassDetailData = {
     displayName: string;
     email: string;
     role: string;
+    accountStatus: string;
     enrolledAt: Date;
   }[];
   availableStudents: {
     id: number;
     displayName: string;
     email: string;
+    accountStatus: string;
   }[];
   assignments: {
     id: number;
@@ -63,6 +65,7 @@ export async function getClassDetailData(
               displayName: true,
               email: true,
               role: true,
+              accountStatus: true,
             },
           },
         },
@@ -95,6 +98,7 @@ export async function getClassDetailData(
   const availableStudents = await prisma.user.findMany({
     where: {
       role: UserRole.STUDENT,
+      accountStatus: AccountStatus.ACTIVE,
       id: { notIn: enrolledStudentIds.length > 0 ? enrolledStudentIds : [0] },
     },
     orderBy: [{ displayName: "asc" }, { email: "asc" }],
@@ -102,6 +106,7 @@ export async function getClassDetailData(
       id: true,
       displayName: true,
       email: true,
+      accountStatus: true,
     },
   });
 
@@ -127,6 +132,7 @@ export async function getClassDetailData(
       displayName: enrollment.student.displayName,
       email: enrollment.student.email,
       role: enrollment.student.role,
+      accountStatus: enrollment.student.accountStatus,
       enrolledAt: enrollment.createdAt,
     })),
     availableStudents,
