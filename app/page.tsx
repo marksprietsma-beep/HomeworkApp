@@ -303,12 +303,20 @@ function DashboardShell({
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             {isAdmin(selectedUser) ? (
-              <Link
-                href="/admin/users"
-                className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
-              >
-                Manage users
-              </Link>
+              <>
+                <Link
+                  href="/admin/users"
+                  className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+                >
+                  Manage users
+                </Link>
+                <Link
+                  href="/admin/classes"
+                  className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                >
+                  Manage classes
+                </Link>
+              </>
             ) : null}
             {isTeacher(selectedUser) ? (
               <Link
