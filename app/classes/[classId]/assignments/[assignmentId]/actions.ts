@@ -22,23 +22,27 @@ export async function updateAssignmentPublishStatus(
 
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
 
-  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-    throw new Error("Switch to the class teacher user to change assignment status.");
+  if (!selectedUser || selectedUser.role === UserRole.STUDENT) {
+    throw new Error("Switch to an admin or the assigned teacher to change assignment status.");
   }
 
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: {
       id: assignmentId,
       classId,
-      class: {
-        teacherId: selectedUser.id,
-      },
+      ...(selectedUser.role === UserRole.ADMIN
+        ? {}
+        : {
+            class: {
+              teacherId: selectedUser.id,
+            },
+          }),
     },
     select: { id: true },
   });
 
   if (!assignment) {
-    throw new Error("Only the teacher who owns this class can change assignment status.");
+    throw new Error("Only admins or the teacher who owns this class can change assignment status.");
   }
 
   await prisma.homeworkAssignment.update({
@@ -50,6 +54,10 @@ export async function updateAssignmentPublishStatus(
   revalidatePath(`/classes/${classId}`);
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}`);
   revalidatePath(`/assignments/${assignmentId}/work`);
+
+  redirect(
+    `/classes/${classId}/assignments/${assignmentId}?statusUpdated=${requestedStatus.toLowerCase()}`,
+  );
 }
 
 export async function duplicateAssignmentForClass(

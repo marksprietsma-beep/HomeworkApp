@@ -15,6 +15,7 @@ type HomeworkDetailPageProps = {
   }>;
   searchParams?: Promise<{
     duplicated?: string;
+    statusUpdated?: string;
   }>;
 };
 
@@ -80,7 +81,8 @@ export default async function HomeworkDetailPage({
   }
 
   const canManagePublishStatus =
-    selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id;
+    selectedUser?.role === "ADMIN" ||
+    (selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id);
   const canEditAssignment = canManagePublishStatus;
   const canDuplicateAssignment = canManagePublishStatus;
   const canViewResponseOverview = canManagePublishStatus;
@@ -129,6 +131,12 @@ export default async function HomeworkDetailPage({
                 <p className="mt-1">This assignment is a new draft copy. Questions, points, options, and image references were copied; student responses and feedback were not copied.</p>
               </div>
             ) : null}
+            {resolvedSearchParams.statusUpdated ? (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                <p className="font-semibold">Assignment status updated</p>
+                <p className="mt-1">Current status: {homework.status}. Published assignments appear for enrolled students; drafts stay hidden.</p>
+              </div>
+            ) : null}
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">
                 Status: <span className="uppercase tracking-[0.14em]">{homework.status}</span>
@@ -150,7 +158,7 @@ export default async function HomeworkDetailPage({
                 </form>
               ) : (
                 <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                  Only the teacher who owns this class can change publish status.
+                  Only admins or the teacher who owns this class can change publish status.
                 </p>
               )}
             </div>
