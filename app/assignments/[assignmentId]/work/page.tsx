@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
+import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../lib/i18n-content";
 import { getParticipantWorkData } from "../../../../lib/participant-work";
 import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./actions";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 type ParticipantWorkPageProps = {
   params: Promise<{ assignmentId: string }>;
-  searchParams: Promise<{ feedbackAction?: string; saved?: string }>;
+  searchParams: Promise<{ feedbackAction?: string; saved?: string; lang?: string }>;
 };
 
 function formatDate(date: Date | null) {
@@ -31,6 +32,37 @@ function formatFeedbackActionType(type: string) {
     .join(" ");
 }
 
+
+function getPlainLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
+  return mode === "bilingual" ? getBilingualTextParts(fallback, i18n).join(" / ") : getLocalizedText(fallback, i18n, mode);
+}
+
+function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
+  const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
+  return <span className="grid gap-1">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
+}
+
+function renderChoiceText(fallback: string, options: unknown, optionIndex: number, mode: LanguageMode) {
+  const i18n = typeof options === "object" && options && "choicesI18n" in options && Array.isArray(options.choicesI18n) ? options.choicesI18n[optionIndex] : null;
+  return renderLocalizedText(fallback, i18n, mode);
+}
+
+function renderVocabularyTerm(item: { englishTerm: string; chineseTerm: string; termI18n?: unknown }, mode: LanguageMode) {
+  return getPlainLocalizedText(item.englishTerm, item.termI18n ?? { en: item.englishTerm, zh: item.chineseTerm }, mode);
+}
+
+function renderVocabularyDefinition(item: { englishDefinition: string; chineseDefinition: string; definitionI18n?: unknown }, mode: LanguageMode) {
+  return renderLocalizedText(item.englishDefinition, item.definitionI18n ?? { en: item.englishDefinition, zh: item.chineseDefinition }, mode);
+}
+
+function LanguageLinks({ assignmentId, mode }: { assignmentId: number; mode: LanguageMode }) {
+  const items: { value: LanguageMode; label: string }[] = [
+    { value: "en", label: "English" },
+    { value: "zh", label: "中文" },
+    { value: "bilingual", label: "Bilingual" },
+  ];
+  return <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/assignments/${assignmentId}/work?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
+}
 
 function FeedbackActionCard({ action, assignmentId }: { action: { id: number; type: string; prompt: string; required: boolean; status: string; responseText: string | null; completedAt: Date | null }; assignmentId: number }) {
   const isCompleted = action.status === "COMPLETED";
@@ -86,7 +118,8 @@ export default async function ParticipantWorkPage({
   searchParams,
 }: ParticipantWorkPageProps) {
   const { assignmentId } = await params;
-  const { feedbackAction, saved } = await searchParams;
+  const { feedbackAction, saved, lang } = await searchParams;
+  const languageMode: LanguageMode = lang === "zh" || lang === "bilingual" ? lang : "en";
   const parsedAssignmentId = Number(assignmentId);
 
   if (!Number.isInteger(parsedAssignmentId)) {
@@ -147,15 +180,16 @@ export default async function ParticipantWorkPage({
               Participant work
             </p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
-              {work.title}
+              {renderLocalizedText(work.title, work.titleI18n, languageMode)}
             </h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-              {work.description ?? "No instructions have been added for this assignment."}
+              {renderLocalizedText(work.description ?? "No instructions have been added for this assignment.", work.descriptionI18n, languageMode)}
             </p>
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {work.class.name} · {work.status} · Due: {formatDate(work.dueAt)}
             </p>
           </div>
+          <LanguageLinks assignmentId={work.id} mode={languageMode} />
           <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
               Working as
@@ -299,7 +333,7 @@ export default async function ParticipantWorkPage({
                           </div>
                           {linkedQuestion ? (
                             <blockquote className="mt-3 rounded-xl border-l-4 border-slate-300 bg-white px-4 py-3 text-slate-600">
-                              {linkedQuestion.prompt}
+                              {renderLocalizedText(linkedQuestion.prompt, linkedQuestion.promptI18n, languageMode)}
                             </blockquote>
                           ) : null}
                           <p className="mt-3 whitespace-pre-wrap leading-6">{questionFeedback.feedback}</p>
@@ -350,11 +384,10 @@ export default async function ParticipantWorkPage({
             {work.keyVocabulary.map((item) => (
               <article key={`${item.englishTerm}-${item.chineseTerm}`} className="rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-bold text-slate-950">{item.englishTerm} / {item.chineseTerm}</h3>
+                  <h3 className="text-lg font-bold text-slate-950">{renderVocabularyTerm(item, languageMode)}</h3>
                   {item.category ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-900">{item.category}</span> : null}
                 </div>
-                <p className="mt-3 leading-6 text-slate-700">{item.englishDefinition}</p>
-                <p className="mt-2 leading-6 text-slate-700">{item.chineseDefinition}</p>
+                <p className="mt-3 leading-6 text-slate-700">{renderVocabularyDefinition(item, languageMode)}</p>
                 {item.questionIds.length > 0 ? <p className="mt-3 text-xs font-semibold text-slate-500">Useful for: {item.questionIds.join(", ")}</p> : null}
               </article>
             ))}
@@ -381,7 +414,7 @@ export default async function ParticipantWorkPage({
                     htmlFor={`question-${question.id}`}
                     className="mt-2 block text-lg font-semibold leading-7 text-slate-950"
                   >
-                    {question.prompt}
+                    {renderLocalizedText(question.prompt, question.promptI18n, languageMode)}
                   </label>
                 </div>
                 <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm ring-1 ring-slate-200">
@@ -422,7 +455,7 @@ export default async function ParticipantWorkPage({
                 />
               ) : question.questionType === "MULTIPLE_CHOICE" ? (
                 <fieldset className="mt-5 grid gap-3">
-                  <legend className="sr-only">{question.prompt}</legend>
+                  <legend className="sr-only">{renderLocalizedText(question.prompt, question.promptI18n, languageMode)}</legend>
                   {choices.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
                       No multiple-choice options were stored for this question.
@@ -440,7 +473,7 @@ export default async function ParticipantWorkPage({
                           defaultChecked={question.answerText === choice}
                           className="mt-1"
                         />
-                        <span>{choice}</span>
+                        <span>{renderChoiceText(choice, question.options, optionIndex, languageMode)}</span>
                       </label>
                     ))
                   )}

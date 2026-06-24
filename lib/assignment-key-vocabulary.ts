@@ -3,6 +3,8 @@ export type AssignmentKeyVocabularyItem = {
   chineseTerm: string;
   englishDefinition: string;
   chineseDefinition: string;
+  termI18n?: unknown;
+  definitionI18n?: unknown;
   category: string | null;
   questionIds: string[];
 };
@@ -19,8 +21,10 @@ export function normalizeAssignmentKeyVocabulary(value: unknown): AssignmentKeyV
       chineseTerm: typeof item.chineseTerm === "string" ? item.chineseTerm : "",
       englishDefinition: typeof item.englishDefinition === "string" ? item.englishDefinition : "",
       chineseDefinition: typeof item.chineseDefinition === "string" ? item.chineseDefinition : "",
+      termI18n: item.termI18n,
+      definitionI18n: item.definitionI18n,
       category: typeof item.category === "string" ? item.category : null,
       questionIds: Array.isArray(item.questionIds) ? item.questionIds.filter((id): id is string => typeof id === "string") : [],
     }))
-    .filter((item) => item.englishTerm && item.chineseTerm && item.englishDefinition && item.chineseDefinition);
+    .filter((item) => item.englishTerm && item.englishDefinition);
 }

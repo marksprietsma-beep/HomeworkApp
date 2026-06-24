@@ -5,7 +5,9 @@ import { prisma } from "./prisma";
 export type ParticipantWorkData = {
   id: number;
   title: string;
+  titleI18n: unknown;
   description: string | null;
+  descriptionI18n: unknown;
   keyVocabulary: AssignmentKeyVocabularyItem[];
   status: string;
   dueAt: Date | null;
@@ -20,6 +22,7 @@ export type ParticipantWorkData = {
     id: number;
     order: number;
     prompt: string;
+    promptI18n: unknown;
     questionType: string;
     points: number | null;
     options: unknown;
@@ -113,6 +116,7 @@ export async function getParticipantWorkData(
           id: true,
           order: true,
           prompt: true,
+          promptI18n: true,
           questionType: true,
           points: true,
           options: true,
@@ -221,7 +225,9 @@ export async function getParticipantWorkData(
   return {
     id: assignment.id,
     title: assignment.title,
+    titleI18n: assignment.titleI18n,
     description: assignment.description,
+    descriptionI18n: assignment.descriptionI18n,
     keyVocabulary: normalizeAssignmentKeyVocabulary(assignment.keyVocabulary),
     status: assignment.status,
     dueAt: assignment.dueAt,

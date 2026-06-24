@@ -88,6 +88,7 @@ export async function duplicateAssignmentForClass(
         select: {
           order: true,
           prompt: true,
+          promptI18n: true,
           questionType: true,
           points: true,
           options: true,
@@ -108,13 +109,17 @@ export async function duplicateAssignmentForClass(
       classId: assignment.classId,
       createdById: selectedUser.id,
       title: `${assignment.title} (Copy)`,
+      titleI18n: assignment.titleI18n ?? undefined,
       description: assignment.description,
+      descriptionI18n: assignment.descriptionI18n ?? undefined,
+      keyVocabulary: assignment.keyVocabulary ?? undefined,
       dueAt: assignment.dueAt,
       status: HomeworkAssignmentStatus.DRAFT,
       questions: {
         create: assignment.questions.map((question) => ({
           order: question.order,
           prompt: question.prompt,
+          promptI18n: question.promptI18n ?? undefined,
           questionType: question.questionType,
           points: question.points,
           options: question.options ?? undefined,

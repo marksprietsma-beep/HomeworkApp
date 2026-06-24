@@ -4,11 +4,15 @@ export type AssignmentImportError = {
   message: string;
 };
 
+export type I18nText = { en: string; zh: string } | null;
+
 export type AssignmentImportGlossaryItem = {
   englishTerm: string;
   chineseTerm: string;
   englishDefinition: string;
   chineseDefinition: string;
+  termI18n?: I18nText;
+  definitionI18n?: I18nText;
   category: string | null;
   questionIds: string[];
 };
@@ -18,14 +22,17 @@ export type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
+  textI18n?: I18nText;
   points: number | null;
-  options: { id: string; text: string }[];
+  options: { id: string; text: string; textI18n?: I18nText }[];
   image: { path: string; caption: string; altText: string } | null;
 };
 
 export type AssignmentImportAssignment = {
   title: string;
+  titleI18n?: I18nText;
   instructions: string;
+  instructionsI18n?: I18nText;
   dueDate: string | null;
   status: "DRAFT" | "PUBLISHED";
   questions: AssignmentImportQuestion[];
