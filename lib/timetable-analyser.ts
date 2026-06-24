@@ -15,6 +15,50 @@ const PERIODS = new Set(["Tutor Time", "P1", "P2", "P3", "P4", "P5", "P6", "P7",
 const WEEKDAYS = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 const NON_CURRICULUM = /^(registration|reg|meeting|house|unavailable|free|duty|duties|activity|activities|ea|asa|usl|break|lunch|cover)$/i;
 
+type WorkbookSheet = { name: string; sheetId: string; relationshipId: string };
+type SelectedWorksheet = { sheet: WorkbookSheet; fallbackAttempted: boolean; matchedBy: string };
+
+function listWorkbookSheets(workbookXml: string): WorkbookSheet[] {
+  return [...workbookXml.matchAll(/<sheet\b[^>]*>/g)].map(match => {
+    const tag = match[0];
+    const name = tag.match(/\bname="([^"]*)"/)?.[1];
+    const sheetId = tag.match(/\bsheetId="([^"]*)"/)?.[1];
+    const relationshipId = tag.match(/\br:id="([^"]*)"/)?.[1];
+    return name && sheetId && relationshipId ? { name: unescapeXml(name), sheetId, relationshipId } : null;
+  }).filter((sheet): sheet is WorkbookSheet => Boolean(sheet));
+}
+
+function formatWorksheetNames(sheets: WorkbookSheet[]) {
+  return sheets.length ? sheets.map(sheet => `"${sheet.name}"`).join(", ") : "none found";
+}
+
+function selectTimetableSheet(sheets: WorkbookSheet[]): SelectedWorksheet {
+  const exact = sheets.find(sheet => sheet.name === WORKSHEET_NAME);
+  if (exact) return { sheet: exact, fallbackAttempted: false, matchedBy: "exact worksheet name" };
+
+  const trimmed = sheets.find(sheet => sheet.name.trim() === WORKSHEET_NAME);
+  if (trimmed) return { sheet: trimmed, fallbackAttempted: true, matchedBy: "trimmed worksheet name" };
+
+  const expectedLower = WORKSHEET_NAME.toLowerCase();
+  const caseInsensitive = sheets.find(sheet => sheet.name.trim().toLowerCase() === expectedLower);
+  if (caseInsensitive) return { sheet: caseInsensitive, fallbackAttempted: true, matchedBy: "case-insensitive trimmed worksheet name" };
+
+  const fuzzy = sheets.find(sheet => {
+    const normalised = sheet.name.trim().toLowerCase();
+    return normalised.includes("timetable") && normalised.includes("us");
+  });
+  if (fuzzy) return { sheet: fuzzy, fallbackAttempted: true, matchedBy: "fuzzy worksheet name containing timetable and us" };
+
+  if (sheets.length === 1) return { sheet: sheets[0], fallbackAttempted: true, matchedBy: "single worksheet fallback" };
+
+  throw new Error(`Worksheet "${WORKSHEET_NAME}" was not found. Available worksheets: ${formatWorksheetNames(sheets)}. Expected worksheet name: "${WORKSHEET_NAME}". Fallback attempted: yes (trimmed, case-insensitive, fuzzy, and single-sheet fallback). Reason: no worksheet matched the timetable analyser sheet detection rules.`);
+}
+
+function workbookTargetPath(target: string) {
+  const cleanTarget = target.replace(/^\//, "");
+  return cleanTarget.startsWith("xl/") ? cleanTarget : `xl/${cleanTarget.replace(/^\.\.\//, "")}`;
+}
+
 function text(buf: Buffer) { return buf.toString("utf8"); }
 function unzipXlsx(input: Buffer): Map<string, string> {
   const entries = new Map<string, string>();
@@ -48,10 +92,10 @@ export async function analyseTimetableWorkbook(buffer: Buffer, fileName = "uploa
   if (!buffer.length) throw new Error("Choose a non-empty .xlsx timetable workbook before analysing.");
   if (!fileName.toLowerCase().endsWith(".xlsx")) throw new Error("Timetable analyser currently supports .xlsx uploads only.");
   const files = unzipXlsx(buffer); const workbook = files.get("xl/workbook.xml") ?? "";
-  const sheetMatch = [...workbook.matchAll(/<sheet[^>]*name="([^"]+)"[^>]*sheetId="(\d+)"[^>]*r:id="([^"]+)"/g)].find(m => m[1] === WORKSHEET_NAME);
-  if (!sheetMatch) throw new Error(`Worksheet "${WORKSHEET_NAME}" was not found.`);
-  const rels = files.get("xl/_rels/workbook.xml.rels") ?? ""; const rel = rels.match(new RegExp(`<Relationship[^>]*Id="${sheetMatch[3]}"[^>]*Target="([^"]+)"`));
-  const sheetPath = `xl/${(rel?.[1] ?? `worksheets/sheet${sheetMatch[2]}.xml`).replace(/^\//, "")}`; const sheet = files.get(sheetPath); if (!sheet) throw new Error("Could not read the timetable worksheet data.");
+  const workbookSheets = listWorkbookSheets(workbook);
+  const selectedWorksheet = selectTimetableSheet(workbookSheets);
+  const rels = files.get("xl/_rels/workbook.xml.rels") ?? ""; const rel = rels.match(new RegExp(`<Relationship[^>]*Id="${selectedWorksheet.sheet.relationshipId}"[^>]*Target="([^"]+)"`));
+  const sheetPath = workbookTargetPath(rel?.[1] ?? `worksheets/sheet${selectedWorksheet.sheet.sheetId}.xml`); const sheet = files.get(sheetPath); if (!sheet) throw new Error(`Could not read the timetable worksheet data. Available worksheets: ${formatWorksheetNames(workbookSheets)}. Expected worksheet name: "${WORKSHEET_NAME}". Matched worksheet: "${selectedWorksheet.sheet.name}" by ${selectedWorksheet.matchedBy}. Fallback attempted: ${selectedWorksheet.fallbackAttempted ? "yes" : "no"}. Reason: workbook metadata loaded, but ${sheetPath} was missing from the uploaded .xlsx file.`);
   const rows = parseSheet(sheet, sharedStrings(files)); const firstStaffRow = rows.findIndex(r => r?.[0] && r?.[1] && !/staff|name/i.test(`${r[0]} ${r[1]}`));
   const headerRows = rows.slice(0, Math.max(0, firstStaffRow)); const meta: Record<number,{day:string;period:string}> = {}; let day = "";
   const maxCols = Math.max(...rows.map(r => r?.length ?? 0)); for (let c=2;c<maxCols;c++){ for (const hr of headerRows){ const v=hr?.[c]; if (v && WEEKDAYS.has(v)) day=v; if (v && PERIODS.has(v)) meta[c]={day, period:v}; } }
