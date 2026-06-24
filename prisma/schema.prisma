@@ -268,3 +268,16 @@ model FeedbackFollowUpAction {
   @@index([questionFeedbackId])
   @@index([status])
 }
+
+model TimetableImport {
+  id              Int      @id @default(autoincrement())
+  name            String
+  sourceFilename  String
+  isActive        Boolean  @default(false)
+  rawAnalysisJson Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([updatedAt])
+}
