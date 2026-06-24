@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: "Clarion",
   description: "structured homework, feedback and learning clarity.",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/brand/clarion_app_icon.png",
+    shortcut: "/brand/clarion_app_icon.png",
+    apple: "/brand/clarion_app_icon.png",
   },
 };
 
