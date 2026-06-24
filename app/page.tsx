@@ -435,6 +435,12 @@ function DashboardShell({
                 >
                   Manage classes
                 </Link>
+                <Link
+                  href="/admin/timetable-analyser"
+                  className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-200"
+                >
+                  Timetable Analyser
+                </Link>
               </>
             ) : null}
             {isTeacher(selectedUser) ? (
