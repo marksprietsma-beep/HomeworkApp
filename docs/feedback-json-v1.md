@@ -155,6 +155,7 @@ IDs are the contract's source of truth. Names and titles are included only to ma
 | `participant` | Yes | object | Identifies the student/participant from the export. |
 | `submission` | No | object or null | Identifies the reviewed submission when one exists. Use `null` or omit only when giving feedback to a participant with no submission. |
 | `overallFeedback` | Yes | string | Student-facing overall feedback. Must not be empty after trimming. |
+| `overallFeedbackI18n` | No | object | Optional bilingual text object with supported keys `en` and `zh`. English-only imports can omit it. |
 | `strengths` | Yes | array of strings | Student-facing strengths. Must contain at least one non-empty string. |
 | `targets` | Yes | array of strings | Student-facing next steps/targets. Must contain at least one non-empty string. |
 | `teacherNotes` | No | string | Optional teacher-facing notes. These should not be shown to students unless a later UI explicitly chooses to. |
@@ -392,6 +393,21 @@ This example is invalid because:
 - `questionId` must match a question in the reviewed export.
 - Follow-up action IDs must be unique within the whole feedback JSON.
 - Follow-up action `type` must be one of the three supported v1 values.
+
+## Optional bilingual feedback fields
+
+Feedback JSON v1 remains English-first and backwards compatible. Existing fields such as `overallFeedback`, `strengths`, `targets`, `questionFeedback[].feedback`, and follow-up action `prompt` are still required where the base contract requires them.
+
+When bilingual feedback is requested, ChatGPT may add these optional fields without removing the English fields:
+
+- `overallFeedbackI18n`: `{ "en": "...", "zh": "..." }`
+- `strengthsI18n`: `{ "en": ["..."], "zh": ["..."] }`
+- `targetsI18n`: `{ "en": ["..."], "zh": ["..."] }`
+- `questionFeedback[].feedbackI18n`: `{ "en": "...", "zh": "..." }`
+- `questionFeedback[].strengthsI18n` and `questionFeedback[].targetsI18n`: `{ "en": ["..."], "zh": ["..."] }`
+- `followUpActions[].promptI18n`: `{ "en": "...", "zh": "..." }` for both participant-level and question-level actions.
+
+Only `en` and `zh` are supported in i18n objects. Missing Chinese content is allowed; the app falls back to English and avoids empty Chinese lines. Chinese text should be natural Simplified Chinese for students rather than a literal word-for-word translation.
 
 ## Validation rules for MAR-145
 

@@ -42,6 +42,21 @@ function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode
   return <span className="grid gap-1">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
 }
 
+function getLocalizedList(fallback: string[], i18n: unknown, mode: LanguageMode) {
+  const source = typeof i18n === "object" && i18n !== null && !Array.isArray(i18n) ? i18n as { en?: unknown; zh?: unknown } : null;
+  const en = Array.isArray(source?.en) ? source.en.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : fallback;
+  const zh = Array.isArray(source?.zh) ? source.zh.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
+
+  if (mode === "en") return en.length > 0 ? en : fallback;
+  if (mode === "zh") return zh.length > 0 ? zh : en.length > 0 ? en : fallback;
+
+  const items = [...(en.length > 0 ? en : fallback)];
+  for (const item of zh) {
+    if (!items.includes(item)) items.push(item);
+  }
+  return items;
+}
+
 function renderChoiceText(fallback: string, options: unknown, optionIndex: number, mode: LanguageMode) {
   const i18n = typeof options === "object" && options && "choicesI18n" in options && Array.isArray(options.choicesI18n) ? options.choicesI18n[optionIndex] : null;
   return renderLocalizedText(fallback, i18n, mode);
@@ -64,7 +79,7 @@ function LanguageLinks({ assignmentId, mode }: { assignmentId: number; mode: Lan
   return <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/assignments/${assignmentId}/work?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
 }
 
-function FeedbackActionCard({ action, assignmentId }: { action: { id: number; type: string; prompt: string; required: boolean; status: string; responseText: string | null; completedAt: Date | null }; assignmentId: number }) {
+function FeedbackActionCard({ action, assignmentId, languageMode }: { action: { id: number; type: string; prompt: string; promptI18n: unknown; required: boolean; status: string; responseText: string | null; completedAt: Date | null }; assignmentId: number; languageMode: LanguageMode }) {
   const isCompleted = action.status === "COMPLETED";
   const completeAction = completeFeedbackFollowUpAction.bind(null, assignmentId, action.id);
   const needsWrittenResponse = action.type !== "ACKNOWLEDGEMENT";
@@ -72,7 +87,7 @@ function FeedbackActionCard({ action, assignmentId }: { action: { id: number; ty
   return (
     <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <p className="font-semibold text-slate-950">{formatFeedbackActionType(action.type)} · {action.required ? "Required" : "Optional"}</p>
-      <p className="mt-1 leading-6">{action.prompt}</p>
+      <p className="mt-1 leading-6">{renderLocalizedText(action.prompt, action.promptI18n, languageMode)}</p>
       {isCompleted ? (
         <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
           <p className="text-xs font-bold uppercase tracking-[0.14em]">Completed{action.completedAt ? ` · ${formatDate(action.completedAt)}` : ""}</p>
@@ -262,16 +277,16 @@ export default async function ParticipantWorkPage({
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-lg font-semibold text-slate-950">Overall feedback</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {work.feedback.overallFeedback}
+                  {renderLocalizedText(work.feedback.overallFeedback, work.feedback.overallFeedbackI18n, languageMode)}
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <h3 className="font-semibold text-emerald-950">Strengths</h3>
-                  {work.feedback.strengths.length > 0 ? (
+                  {getLocalizedList(work.feedback.strengths, work.feedback.strengthsI18n, languageMode).length > 0 ? (
                     <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-emerald-900">
-                      {work.feedback.strengths.map((strength, index) => (
+                      {getLocalizedList(work.feedback.strengths, work.feedback.strengthsI18n, languageMode).map((strength, index) => (
                         <li key={`strength-${index}`}>{strength}</li>
                       ))}
                     </ul>
@@ -281,9 +296,9 @@ export default async function ParticipantWorkPage({
                 </div>
                 <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
                   <h3 className="font-semibold text-sky-950">Targets / next steps</h3>
-                  {work.feedback.targets.length > 0 ? (
+                  {getLocalizedList(work.feedback.targets, work.feedback.targetsI18n, languageMode).length > 0 ? (
                     <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-sky-900">
-                      {work.feedback.targets.map((target, index) => (
+                      {getLocalizedList(work.feedback.targets, work.feedback.targetsI18n, languageMode).map((target, index) => (
                         <li key={`target-${index}`}>{target}</li>
                       ))}
                     </ul>
@@ -298,7 +313,7 @@ export default async function ParticipantWorkPage({
                 {work.feedback.followUpActions.length > 0 ? (
                   <ul className="mt-3 grid gap-3 text-sm text-slate-700">
                     {work.feedback.followUpActions.map((action) => (
-                      <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} />
+                      <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} languageMode={languageMode} />
                     ))}
                   </ul>
                 ) : (
@@ -336,19 +351,19 @@ export default async function ParticipantWorkPage({
                               {renderLocalizedText(linkedQuestion.prompt, linkedQuestion.promptI18n, languageMode)}
                             </blockquote>
                           ) : null}
-                          <p className="mt-3 whitespace-pre-wrap leading-6">{questionFeedback.feedback}</p>
-                          {(questionFeedback.strengths.length > 0 || questionFeedback.targets.length > 0) ? (
+                          <p className="mt-3 whitespace-pre-wrap leading-6">{renderLocalizedText(questionFeedback.feedback, questionFeedback.feedbackI18n, languageMode)}</p>
+                          {(getLocalizedList(questionFeedback.strengths, questionFeedback.strengthsI18n, languageMode).length > 0 || getLocalizedList(questionFeedback.targets, questionFeedback.targetsI18n, languageMode).length > 0) ? (
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              {questionFeedback.strengths.length > 0 ? (
+                              {getLocalizedList(questionFeedback.strengths, questionFeedback.strengthsI18n, languageMode).length > 0 ? (
                                 <div>
                                   <p className="font-semibold text-emerald-900">Strengths</p>
-                                  <ul className="mt-1 list-disc space-y-1 pl-5">{questionFeedback.strengths.map((strength, index) => <li key={`q-strength-${questionFeedback.id}-${index}`}>{strength}</li>)}</ul>
+                                  <ul className="mt-1 list-disc space-y-1 pl-5">{getLocalizedList(questionFeedback.strengths, questionFeedback.strengthsI18n, languageMode).map((strength, index) => <li key={`q-strength-${questionFeedback.id}-${index}`}>{strength}</li>)}</ul>
                                 </div>
                               ) : null}
-                              {questionFeedback.targets.length > 0 ? (
+                              {getLocalizedList(questionFeedback.targets, questionFeedback.targetsI18n, languageMode).length > 0 ? (
                                 <div>
                                   <p className="font-semibold text-sky-900">Targets</p>
-                                  <ul className="mt-1 list-disc space-y-1 pl-5">{questionFeedback.targets.map((target, index) => <li key={`q-target-${questionFeedback.id}-${index}`}>{target}</li>)}</ul>
+                                  <ul className="mt-1 list-disc space-y-1 pl-5">{getLocalizedList(questionFeedback.targets, questionFeedback.targetsI18n, languageMode).map((target, index) => <li key={`q-target-${questionFeedback.id}-${index}`}>{target}</li>)}</ul>
                                 </div>
                               ) : null}
                             </div>
@@ -358,7 +373,7 @@ export default async function ParticipantWorkPage({
                               <p className="font-semibold text-amber-950">Question follow-up</p>
                               <ul className="mt-2 grid gap-3">
                                 {questionFeedback.followUpActions.map((action) => (
-                                  <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} />
+                                  <FeedbackActionCard key={action.id} action={action} assignmentId={work.id} languageMode={languageMode} />
                                 ))}
                               </ul>
                             </div>
