@@ -40,8 +40,11 @@ export type ParticipantWorkData = {
   feedback: {
     id: number;
     overallFeedback: string;
+    overallFeedbackI18n: unknown;
     strengths: string[];
+    strengthsI18n: unknown;
     targets: string[];
+    targetsI18n: unknown;
     createdAt: Date;
     updatedAt: Date;
     feedbackImport: {
@@ -54,13 +57,17 @@ export type ParticipantWorkData = {
       questionId: number | null;
       questionOrder: number | null;
       feedback: string;
+      feedbackI18n: unknown;
       strengths: string[];
+      strengthsI18n: unknown;
       targets: string[];
+      targetsI18n: unknown;
       followUpActions: {
         id: number;
         sourceActionId: string;
         type: string;
         prompt: string;
+        promptI18n: unknown;
         required: boolean;
         status: string;
         responseText: string | null;
@@ -72,6 +79,7 @@ export type ParticipantWorkData = {
       sourceActionId: string;
       type: string;
       prompt: string;
+      promptI18n: unknown;
       required: boolean;
       status: string;
       responseText: string | null;
@@ -151,8 +159,11 @@ export async function getParticipantWorkData(
         select: {
           id: true,
           overallFeedback: true,
+          overallFeedbackI18n: true,
           strengths: true,
+          strengthsI18n: true,
           targets: true,
+          targetsI18n: true,
           createdAt: true,
           updatedAt: true,
           feedbackImport: {
@@ -169,8 +180,11 @@ export async function getParticipantWorkData(
               questionId: true,
               questionOrder: true,
               feedback: true,
+              feedbackI18n: true,
               strengths: true,
+              strengthsI18n: true,
               targets: true,
+              targetsI18n: true,
               followUpActions: {
                 orderBy: { id: "asc" },
                 select: {
@@ -178,6 +192,7 @@ export async function getParticipantWorkData(
                   sourceActionId: true,
                   type: true,
                   prompt: true,
+                  promptI18n: true,
                   required: true,
                   status: true,
                   responseText: true,
@@ -194,6 +209,7 @@ export async function getParticipantWorkData(
               sourceActionId: true,
               type: true,
               prompt: true,
+              promptI18n: true,
               required: true,
               status: true,
               responseText: true,

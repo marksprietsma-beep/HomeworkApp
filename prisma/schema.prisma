@@ -212,8 +212,11 @@ model ParticipantFeedback {
   sourceSubmissionId     Int?
   sourceSubmissionStatus String?
   overallFeedback        String
+  overallFeedbackI18n    Json?
   strengths              String[]
+  strengthsI18n          Json?
   targets                String[]
+  targetsI18n            Json?
   teacherNotes           String?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
@@ -237,8 +240,11 @@ model QuestionFeedback {
   sourceQuestionId      Int?
   questionOrder         Int?
   feedback              String
+  feedbackI18n          Json?
   strengths             String[]                 @default([])
+  strengthsI18n         Json?
   targets               String[]                 @default([])
+  targetsI18n           Json?
   teacherNotes          String?
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
@@ -257,6 +263,7 @@ model FeedbackFollowUpAction {
   sourceActionId        String
   type                  FeedbackFollowUpActionType
   prompt                String
+  promptI18n            Json?
   required              Boolean                      @default(true)
   status                FeedbackFollowUpActionStatus @default(PENDING)
   responseText          String?

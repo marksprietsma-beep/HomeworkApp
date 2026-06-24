@@ -19,6 +19,9 @@ Feedback import contract:
 - Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
 - Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
 - For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
+- English-only feedback remains valid. When bilingual feedback is requested, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
+- Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
+- If you include Chinese, write natural Simplified Chinese for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 
@@ -27,7 +30,7 @@ Follow-up action requirements:
 - This applies to participant-level followUpActions and question-level followUpActions.
 - Do not omit follow-up action ids, and do not rely on the importer to invent ids.
 - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
-- Each follow-up action must include id, type, prompt, and required.
+- Each follow-up action must include id, type, prompt, and required. It may also include promptI18n when bilingual feedback is requested.
 - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
 - Use required true unless the action is genuinely optional.
 
@@ -44,4 +47,4 @@ ${responseJson}`;
 }
 
 export const FEEDBACK_HELPER_DESCRIPTION =
-  "Copy this prompt with the response export. It keeps the manual ChatGPT export/import workflow explicit, preserves IDs, and matches the current feedback JSON contract.";
+  "Copy this prompt with the response export. It keeps the manual ChatGPT export/import workflow explicit, preserves IDs, and matches the current feedback JSON contract, including optional bilingual feedback fields.";

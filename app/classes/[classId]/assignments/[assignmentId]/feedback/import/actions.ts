@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { FeedbackFollowUpActionType, UserRole } from "@prisma/client";
+import { FeedbackFollowUpActionType, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
 import { getFeedbackImportPageData } from "../../../../../../../lib/feedback-import";
@@ -11,6 +11,8 @@ import { prisma } from "../../../../../../../lib/prisma";
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string };
 
 type ImportContext = { participants: Array<{ id: number; submission: { id: number } | null }>; questions: Array<{ id: number }> };
+
+type JsonI18n = Prisma.InputJsonValue;
 
 type NormalizedFeedback = {
   feedbackFormat: string;
@@ -22,19 +24,25 @@ type NormalizedFeedback = {
     participant: { id: number; name?: string; email?: string | null };
     submission: { id: number; status?: string } | null;
     overallFeedback: string;
+    overallFeedbackI18n?: JsonI18n;
     strengths: string[];
+    strengthsI18n?: JsonI18n;
     targets: string[];
+    targetsI18n?: JsonI18n;
     teacherNotes?: string;
     questionFeedback: Array<{
       questionId: number;
       questionOrder: number | null;
       feedback: string;
+      feedbackI18n?: JsonI18n;
       strengths: string[];
+      strengthsI18n?: JsonI18n;
       targets: string[];
+      targetsI18n?: JsonI18n;
       teacherNotes?: string;
-      followUpActions: Array<{ id: string; type: string; prompt: string; required: boolean; status: string }>;
+      followUpActions: Array<{ id: string; type: string; prompt: string; promptI18n?: JsonI18n; required: boolean; status: string }>;
     }>;
-    followUpActions: Array<{ id: string; type: string; prompt: string; required: boolean; status: string }>;
+    followUpActions: Array<{ id: string; type: string; prompt: string; promptI18n?: JsonI18n; required: boolean; status: string }>;
   }>;
 };
 
@@ -138,8 +146,11 @@ export async function saveFeedbackImport(
           sourceSubmissionId: entry.submission?.id,
           sourceSubmissionStatus: entry.submission?.status,
           overallFeedback: entry.overallFeedback,
+          overallFeedbackI18n: entry.overallFeedbackI18n,
           strengths: entry.strengths,
+          strengthsI18n: entry.strengthsI18n,
           targets: entry.targets,
+          targetsI18n: entry.targetsI18n,
           teacherNotes: entry.teacherNotes,
         },
         select: { id: true },
@@ -152,6 +163,7 @@ export async function saveFeedbackImport(
             sourceActionId: action.id,
             type: action.type as FeedbackFollowUpActionType,
             prompt: action.prompt,
+            promptI18n: action.promptI18n,
             required: action.required,
             status: "PENDING",
           },
@@ -166,8 +178,11 @@ export async function saveFeedbackImport(
             sourceQuestionId: question.questionId,
             questionOrder: question.questionOrder,
             feedback: question.feedback,
+            feedbackI18n: question.feedbackI18n,
             strengths: question.strengths,
+            strengthsI18n: question.strengthsI18n,
             targets: question.targets,
+            targetsI18n: question.targetsI18n,
             teacherNotes: question.teacherNotes,
           },
           select: { id: true },
