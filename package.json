@@ -17,13 +17,14 @@
     "check:feedback-json-fixtures": "node scripts/check-feedback-json-fixtures.mjs",
     "smoke:core": "node scripts/core-workflow-smoke.mjs",
     "db:reset:local": "node scripts/db-reset-local.mjs",
-    "db:clean-start:check": "node scripts/db-clean-start-check.mjs"
+    "db:clean-start:check": "node scripts/db-clean-start-check.mjs",
+    "check:timetable-analyser": "node scripts/timetable-analyser-fixture-check.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@prisma/client": "^6.0.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -31,8 +32,8 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
+    "prisma": "^6.0.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.0.0",
-    "prisma": "^6.0.0"
+    "typescript": "^5.0.0"
   }
 }
