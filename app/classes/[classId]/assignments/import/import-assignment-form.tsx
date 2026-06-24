@@ -84,7 +84,7 @@ const placeholderJson = `{
   }
 }`;
 
-const assignmentChatGptPrompt = `Create an assignment for Homework App. Return only valid JSON. Do not wrap the answer in Markdown or add commentary.
+const assignmentChatGptPrompt = `Create an assignment for Clarion. Return only valid JSON. Do not wrap the answer in Markdown or add commentary.
 
 Separate teacher generation context from student-facing assignment content. Use the teacher choices below to create the homework, but do not copy these choices, metadata, planning notes, syllabus context, question mix, difficulty, marks expectations, or glossary choices into assignment.instructions.
 
@@ -99,7 +99,7 @@ Teacher generation context to use:
 - Marks/points expectations: [fill in total marks or per-question guidance]
 - Bilingual assignment wanted? [yes/no; if yes, keep the required English fields and add optional i18n fields using only en and zh for title, instructions, question text, multiple-choice options, and key vocabulary/glossary. Use natural Simplified Chinese, not literal machine-style translation.]
 
-Use the Homework App assignment import JSON v1 structure:
+Use the Clarion assignment import JSON v1 structure:
 - Root object with formatVersion set to "assignment-import-v1" and an assignment object.
 - Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
 - assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."

@@ -1,4 +1,4 @@
-export const FEEDBACK_HELPER_PROMPT = `Use the exported Homework App response JSON below as the only source data. Return valid importable Homework App feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+export const FEEDBACK_HELPER_PROMPT = `Use the exported Clarion response JSON below as the only source data. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 
 Required root object shape:
 - feedbackFormat

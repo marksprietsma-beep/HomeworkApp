@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClarionLogo } from "../../components/clarion-logo";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
 import { isAdmin } from "../../../lib/permissions";
 import { TimetableAnalyserForm } from "./timetable-analyser-form";
@@ -16,5 +17,5 @@ export default async function AdminTimetableAnalyserPage() {
 
   const activeTimetableResult = await getActiveTimetableImport();
 
-  return <main className="mx-auto min-h-screen max-w-7xl px-6 py-12"><Link href="/" className="text-sm font-semibold text-amber-700 hover:text-amber-800">← Back to dashboard</Link><header className="mt-8 rounded-3xl bg-slate-950 p-8 text-white shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Admin</p><h1 className="mt-3 text-4xl font-bold tracking-tight">Timetable Analyser</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Upload the school timetable workbook to review extracted staff loads, curriculum subjects, year-group coverage and parsing warnings before any future import flow is added.</p></header><TimetableAnalyserForm initialActiveTimetable={activeTimetableResult.timetable} /></main>;
+  return <main className="mx-auto min-h-screen max-w-7xl px-6 py-12"><Link href="/" className="text-sm font-semibold text-amber-700 hover:text-amber-800">← Back to dashboard</Link><header className="mt-8 rounded-3xl bg-slate-950 p-8 text-white shadow-sm"><ClarionLogo compact monochrome className="mb-5 inline-flex items-center text-white" markClassName="h-9 w-9" /><p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Clarion admin</p><h1 className="mt-3 text-4xl font-bold tracking-tight">Timetable Analyser</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Upload the school timetable workbook to review extracted staff loads, curriculum subjects, year-group coverage and parsing warnings before any future import flow is added.</p></header><TimetableAnalyserForm initialActiveTimetable={activeTimetableResult.timetable} /></main>;
 }

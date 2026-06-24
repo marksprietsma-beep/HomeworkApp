@@ -19,6 +19,7 @@ import {
 } from "../lib/assignment-list-filters";
 import { isAdmin, isStudent, isTeacher } from "../lib/permissions";
 import { hasInitialAdminUser } from "../lib/first-run-setup";
+import { CLARION_TAGLINE, ClarionLogo } from "./components/clarion-logo";
 
 export const dynamic = "force-dynamic";
 
@@ -283,7 +284,7 @@ function StudentAssignedWorkDashboard({
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Open homework assigned through the classes you are enrolled in,
-            enter responses, and return later to update the saved submission.
+            enter responses, and return later to review feedback with clarity.
           </p>
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
@@ -410,15 +411,15 @@ function DashboardShell({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-            Local dashboard
+            Clarion dashboard
           </p>
           <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">
             Welcome, {selectedUser.displayName}
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Reading the current local development user and class data directly
-            from Prisma. Admin users can view all classes as a foundation for
-            future management screens.
+            from Prisma. Clarion keeps teacher, student, and admin workflows
+            in one clean local-first workspace.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             {isAdmin(selectedUser) ? (
@@ -721,16 +722,22 @@ export default async function Home({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="mb-4 rounded-full border border-slate-200 px-4 py-1 text-sm font-medium text-slate-600">
-        Local-first foundation
+      <div className="mb-6 flex justify-center">
+        <ClarionLogo
+          className="inline-flex flex-col items-center gap-3 sm:flex-row sm:text-left"
+          markClassName="h-16 w-16"
+          textClassName="text-center sm:text-left"
+        />
+      </div>
+      <p className="mb-4 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-sm font-medium text-teal-800">
+        Local-first learning workspace
       </p>
       <h1 className="text-4xl font-bold tracking-tight text-slate-950 sm:text-6xl">
-        Homework App
+        Clarion
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-        A lightweight starting point for running Homework App locally during
-        development and later on a generic Linux or Docker-capable school
-        server.
+        {CLARION_TAGLINE} A calm, structured place for teachers and students to
+        manage assignments, responses, and feedback locally.
       </p>
       {localDevelopmentUserError ? (
         <section className="mt-10 w-full max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-6 text-left text-sm text-red-800">

@@ -8,7 +8,7 @@ The app does **not** generate this feedback inside the product in v1. The teache
 
 1. The teacher exports assignment responses from the teacher-only response export screen.
 2. The exported response JSON uses `exportFormat: "homework-assignment-responses-v2"` and `exportVersion: 2`.
-3. The teacher pastes that export into ChatGPT and asks it to produce Homework App feedback JSON v1.
+3. The teacher pastes that export into ChatGPT and asks it to produce Clarion feedback JSON v1.
 4. ChatGPT returns only valid JSON using the contract in this document.
 5. A later issue imports and validates that JSON before storing or showing feedback.
 
@@ -16,7 +16,7 @@ The app does **not** generate this feedback inside the product in v1. The teache
 
 Mark can paste this into ChatGPT after the exported response JSON:
 
-> Use the exported Homework App response JSON below as the only source data. Return valid importable Homework App feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+> Use the exported Clarion response JSON below as the only source data. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 > 
 > Required root object shape:
 > - feedbackFormat
