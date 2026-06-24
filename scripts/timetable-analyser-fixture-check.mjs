@@ -36,13 +36,16 @@ function zip(files) {
   const cd = Buffer.concat(central);
   return Buffer.concat([...local, cd, Buffer.from([0x50,0x4b,0x05,0x06]), u16(0), u16(0), u16(files.length), u16(files.length), u32(cd.length), u32(offset), u16(0)]);
 }
-const ss = ["Name","Code","Monday","Tutor Time","P1","P2","P3","P4","P5","P6","P7","Alison Phaup","APH","Dan Su","DSU","12ACC1\nAccounting\nA101","Unavailable Time","Y12ABC","100"];
+const ss = ["Name","Code","Monday","Tutor Time","P1","P2","P3","P4","P5","P6","P7","Alison Phaup","APH","Dan Su","DSU","12ACC1\nAccounting\nA101","Unavailable Time","Y12ABC","100","Kelvin Oguku","KOG","RE/9WUDANG\nRegistration\nA326","Samuel Peel","SPE","RE/8EMEI\nRegistration\nA220","Stephen Williams","SWI","RE/10TAISHAN\nMorning Registration\nA101","Registration\nA999"];
 const sharedStrings = `<sst>${ss.map(s => `<si><t>${s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</t></si>`).join("")}</sst>`;
 const wbSheet = `<worksheet><sheetData>
 <row r="1"><c r="C1" t="s"><v>2</v></c><c r="D1"/><c r="E1"/><c r="F1"/><c r="G1"/><c r="H1"/><c r="I1"/><c r="J1"/><c r="K1"/></row>
 <row r="2"><c r="A2" t="s"><v>0</v></c><c r="B2" t="s"><v>1</v></c><c r="C2" t="s"><v>3</v></c><c r="D2" t="s"><v>4</v></c><c r="E2" t="s"><v>5</v></c><c r="F2" t="s"><v>6</v></c><c r="G2" t="s"><v>7</v></c><c r="H2" t="s"><v>8</v></c><c r="I2" t="s"><v>9</v></c><c r="J2" t="s"><v>10</v></c></row>
 <row r="3"><c r="A3" t="s"><v>11</v></c><c r="B3" t="s"><v>12</v></c><c r="C3"/><c r="D3" t="s"><v>16</v></c><c r="E3" t="s"><v>18</v></c></row>
 <row r="4"><c r="A4" t="s"><v>13</v></c><c r="B4" t="s"><v>14</v></c><c r="C4" t="s"><v>17</v></c><c r="D4" t="s"><v>15</v></c><c r="E4" t="s"><v>15</v></c><c r="F4" t="s"><v>15</v></c><c r="G4" t="s"><v>15</v></c><c r="H4" t="s"><v>15</v></c></row>
+<row r="5"><c r="A5" t="s"><v>19</v></c><c r="B5" t="s"><v>20</v></c><c r="C5" t="s"><v>21</v></c><c r="D5" t="s"><v>15</v></c></row>
+<row r="6"><c r="A6" t="s"><v>22</v></c><c r="B6" t="s"><v>23</v></c><c r="C6" t="s"><v>24</v></c><c r="D6" t="s"><v>15</v></c></row>
+<row r="7"><c r="A7" t="s"><v>25</v></c><c r="B7" t="s"><v>26</v></c><c r="C7" t="s"><v>27</v></c><c r="D7" t="s"><v>28</v></c></row>
 </sheetData></worksheet>`;
 const xlsx = zip([
   ["xl/workbook.xml", `<workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Timetable Week(US)" sheetId="1" r:id="rId1"/></sheets></workbook>`],
@@ -53,9 +56,20 @@ const xlsx = zip([
 const analysis = await analyseTimetableWorkbook(xlsx, "fixture.xlsx");
 const alison = analysis.staff.find(s => s.staffName === "Alison Phaup");
 const dan = analysis.staff.find(s => s.staffName === "Dan Su");
+const kelvin = analysis.staff.find(s => s.staffName === "Kelvin Oguku");
+const samuel = analysis.staff.find(s => s.staffName === "Samuel Peel");
+const stephen = analysis.staff.find(s => s.staffName === "Stephen Williams");
 assert.equal(alison.isTutor, false);
 assert.deepEqual(alison.tutorGroups, []);
+assert.equal(dan.isTutor, false);
 assert.equal(dan.teachingLessonCount, 5);
+assert.equal(kelvin.isTutor, true);
+assert.deepEqual(kelvin.tutorGroups, ["RE/9WUDANG"]);
+assert.equal(kelvin.teachingLessonCount, 1);
+assert.equal(samuel.isTutor, true);
+assert.deepEqual(samuel.tutorGroups, ["RE/8EMEI"]);
+assert.equal(stephen.isTutor, true);
+assert.deepEqual(stephen.tutorGroups, ["RE/10TAISHAN"]);
 assert.ok(!analysis.staff.flatMap(s => s.tutorGroups).some(g => /^\d+$/.test(g) || g === "Unavailable Time"));
-assert.equal(analysis.subjectYearGroups.find(s => s.subject === "Accounting" && s.yearGroup === "Y12")?.lessonCount, 5);
+assert.equal(analysis.subjectYearGroups.find(s => s.subject === "Accounting" && s.yearGroup === "Y12")?.lessonCount, 7);
 console.log("timetable analyser fixture checks passed");
