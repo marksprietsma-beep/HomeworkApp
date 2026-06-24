@@ -7,7 +7,7 @@ export type DutySchoolDay = (typeof DUTY_SCHOOL_DAYS)[number];
 export type DutyDefinitionRow = { id: string; description: string; time: DutyTime };
 export type DutyAssignmentSlot = DutyDefinitionRow & { slotId: string; day: DutySchoolDay; assignedStaffCode: string };
 export type DutyRow = DutyAssignmentSlot;
-export type DutySchedulerStaff = StaffSummary & { teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean> };
+export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean> };
 export type DutyScheduleSummary = { totalDuties: number; staffConsidered: number; staffWithNoBreakDuty: DutySchedulerStaff[]; staffWithNoLunchDuty: DutySchedulerStaff[]; leadershipStaffWithExtraDuties: DutySchedulerStaff[]; warnings: string[] };
 export type DutyScheduleResult = { duties: DutyAssignmentSlot[]; summary: DutyScheduleSummary };
 
@@ -22,7 +22,7 @@ export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
   missingDutyTypeBonusWhenMinimumSlotsAllow: -900,
   missingDutyTypeBonusWhenMinimumSlotsDoNotAllow: -120,
   leadershipExtraDutyPenalty: 650,
-  p2OrP5PreferenceBreachPenalty: 90,
+  p2OrP5PreferenceBreachPenalty: 320,
 } as const;
 
 function isLunchDuty(time: DutyTime) { return time === "Lunch A" || time === "Lunch B"; }
@@ -31,6 +31,7 @@ function emptyCountMap() { return Object.fromEntries(DUTY_SCHOOL_DAYS.map(day =>
 function teachesPeriodOnDay(entries: ParsedLessonEntry[], staffCode: string, day: DutySchoolDay, period: "P2" | "P5") { return entries.some(entry => entry.staffCode === staffCode && entry.day === day && entry.period === period && entry.isTeachingLesson); }
 function preferencePeriod(time: DutyTime) { return time === "Breaktime" ? "P2" : "P5"; }
 function hasPreferredFreePeriod(staff: DutySchedulerStaff, duty: DutyAssignmentSlot) { return duty.time === "Breaktime" ? !staff.teachesP2ByDay[duty.day] : !staff.teachesP5ByDay[duty.day]; }
+function sameTimeKey(duty: Pick<DutyAssignmentSlot, "day" | "time">) { return `${duty.day} ${duty.time}`; }
 
 export function expandDutyDefinitions(definitions: DutyDefinitionRow[], existingAssignments: DutyAssignmentSlot[] = []): DutyAssignmentSlot[] {
   const assignedBySlotId = new Map(existingAssignments.map(slot => [slot.slotId, slot.assignedStaffCode]));
@@ -40,11 +41,13 @@ export function expandDutyDefinitions(definitions: DutyDefinitionRow[], existing
   }));
 }
 
-export function getDutySchedulerStaff(analysis: TimetableAnalysis): DutySchedulerStaff[] {
+export function getDutySchedulerStaff(analysis: TimetableAnalysis, manualLoadAdjustments: Record<string, number> = {}): DutySchedulerStaff[] {
   return [...analysis.staff]
     .sort((a, b) => a.staffName.localeCompare(b.staffName, undefined, { numeric: true, sensitivity: "base" }))
     .map(staff => ({
       ...staff,
+      manualLoadAdjustment: manualLoadAdjustments[staff.staffCode] ?? 0,
+      effectiveLoad: staff.teachingLessonCount + (manualLoadAdjustments[staff.staffCode] ?? 0),
       teachesP2ByDay: Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P2")])) as Record<DutySchoolDay, boolean>,
       teachesP5ByDay: Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P5")])) as Record<DutySchoolDay, boolean>,
     }));
@@ -67,7 +70,7 @@ function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, sta
   let score = 0;
 
   score += state.total * DUTY_SCHEDULER_SCORING_CONSTANTS.existingDutyPenalty;
-  score += staff.teachingLessonCount * DUTY_SCHEDULER_SCORING_CONSTANTS.teachingLessonLoadPenalty;
+  score += staff.effectiveLoad * DUTY_SCHEDULER_SCORING_CONSTANTS.teachingLessonLoadPenalty;
   if (staff.isTutor) score += DUTY_SCHEDULER_SCORING_CONSTANTS.tutorPenalty;
   if (hasMinimumForType) score += slotsAllowMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsDoNotAllow;
   if (!hasMinimumForType) score += slotsAllowMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsDoNotAllow;
@@ -77,9 +80,13 @@ function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, sta
 }
 
 function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[], warnings: string[]): DutyScheduleSummary {
+  const staffByCode = new Map(staff.map(member => [member.staffCode, member]));
+  const sameTimeAssignments = new Map<string, DutyAssignmentSlot[]>();
   const counts = initialState(staff);
   for (const duty of duties) {
     if (!duty.assignedStaffCode) continue;
+    const duplicateKey = `${duty.assignedStaffCode}|${sameTimeKey(duty)}`;
+    sameTimeAssignments.set(duplicateKey, [...(sameTimeAssignments.get(duplicateKey) ?? []), duty]);
     const state = counts.get(duty.assignedStaffCode);
     if (!state) continue;
     state.total += 1;
@@ -89,6 +96,21 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
   const staffWithNoBreakDuty = staff.filter(member => (counts.get(member.staffCode)?.breakCount ?? 0) === 0);
   const staffWithNoLunchDuty = staff.filter(member => (counts.get(member.staffCode)?.lunchCount ?? 0) === 0);
   const leadershipStaffWithExtraDuties = staff.filter(member => member.isLeadership && (counts.get(member.staffCode)?.total ?? 0) > 2);
+  for (const [key, duplicates] of sameTimeAssignments) {
+    if (duplicates.length < 2) continue;
+    const [staffCode, timeKey] = key.split("|");
+    const member = staffByCode.get(staffCode);
+    warnings.push(`${member ? staffLabel(member) : staffCode} is assigned to ${duplicates.length} duties at the same time (${timeKey}): ${duplicates.map(duty => duty.description || duty.time).join(", ")}.`);
+  }
+  for (const duty of duties) {
+    if (!duty.assignedStaffCode) continue;
+    const member = staffByCode.get(duty.assignedStaffCode);
+    if (member && !hasPreferredFreePeriod(member, duty)) warnings.push(`${staffLabel(member)} has a ${preferencePeriod(duty.time)} preference breach on ${duty.day} ${duty.time}: they teach ${duty.day} ${preferencePeriod(duty.time)}.`);
+  }
+  for (const member of staff) {
+    const state = counts.get(member.staffCode);
+    if (state && member.effectiveLoad <= 2 && state.total >= 3) warnings.push(`${staffLabel(member)} has low effective load (${member.effectiveLoad}) but ${state.total} duties; check whether the manual workload adjustment is correct.`);
+  }
   if (staff.length && duties.filter(d => d.time === "Breaktime").length < staff.length) warnings.push("There are fewer Breaktime duty slots than eligible staff, so not every staff member can receive a Breaktime duty.");
   if (staff.length && duties.filter(d => isLunchDuty(d.time)).length < staff.length) warnings.push("There are fewer Lunch duty slots than eligible staff, so not every staff member can receive a Lunch duty.");
   if (staffWithNoBreakDuty.length) warnings.push(`${staffWithNoBreakDuty.length} staff member(s) currently have no Breaktime duty.`);
@@ -107,10 +129,13 @@ export function autoScheduleDuties(duties: DutyAssignmentSlot[], staff: DutySche
 
   for (const duty of scheduled) {
     const slotsAllowMinimum = duty.time === "Breaktime" ? breakSlotsAllowMinimum : lunchSlotsAllowMinimum;
-    const ranked = staff.map(member => ({ member, score: scoreCandidate(member, duty, counts.get(member.staffCode)!, slotsAllowMinimum) }))
-      .sort((a, b) => a.score - b.score || a.member.teachingLessonCount - b.member.teachingLessonCount || a.member.staffName.localeCompare(b.member.staffName));
+    const alreadyAssignedAtSameTime = new Set(scheduled.filter(slot => slot.slotId !== duty.slotId && slot.day === duty.day && slot.time === duty.time && slot.assignedStaffCode).map(slot => slot.assignedStaffCode));
+    const ranked = staff
+      .filter(member => !alreadyAssignedAtSameTime.has(member.staffCode))
+      .map(member => ({ member, score: scoreCandidate(member, duty, counts.get(member.staffCode)!, slotsAllowMinimum) }))
+      .sort((a, b) => a.score - b.score || a.member.effectiveLoad - b.member.effectiveLoad || a.member.staffName.localeCompare(b.member.staffName));
     const selected = ranked[0]?.member;
-    if (!selected) { warnings.push(`Could not assign ${duty.day} ${duty.time} duty "${duty.description || duty.time}".`); continue; }
+    if (!selected) { warnings.push(`Could not assign ${duty.day} ${duty.time} duty "${duty.description || duty.time}" because every eligible staff member was already assigned to another duty at that same time.`); continue; }
     duty.assignedStaffCode = selected.staffCode;
     const state = counts.get(selected.staffCode)!;
     state.total += 1;
