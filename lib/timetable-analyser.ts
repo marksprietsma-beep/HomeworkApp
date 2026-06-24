@@ -15,7 +15,7 @@ const TUTOR_PERIODS = new Set(["Tutor Time", "Afternoon TT"]);
 const PERIODS = new Set(["Tutor Time", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "USL", "Afternoon TT", "EA", "ASA"]);
 const WEEKDAYS = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 const NON_CURRICULUM = /^(registration|reg|meeting|house|unavailable(?: time)?|free|duty|duties|activity|activities|ea|asa|usl|break|lunch|cover|private study|study)$/i;
-const VALID_TUTOR_GROUP = /^(?:Y(?:7|8|9|10|11|12|13)|(?:7|8|9|10|11|12|13))[A-Z]{1,4}$/i;
+const VALID_TUTOR_GROUP = /^(?:(?:[A-Z]{1,4}\/)?(?:Y)?(?:7|8|9|10|11|12|13)[A-Z0-9]{1,12})$/i;
 
 type WorkbookSheet = { name: string; sheetId: string; relationshipId: string };
 type SelectedWorksheet = { sheet: WorkbookSheet; fallbackAttempted: boolean; matchedBy: string };
@@ -110,13 +110,19 @@ export function parseSheet(xml: string, strings: string[]) {
   return rows;
 }
 function splitEntries(raw: string) { return raw.split(/\n\s*-{3,}\s*\n|\n\s*[-–—]{5,}\s*\n/g).map(x => x.trim()).filter(Boolean); }
-function yearFromClass(group: string) { const m = group.match(/^(?:Y)?(\d{1,2})(?=\D|$)/i); return m ? `Y${m[1]}` : undefined; }
+function yearFromClass(group: string) { const m = group.match(/(?:^|\/)(?:Y)?(\d{1,2})(?=\D|$)/i); return m ? `Y${m[1]}` : undefined; }
 function add(set: Set<string>, v?: string) { if (v) set.add(v); }
 function sorted(set: Set<string>) { return [...set].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})); }
 function normaliseTutorGroup(value: string) {
-  const group = value.replace(/^registration\s*/i, "").replace(/\s+/g, "").trim();
+  const group = value.replace(/\s+/g, "").trim();
   if (!group || /^\d+$/.test(group) || NON_CURRICULUM.test(value) || !VALID_TUTOR_GROUP.test(group)) return undefined;
-  return group.toUpperCase().replace(/^Y?(\d+)/, "Y$1");
+  const upper = group.toUpperCase();
+  return upper.includes("/") ? upper : upper.replace(/^Y?(\d+)/, "Y$1");
+}
+function tutorGroupFromTutorTime(lines: string[]) {
+  const registrationIndex = lines.findIndex(line => /registration/i.test(line));
+  if (registrationIndex <= 0) return undefined;
+  return normaliseTutorGroup(lines[registrationIndex - 1]);
 }
 function parseLesson(cell: RawTimetableCell): { entries: ParsedLessonEntry[]; warnings: TimetableImportWarning[] } {
   const entries: ParsedLessonEntry[] = [], warnings: TimetableImportWarning[] = [];
@@ -124,7 +130,7 @@ function parseLesson(cell: RawTimetableCell): { entries: ParsedLessonEntry[]; wa
     const lines = part.split(/\n+/).map(x => x.trim()).filter(Boolean);
     const isTutor = TUTOR_PERIODS.has(cell.period);
     if (isTutor) {
-      const group = normaliseTutorGroup(lines[0] ?? part);
+      const group = tutorGroupFromTutorTime(lines);
       if (group) entries.push({...cell, classGroup: group, subject: "Tutor Time", yearGroup: yearFromClass(group), isTeachingLesson: false, isTutorEntry: true});
       continue;
     }
