@@ -13,6 +13,18 @@ export type DutyScheduleResult = { duties: DutyAssignmentSlot[]; summary: DutySc
 
 type AssignmentState = { total: number; breakCount: number; lunchCount: number };
 
+export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
+  existingDutyPenalty: 140,
+  teachingLessonLoadPenalty: 4,
+  tutorPenalty: 6,
+  repeatDutyTypePenaltyWhenMinimumSlotsAllow: 900,
+  repeatDutyTypePenaltyWhenMinimumSlotsDoNotAllow: 80,
+  missingDutyTypeBonusWhenMinimumSlotsAllow: -900,
+  missingDutyTypeBonusWhenMinimumSlotsDoNotAllow: -120,
+  leadershipExtraDutyPenalty: 650,
+  p2OrP5PreferenceBreachPenalty: 90,
+} as const;
+
 function isLunchDuty(time: DutyTime) { return time === "Lunch A" || time === "Lunch B"; }
 function staffLabel(staff: StaffSummary) { return `${staff.staffName} (${staff.staffCode})`; }
 function emptyCountMap() { return Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, 0])) as Record<DutySchoolDay, number>; }
@@ -54,13 +66,13 @@ function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, sta
   const hasBothMinimums = state.breakCount > 0 && state.lunchCount > 0;
   let score = 0;
 
-  score += state.total * 140;
-  score += staff.teachingLessonCount * 4;
-  if (staff.isTutor) score += 6;
-  if (hasMinimumForType) score += slotsAllowMinimum ? 900 : 80;
-  if (!hasMinimumForType) score -= slotsAllowMinimum ? 900 : 120;
-  if (staff.isLeadership && hasBothMinimums) score += 650;
-  if (!hasPreferredFreePeriod(staff, duty)) score += 90;
+  score += state.total * DUTY_SCHEDULER_SCORING_CONSTANTS.existingDutyPenalty;
+  score += staff.teachingLessonCount * DUTY_SCHEDULER_SCORING_CONSTANTS.teachingLessonLoadPenalty;
+  if (staff.isTutor) score += DUTY_SCHEDULER_SCORING_CONSTANTS.tutorPenalty;
+  if (hasMinimumForType) score += slotsAllowMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsDoNotAllow;
+  if (!hasMinimumForType) score += slotsAllowMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsDoNotAllow;
+  if (staff.isLeadership && hasBothMinimums) score += DUTY_SCHEDULER_SCORING_CONSTANTS.leadershipExtraDutyPenalty;
+  if (!hasPreferredFreePeriod(staff, duty)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.p2OrP5PreferenceBreachPenalty;
   return score;
 }
 
