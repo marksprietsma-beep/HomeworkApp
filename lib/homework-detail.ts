@@ -1,9 +1,13 @@
+import { normalizeAssignmentKeyVocabulary } from "./assignment-key-vocabulary";
 import { prisma } from "./prisma";
 
 export type HomeworkDetailData = {
   id: number;
   title: string;
+  titleI18n: unknown;
   description: string | null;
+  descriptionI18n: unknown;
+  keyVocabulary: import("./assignment-key-vocabulary").AssignmentKeyVocabularyItem[];
   status: string;
   dueAt: Date | null;
   class: {
@@ -19,6 +23,7 @@ export type HomeworkDetailData = {
     id: number;
     order: number;
     prompt: string;
+    promptI18n: unknown;
     questionType: string;
     points: number | null;
     options: unknown;
@@ -72,6 +77,7 @@ export async function getHomeworkDetailData(
           id: true,
           order: true,
           prompt: true,
+          promptI18n: true,
           questionType: true,
           points: true,
           options: true,
@@ -111,7 +117,10 @@ export async function getHomeworkDetailData(
   return {
     id: assignment.id,
     title: assignment.title,
+    titleI18n: assignment.titleI18n,
     description: assignment.description,
+    descriptionI18n: assignment.descriptionI18n,
+    keyVocabulary: normalizeAssignmentKeyVocabulary(assignment.keyVocabulary),
     status: assignment.status,
     dueAt: assignment.dueAt,
     class: assignment.class,

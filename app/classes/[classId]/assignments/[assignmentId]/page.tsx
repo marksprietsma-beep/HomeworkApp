@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
+import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../../lib/i18n-content";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
 import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
 
@@ -16,6 +17,7 @@ type HomeworkDetailPageProps = {
   searchParams?: Promise<{
     duplicated?: string;
     statusUpdated?: string;
+    lang?: string;
   }>;
 };
 
@@ -46,6 +48,37 @@ function getMultipleChoiceChoices(options: unknown) {
   return [];
 }
 
+function getPlainLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
+  return mode === "bilingual" ? getBilingualTextParts(fallback, i18n).join(" / ") : getLocalizedText(fallback, i18n, mode);
+}
+
+function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
+  const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
+  return <span className="grid gap-1">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
+}
+
+function renderChoiceText(fallback: string, options: unknown, optionIndex: number, mode: LanguageMode) {
+  const i18n = typeof options === "object" && options && "choicesI18n" in options && Array.isArray(options.choicesI18n) ? options.choicesI18n[optionIndex] : null;
+  return renderLocalizedText(fallback, i18n, mode);
+}
+
+function renderVocabularyTerm(item: { englishTerm: string; chineseTerm: string; termI18n?: unknown }, mode: LanguageMode) {
+  return getPlainLocalizedText(item.englishTerm, item.termI18n ?? { en: item.englishTerm, zh: item.chineseTerm }, mode);
+}
+
+function renderVocabularyDefinition(item: { englishDefinition: string; chineseDefinition: string; definitionI18n?: unknown }, mode: LanguageMode) {
+  return renderLocalizedText(item.englishDefinition, item.definitionI18n ?? { en: item.englishDefinition, zh: item.chineseDefinition }, mode);
+}
+
+function LanguageLinks({ classId, assignmentId, mode }: { classId: number; assignmentId: number; mode: LanguageMode }) {
+  const items: { value: LanguageMode; label: string }[] = [
+    { value: "en", label: "English" },
+    { value: "zh", label: "中文" },
+    { value: "bilingual", label: "Bilingual" },
+  ];
+  return <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/classes/${classId}/assignments/${assignmentId}?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
+}
+
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -61,6 +94,7 @@ export default async function HomeworkDetailPage({
 }: HomeworkDetailPageProps) {
   const { classId, assignmentId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  const languageMode: LanguageMode = resolvedSearchParams.lang === "zh" || resolvedSearchParams.lang === "bilingual" ? resolvedSearchParams.lang : "en";
   const parsedClassId = Number(classId);
   const parsedAssignmentId = Number(assignmentId);
 
@@ -117,10 +151,10 @@ export default async function HomeworkDetailPage({
         <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-950">
-              {homework.title}
+              {renderLocalizedText(homework.title, homework.titleI18n, languageMode)}
             </h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-              {homework.description ?? "No instructions have been added for this assignment."}
+              {renderLocalizedText(homework.description ?? "No instructions have been added for this assignment.", homework.descriptionI18n, languageMode)}
             </p>
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {homework.status} · Due: {formatDate(homework.dueAt)}
@@ -203,6 +237,7 @@ export default async function HomeworkDetailPage({
               </div>
             ) : null}
           </div>
+          <LanguageLinks classId={homework.class.id} assignmentId={homework.id} mode={languageMode} />
           <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
               Class
@@ -222,6 +257,20 @@ export default async function HomeworkDetailPage({
           <StatCard label="Submissions" value={homework.totals.submissions} />
         </div>
       </section>
+
+      {homework.keyVocabulary.length > 0 ? (
+        <section className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Key vocabulary / 关键词</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {homework.keyVocabulary.map((item) => (
+              <article key={`${item.englishTerm}-${item.chineseTerm}`} className="rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm">
+                <h3 className="text-lg font-bold text-slate-950">{renderVocabularyTerm(item, languageMode)}</h3>
+                <p className="mt-3 leading-6 text-slate-700">{renderVocabularyDefinition(item, languageMode)}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
         <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
@@ -249,7 +298,7 @@ export default async function HomeworkDetailPage({
                         Question {question.order} · {question.questionType}
                       </p>
                       <p className="mt-2 text-base leading-7 text-slate-950">
-                        {question.prompt}
+                        {renderLocalizedText(question.prompt, question.promptI18n, languageMode)}
                       </p>
                     </div>
                     <p className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
@@ -265,7 +314,7 @@ export default async function HomeworkDetailPage({
                             key={`${question.id}-${optionIndex}`}
                             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                           >
-                            {choice}
+                            {renderChoiceText(choice, question.options, optionIndex, languageMode)}
                           </li>
                         ),
                       )}

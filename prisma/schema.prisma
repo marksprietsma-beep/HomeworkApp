@@ -105,7 +105,9 @@ model HomeworkAssignment {
   classId             Int
   createdById         Int
   title               String
+  titleI18n           Json?
   description         String?
+  descriptionI18n     Json?
   keyVocabulary       Json?
   status              HomeworkAssignmentStatus @default(DRAFT)
   dueAt               DateTime?
@@ -127,6 +129,7 @@ model HomeworkQuestion {
   assignmentId    Int
   order           Int
   prompt          String
+  promptI18n      Json?
   questionType    HomeworkQuestionType @default(OPEN_TEXT)
   options         Json?
   imagePath       String?

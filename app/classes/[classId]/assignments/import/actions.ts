@@ -7,11 +7,15 @@ import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-us
 import { prisma } from "../../../../../lib/prisma";
 import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
 
+type I18nText = { en: string; zh: string } | null;
+
 type AssignmentImportGlossaryItem = {
   englishTerm: string;
   chineseTerm: string;
   englishDefinition: string;
   chineseDefinition: string;
+  termI18n?: I18nText;
+  definitionI18n?: I18nText;
   category: string | null;
   questionIds: string[];
 };
@@ -20,14 +24,17 @@ type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   prompt: string;
+  textI18n?: I18nText;
   points: number | null;
-  options: { id: string; text: string }[];
+  options: { id: string; text: string; textI18n?: I18nText }[];
   image: { path: string; caption: string; altText: string } | null;
 };
 
 type AssignmentImportAssignment = {
   title: string;
+  titleI18n?: I18nText;
   instructions: string;
+  instructionsI18n?: I18nText;
   dueDate: string | null;
   status: "DRAFT" | "PUBLISHED";
   questions: AssignmentImportQuestion[];
@@ -117,11 +124,15 @@ export async function importAssignmentForClass(
     return {
       order: question.order,
       prompt: question.prompt,
+      promptI18n: question.textI18n ?? undefined,
       questionType: question.type as HomeworkQuestionType,
       points: question.points,
       options:
         question.type === "MULTIPLE_CHOICE"
-          ? { choices: question.options.map((option) => option.text) }
+          ? {
+              choices: question.options.map((option) => option.text),
+              choicesI18n: question.options.map((option) => option.textI18n ?? null),
+            }
           : undefined,
       imagePath: storedImage?.path || question.image?.path,
       imageCaption: storedImage?.caption || caption || undefined,
@@ -134,7 +145,9 @@ export async function importAssignmentForClass(
       classId,
       createdById: selectedUser.id,
       title: importedAssignment.title,
+      titleI18n: importedAssignment.titleI18n ?? undefined,
       description: importedAssignment.instructions,
+      descriptionI18n: importedAssignment.instructionsI18n ?? undefined,
       keyVocabulary: importedAssignment.keyVocabulary.length > 0 ? importedAssignment.keyVocabulary : undefined,
       status: importedAssignment.status as HomeworkAssignmentStatus,
       dueAt: dueDateToDateTime(importedAssignment.dueDate),

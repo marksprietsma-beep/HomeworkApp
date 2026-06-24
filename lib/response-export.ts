@@ -11,6 +11,9 @@ export type AssignmentResponseExport = {
   assignment: {
     id: number;
     title: string;
+    titleI18n: unknown;
+    instructions: string | null;
+    instructionsI18n: unknown;
     status: string;
     dueAt: string | null;
     class: {
@@ -23,8 +26,10 @@ export type AssignmentResponseExport = {
     id: number;
     order: number;
     prompt: string;
+    promptI18n: unknown;
     questionType: string;
     points: number | null;
+    options?: unknown;
     image: {
       path: string | null;
       caption: string | null;
@@ -60,6 +65,9 @@ export async function getAssignmentResponseExportData(
     select: {
       id: true,
       title: true,
+      titleI18n: true,
+      description: true,
+      descriptionI18n: true,
       status: true,
       dueAt: true,
       keyVocabulary: true,
@@ -84,6 +92,8 @@ export async function getAssignmentResponseExportData(
           id: true,
           order: true,
           prompt: true,
+          promptI18n: true,
+          options: true,
           questionType: true,
           points: true,
           imagePath: true,
@@ -126,6 +136,9 @@ export async function getAssignmentResponseExportData(
     assignment: {
       id: assignment.id,
       title: assignment.title,
+      titleI18n: assignment.titleI18n,
+      instructions: assignment.description,
+      instructionsI18n: assignment.descriptionI18n,
       status: assignment.status,
       dueAt: assignment.dueAt?.toISOString() ?? null,
       class: {
@@ -138,6 +151,8 @@ export async function getAssignmentResponseExportData(
       id: question.id,
       order: question.order,
       prompt: question.prompt,
+      promptI18n: question.promptI18n,
+      options: question.options,
       questionType: question.questionType,
       points: question.points,
       image: {
@@ -193,6 +208,7 @@ function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
     `- Assignment ID: ${exportData.assignment.id}`,
     `- Class: ${exportData.assignment.class.name} (${exportData.assignment.class.id})`,
     `- Status: ${exportData.assignment.status}`,
+    `- Instructions: ${exportData.assignment.instructions ?? "No instructions"}`,
     `- Due: ${exportData.assignment.dueAt ?? "No due date"}`,
     `- Generated: ${exportData.generatedAt}`,
     "",

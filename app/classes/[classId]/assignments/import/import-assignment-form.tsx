@@ -97,18 +97,18 @@ Teacher generation context to use:
 - Desired question mix: [for example, short written answer, longer written answer, multiple choice]
 - Difficulty: [fill in difficulty]
 - Marks/points expectations: [fill in total marks or per-question guidance]
-- Bilingual key vocabulary/glossary wanted? [yes/no; if yes, include English and Chinese terms/definitions]
+- Bilingual assignment wanted? [yes/no; if yes, include natural Simplified Chinese alongside English for title, instructions, question text, multiple-choice options, and key vocabulary/glossary]
 
 Use the Homework App assignment import JSON v1 structure:
 - Root object with formatVersion set to "assignment-import-v1" and an assignment object.
-- Assignment fields: title, instructions, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
+- Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
 - assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."
 - Do not put teacher generation context into assignment.instructions. If metadata genuinely belongs in the JSON, express it through title, questions, points, dueDate, status, or keyVocabulary instead of adding a long teacher-facing paragraph.
-- Questions must have stable string ids such as q1, sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, and optional positive integer points/marks.
+- Questions must preserve stable string ids such as q1 exactly, use sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, optional textI18n, and optional positive integer points/marks.
 - Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions.
-- MULTIPLE_CHOICE questions must include options with stable ids and text. Do not add options to OPEN_TEXT questions.
+- MULTIPLE_CHOICE questions must include options with stable ids and text, plus optional textI18n on each option. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
-- Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, category, and questionIds.
+- Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, write natural Simplified Chinese that is appropriate for students rather than literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
 
 Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.`;
 
