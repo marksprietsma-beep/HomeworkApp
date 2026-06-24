@@ -50,9 +50,33 @@
             {
               "id": "pf-3-q101-followup",
               "type": "ANSWER_FOLLOW_UP_QUESTION",
-              "prompt": "What did you multiply the numerator and denominator by?"
+              "prompt": "What did you multiply the numerator and denominator by?",
+              "promptI18n": {
+                "en": "What did you multiply the numerator and denominator by?",
+                "zh": "你把分子和分母都乘以了多少？"
+              }
             }
-          ]
+          ],
+          "feedbackI18n": {
+            "en": "Your equivalent fraction is correct.",
+            "zh": "你的等值分数是正确的。"
+          },
+          "strengthsI18n": {
+            "en": [
+              "Accurate answer."
+            ],
+            "zh": [
+              "答案准确。"
+            ]
+          },
+          "targetsI18n": {
+            "en": [
+              "Explain the scaling factor."
+            ],
+            "zh": [
+              "请解释你乘以了哪个缩放倍数。"
+            ]
+          }
         }
       ],
       "followUpActions": [
@@ -60,14 +84,42 @@
           "id": "pf-3-ack",
           "type": "ACKNOWLEDGEMENT",
           "prompt": "Please acknowledge that you have read this feedback.",
-          "required": true
+          "required": true,
+          "promptI18n": {
+            "en": "Please acknowledge that you have read this feedback.",
+            "zh": "请确认你已经阅读了这份反馈。"
+          }
         },
         {
           "id": "pf-3-reflect",
           "type": "SHORT_REFLECTION",
-          "prompt": "Write one sentence explaining which target you will focus on first."
+          "prompt": "Write one sentence explaining which target you will focus on first.",
+          "promptI18n": {
+            "en": "Write one sentence explaining which target you will focus on first.",
+            "zh": "写一句话说明你会先关注哪个目标。"
+          }
         }
-      ]
+      ],
+      "overallFeedbackI18n": {
+        "en": "You showed a secure understanding of equivalent fractions.",
+        "zh": "你对等值分数表现出扎实的理解。"
+      },
+      "strengthsI18n": {
+        "en": [
+          "You identified an equivalent fraction accurately."
+        ],
+        "zh": [
+          "你准确地找出了一个等值分数。"
+        ]
+      },
+      "targetsI18n": {
+        "en": [
+          "Show each conversion step when comparing fractions."
+        ],
+        "zh": [
+          "比较分数时，请写出每一步转换过程。"
+        ]
+      }
     }
   ]
 }
