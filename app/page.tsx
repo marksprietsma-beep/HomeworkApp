@@ -724,9 +724,8 @@ export default async function Home({
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16 text-center">
       <div className="mb-6 flex justify-center">
         <ClarionLogo
-          className="inline-flex flex-col items-center gap-3 sm:flex-row sm:text-left"
-          markClassName="h-16 w-16"
-          textClassName="text-center sm:text-left"
+          className="inline-flex justify-center"
+          markClassName="h-16 w-auto max-w-[18rem] sm:h-20 sm:max-w-sm"
         />
       </div>
       <p className="mb-4 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-sm font-medium text-teal-800">
