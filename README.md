@@ -1,6 +1,6 @@
-# Homework App
+# Clarion
 
-Homework App is a local-first web app foundation for development on Mark's local machine. It is intentionally independent of SharePoint, Supabase, Vercel-specific hosting, authentication, and production database hosting at this stage.
+Clarion is a local-first web app foundation for development on Mark's local machine. It is intentionally independent of SharePoint, Supabase, Vercel-specific hosting, authentication, and production database hosting at this stage.
 
 ## Tech stack
 
@@ -187,7 +187,7 @@ Start the development server:
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) in your browser. The homepage should show the title **Homework App**.
+Then open [http://localhost:3000](http://localhost:3000) in your browser. The homepage should show the title **Clarion**.
 
 ## Assignment import JSON
 
