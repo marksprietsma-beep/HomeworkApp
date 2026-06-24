@@ -270,14 +270,31 @@ model FeedbackFollowUpAction {
 }
 
 model TimetableImport {
-  id              Int      @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   name            String
   sourceFilename  String
-  isActive        Boolean  @default(false)
+  isActive        Boolean        @default(false)
   rawAnalysisJson Json
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  dutySchedules   DutySchedule[]
 
   @@index([isActive])
+  @@index([updatedAt])
+}
+
+model DutySchedule {
+  id                      Int              @id @default(autoincrement())
+  name                    String
+  isActive                Boolean          @default(false)
+  sourceTimetableImportId Int?
+  sourceTimetableName     String?
+  scheduleJson            Json
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  sourceTimetableImport   TimetableImport? @relation(fields: [sourceTimetableImportId], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
+  @@index([sourceTimetableImportId])
   @@index([updatedAt])
 }

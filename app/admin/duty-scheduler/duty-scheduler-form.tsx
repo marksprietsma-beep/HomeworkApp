@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { saveDutySchedule, type SavedDutySchedule } from "./actions";
 import type { TimetableAnalysis } from "../../../lib/timetable-analyser";
 import { autoScheduleDuties, countStaffTeachingPeriodByDay, DUTY_SCHEDULER_SCORING_CONSTANTS, DUTY_SCHOOL_DAYS, DUTY_TIME_OPTIONS, expandDutyDefinitions, getDutySchedulerStaff, summariseManualSchedule, type DutyAssignmentSlot, type DutyDefinitionRow, type DutyTime } from "../../../lib/duty-scheduler";
 
 type SavedTimetableImport = { id: number; name: string; sourceFilename: string; isActive: boolean; createdAt: string; updatedAt: string; analysis: TimetableAnalysis };
 type DutySchedulerExport = ReturnType<typeof buildExportPayload>;
+type ViewingSchedule = Pick<SavedDutySchedule, "id" | "name" | "isActive" | "sourceTimetableImportId" | "sourceTimetableName" | "updatedAt">;
 
 type ImportValidationResult = { ok: true; data: DutySchedulerExport } | { ok: false; error: string };
 
@@ -111,37 +113,38 @@ function buildExcelXml(payload: DutySchedulerExport) {
 }
 
 
-export function DutySchedulerForm({ timetable }: { timetable: SavedTimetableImport }) {
+export function DutySchedulerForm({ timetable, initialSchedules }: { timetable: SavedTimetableImport; initialSchedules: SavedDutySchedule[] }) {
   const staff = useMemo(() => getDutySchedulerStaff(timetable.analysis), [timetable.analysis]);
   const p2Counts = useMemo(() => countStaffTeachingPeriodByDay(staff, "P2"), [staff]);
   const p5Counts = useMemo(() => countStaffTeachingPeriodByDay(staff, "P5"), [staff]);
-  const [definitions, setDefinitions] = useState<DutyDefinitionRow[]>([newDuty(1)]);
-  const [assignments, setAssignments] = useState<DutyAssignmentSlot[]>([]);
-  const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
+  const activeSavedSchedule = useMemo(() => initialSchedules.find(schedule => schedule.isActive) ?? null, [initialSchedules]);
+  const loadedPayload = activeSavedSchedule?.scheduleJson && validateImportJson(activeSavedSchedule.scheduleJson).ok ? (activeSavedSchedule.scheduleJson as DutySchedulerExport) : null;
+  const validStaffCodes = useMemo(() => new Set(staff.map(member => member.staffCode)), [staff]);
+  const [definitions, setDefinitions] = useState<DutyDefinitionRow[]>(() => loadedPayload?.dutyDefinitions.map(definition => ({ id: definition.id, description: definition.description, time: definition.time })) ?? [newDuty(1)]);
+  const [assignments, setAssignments] = useState<DutyAssignmentSlot[]>(() => loadedPayload ? loadedPayload.assignments.map(assignment => ({ id: assignment.dutyDefinitionId || `saved-${assignment.slotId}`, slotId: assignment.slotId || `${assignment.dutyDefinitionId}-${assignment.day}`, day: assignment.day, time: assignment.time, description: assignment.description, assignedStaffCode: validStaffCodes.has(assignment.assignedStaffCode) ? assignment.assignedStaffCode : "" })) : []);
+  const [savedSchedules, setSavedSchedules] = useState<SavedDutySchedule[]>(initialSchedules);
+  const [viewingSchedule, setViewingSchedule] = useState<ViewingSchedule | null>(activeSavedSchedule);
+  const [scheduleName, setScheduleName] = useState(activeSavedSchedule?.name ?? `${timetable.name} duties`);
+  const [dirty, setDirty] = useState(false);
+  const [saveAsActive, setSaveAsActive] = useState(activeSavedSchedule?.isActive ?? false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState<string | null>(activeSavedSchedule ? `Loaded active duty schedule: ${activeSavedSchedule.name}.` : null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const expandedAssignments = useMemo(() => expandDutyDefinitions(definitions, assignments), [definitions, assignments]);
   const summary = useMemo(() => summariseManualSchedule(expandedAssignments, staff), [expandedAssignments, staff]);
 
-  function addDuty() { setDefinitions(current => [...current, newDuty(current.length + 1)]); setScheduleMessage(null); }
-  function removeDuty(id: string) { setDefinitions(current => current.length === 1 ? current : current.filter(duty => duty.id !== id)); setAssignments(current => current.filter(slot => slot.id !== id)); setScheduleMessage(null); }
-  function clearAssignments() { setAssignments(current => current.map(duty => ({ ...duty, assignedStaffCode: "" }))); setScheduleMessage("Assignments cleared. Duty definitions have been kept for editing."); }
-  function updateDuty(id: string, patch: Partial<DutyDefinitionRow>) { setDefinitions(current => current.map(duty => duty.id === id ? { ...duty, ...patch } : duty)); setScheduleMessage(null); }
-  function updateAssignment(slotId: string, assignedStaffCode: string) { setAssignments(current => expandDutyDefinitions(definitions, current).map(slot => slot.slotId === slotId ? { ...slot, assignedStaffCode } : slot)); setScheduleMessage(null); }
-  function runScheduler() { const result = autoScheduleDuties(expandDutyDefinitions(definitions, assignments), staff); setAssignments(result.duties); setScheduleMessage(result.summary.warnings.length ? "Auto-schedule completed with warnings. Review the summary before relying on it." : "Auto-schedule completed. Review the proposed assignments before relying on them."); }
+  function addDuty() { setDefinitions(current => [...current, newDuty(current.length + 1)]); markEdited(); setScheduleMessage(null); }
+  function removeDuty(id: string) { setDefinitions(current => current.length === 1 ? current : current.filter(duty => duty.id !== id)); setAssignments(current => current.filter(slot => slot.id !== id)); markEdited(); setScheduleMessage(null); }
+  function clearAssignments() { setAssignments(current => current.map(duty => ({ ...duty, assignedStaffCode: "" }))); markEdited(); setScheduleMessage("Assignments cleared. Duty definitions have been kept for editing."); }
+  function updateDuty(id: string, patch: Partial<DutyDefinitionRow>) { setDefinitions(current => current.map(duty => duty.id === id ? { ...duty, ...patch } : duty)); markEdited(); setScheduleMessage(null); }
+  function updateAssignment(slotId: string, assignedStaffCode: string) { setAssignments(current => expandDutyDefinitions(definitions, current).map(slot => slot.slotId === slotId ? { ...slot, assignedStaffCode } : slot)); markEdited(); setScheduleMessage(null); }
+  function runScheduler() { const result = autoScheduleDuties(expandDutyDefinitions(definitions, assignments), staff); setAssignments(result.duties); markEdited(); setScheduleMessage(result.summary.warnings.length ? "Auto-schedule completed with warnings. Review the summary before relying on it." : "Auto-schedule completed. Review the proposed assignments before relying on them."); }
   function currentExportPayload() { return buildExportPayload(timetable, definitions, expandedAssignments, staff, summary); }
-  function exportJson() { downloadTextFile(`${safeFilenamePart(timetable.name)}-duty-scheduler.json`, JSON.stringify(currentExportPayload(), null, 2), "application/json"); }
-  function exportExcel() { downloadTextFile(`${safeFilenamePart(timetable.name)}-duty-scheduler.xls`, buildExcelXml(currentExportPayload()), "application/vnd.ms-excel"); }
-  async function importJsonFile(file: File) {
-    let parsed: unknown;
-    try { parsed = JSON.parse(await file.text()); } catch { setScheduleMessage("Import failed: the selected file is not valid JSON."); return; }
-    const validation = validateImportJson(parsed);
-    if (!validation.ok) { setScheduleMessage(`Import failed: ${validation.error}`); return; }
-    if (!window.confirm("Importing this JSON will overwrite all current duty definitions and assignments. Continue?")) return;
-    const imported = validation.data;
+  function markEdited() { setDirty(true); }
+  function applyImportedSchedule(imported: DutySchedulerExport, sourceLabel: string, saved?: ViewingSchedule) {
     const activeSourceId = String(timetable.id);
     const importedSourceId = imported.sourceTimetable?.id ? String(imported.sourceTimetable.id) : "";
-    const timetableWarning = importedSourceId && importedSourceId !== activeSourceId ? ` Imported source timetable (${imported.sourceTimetable.name || importedSourceId}) differs from the active timetable (${timetable.name}).` : "";
-    const validStaffCodes = new Set(staff.map(member => member.staffCode));
+    const timetableWarning = importedSourceId && importedSourceId !== activeSourceId ? ` Source timetable (${imported.sourceTimetable.name || importedSourceId}) differs from the active timetable (${timetable.name}).` : "";
     const invalidCodes = [...new Set(imported.assignments.map(assignment => assignment.assignedStaffCode).filter(code => code && !validStaffCodes.has(code)))];
     const nextDefinitions = imported.dutyDefinitions.map(definition => ({ id: definition.id, description: definition.description, time: definition.time }));
     const definitionById = new Map(nextDefinitions.map(definition => [definition.id, definition]));
@@ -152,11 +155,44 @@ export function DutySchedulerForm({ timetable }: { timetable: SavedTimetableImpo
     });
     setDefinitions(nextDefinitions.length ? nextDefinitions : [{ id: `imported-duty-${Date.now()}`, description: "", time: "Breaktime" }]);
     setAssignments(nextAssignments);
-    setScheduleMessage(`Imported ${nextAssignments.length} duty assignment slot(s).${invalidCodes.length ? ` Cleared unknown staff code(s): ${invalidCodes.join(", ")}.` : ""}${timetableWarning}`);
+    setViewingSchedule(saved ?? null);
+    if (saved) { setScheduleName(saved.name); setSaveAsActive(saved.isActive); }
+    setDirty(!saved);
+    setScheduleMessage(`${sourceLabel} ${nextAssignments.length} duty assignment slot(s).${invalidCodes.length ? ` Cleared unknown staff code(s): ${invalidCodes.join(", ")}.` : ""}${timetableWarning}`);
+  }
+  async function saveCurrentSchedule() {
+    setIsSaving(true);
+    const result = await saveDutySchedule({ id: viewingSchedule?.id, name: scheduleName, isActive: saveAsActive, sourceTimetableImportId: timetable.id, sourceTimetableName: timetable.name, scheduleJson: currentExportPayload() });
+    setIsSaving(false);
+    if (!result.ok) { setScheduleMessage(`Save failed: ${result.error}`); return; }
+    setViewingSchedule(result.schedule);
+    setDirty(false);
+    setSaveAsActive(result.schedule.isActive);
+    setSavedSchedules(current => [result.schedule, ...current.filter(schedule => schedule.id !== result.schedule.id)].map(schedule => ({ ...schedule, isActive: result.schedule.isActive ? schedule.id === result.schedule.id : schedule.isActive })));
+    setScheduleMessage(`Saved duty schedule: ${result.schedule.name}${result.schedule.isActive ? " and marked it active." : "."}`);
+  }
+  function loadSavedSchedule(scheduleId: string) {
+    const saved = savedSchedules.find(schedule => String(schedule.id) === scheduleId);
+    if (!saved) return;
+    const validation = validateImportJson(saved.scheduleJson);
+    if (!validation.ok) { setScheduleMessage(`Could not load saved schedule: ${validation.error}`); return; }
+    applyImportedSchedule(validation.data, `Loaded saved duty schedule: ${saved.name}.`, saved);
+  }
+  function exportJson() { downloadTextFile(`${safeFilenamePart(timetable.name)}-duty-scheduler.json`, JSON.stringify(currentExportPayload(), null, 2), "application/json"); }
+  function exportExcel() { downloadTextFile(`${safeFilenamePart(timetable.name)}-duty-scheduler.xls`, buildExcelXml(currentExportPayload()), "application/vnd.ms-excel"); }
+  async function importJsonFile(file: File) {
+    let parsed: unknown;
+    try { parsed = JSON.parse(await file.text()); } catch { setScheduleMessage("Import failed: the selected file is not valid JSON."); return; }
+    const validation = validateImportJson(parsed);
+    if (!validation.ok) { setScheduleMessage(`Import failed: ${validation.error}`); return; }
+    if (!window.confirm("Importing this JSON will overwrite all current duty definitions and assignments. Continue?")) return;
+    applyImportedSchedule(validation.data, "Imported", undefined);
   }
 
   return <div className="mt-8 grid gap-8">
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Active saved timetable</p><h2 className="mt-2 text-2xl font-bold text-slate-950">{timetable.name}</h2><p className="mt-2 text-sm text-slate-600">Source: <span className="font-semibold">{timetable.sourceFilename}</span> · Updated {new Date(timetable.updatedAt).toLocaleString()}</p></div><div className="grid gap-3 text-sm sm:grid-cols-3"><div className="rounded-2xl bg-slate-50 p-4"><p className="font-bold text-slate-500">Staff considered</p><p className="mt-1 text-2xl font-black text-slate-950">{staff.length}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="font-bold text-slate-500">P2 teachers by day</p><p className="mt-1 text-xs font-bold text-slate-950">{dayCountsText(p2Counts)}</p></div><div className="rounded-2xl bg-slate-50 p-4"><p className="font-bold text-slate-500">P5 teachers by day</p><p className="mt-1 text-xs font-bold text-slate-950">{dayCountsText(p5Counts)}</p></div></div></div><p className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-medium text-sky-900">This scheduler uses only the active saved timetable staff rows, including saved Tutor/Leadership edits and excluding staff removed before saving. Each duty definition below expands into Monday-Friday assignment slots, and Breaktime/Lunch preferences check P2/P5 on the same day as the slot.</p></section>
+
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Duty schedule persistence</p><h2 className="mt-2 text-2xl font-bold text-slate-950">{viewingSchedule ? viewingSchedule.name : "Unsaved draft"}</h2><p className="mt-2 text-sm font-semibold text-slate-700">Status: {viewingSchedule ? `${viewingSchedule.isActive ? "Active/current schedule" : "Saved schedule"}${dirty ? " with unsaved edits" : ""}` : "Unsaved draft"}</p>{viewingSchedule && viewingSchedule.sourceTimetableImportId !== timetable.id ? <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">This saved schedule was created from {viewingSchedule.sourceTimetableName ?? "another timetable"}. The active timetable is now {timetable.name}; unknown staff assignments are cleared when loaded.</p> : null}</div><div className="grid gap-3 sm:min-w-[24rem]"><label className="text-sm font-bold text-slate-700">Schedule name<input value={scheduleName} onChange={event => { setScheduleName(event.target.value); markEdited(); }} className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 font-normal" /></label><label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={saveAsActive} onChange={event => { setSaveAsActive(event.target.checked); markEdited(); }} /> Mark as active/current</label><div className="flex flex-wrap gap-2"><button type="button" onClick={saveCurrentSchedule} disabled={isSaving} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">{isSaving ? "Saving…" : "Save duty schedule"}</button>{savedSchedules.length ? <select value={viewingSchedule?.id ?? ""} onChange={event => loadSavedSchedule(event.target.value)} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700"><option value="">Load saved…</option>{savedSchedules.map(schedule => <option key={schedule.id} value={schedule.id}>{schedule.isActive ? "Active: " : ""}{schedule.name}</option>)}</select> : null}</div></div></div></section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Duty definition table</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Define repeating duties</h2><p className="mt-2 text-sm text-slate-600">Add each duty once. The scheduler automatically creates Monday-Friday assignment slots.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={addDuty} className="rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-400">+ Add duty</button><button type="button" onClick={runScheduler} disabled={!staff.length || !definitions.length} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">Auto-schedule duties</button><button type="button" onClick={clearAssignments} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Clear assignments</button><button type="button" onClick={exportJson} className="rounded-full border border-sky-300 px-4 py-2 text-sm font-bold text-sky-800 hover:bg-sky-50">Export JSON</button><button type="button" onClick={exportExcel} className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50">Export Excel</button><button type="button" onClick={() => importInputRef.current?.click()} className="rounded-full border border-purple-300 px-4 py-2 text-sm font-bold text-purple-800 hover:bg-purple-50">Import JSON</button><input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void importJsonFile(file); event.target.value = ""; }} /></div></div>{scheduleMessage ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{scheduleMessage}</p> : null}<div className="mt-5 overflow-auto rounded-2xl border border-slate-200"><table className="min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500"><tr><th className="px-4 py-3">Description</th><th className="px-4 py-3">Time</th><th className="px-4 py-3 text-right">Actions</th></tr></thead><tbody>{definitions.map((duty, index) => <tr key={duty.id} className="border-t border-slate-100"><td className="px-4 py-3"><input value={duty.description} onChange={event => updateDuty(duty.id, { description: event.target.value })} placeholder={`Duty ${index + 1} location/description`} className="w-full rounded-2xl border border-slate-300 px-3 py-2" /></td><td className="px-4 py-3"><select value={duty.time} onChange={event => updateDuty(duty.id, { time: event.target.value as DutyTime })} className="w-full rounded-2xl border border-slate-300 px-3 py-2">{DUTY_TIME_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}</select></td><td className="px-4 py-3 text-right"><button type="button" onClick={() => removeDuty(duty.id)} disabled={definitions.length === 1} className="rounded-full border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40">Remove</button></td></tr>)}</tbody></table></div></section>
 
