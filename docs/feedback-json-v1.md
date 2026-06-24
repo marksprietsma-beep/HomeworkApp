@@ -37,6 +37,9 @@ Mark can paste this into ChatGPT after the exported response JSON:
 > - Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
 > - Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
 > - For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
+> - English-only feedback remains valid. When bilingual feedback is requested, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
+> - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
+> - If you include Chinese, write natural Simplified Chinese for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 > - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
 > - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 > 
@@ -45,7 +48,7 @@ Mark can paste this into ChatGPT after the exported response JSON:
 > - This applies to participant-level followUpActions and question-level followUpActions.
 > - Do not omit follow-up action ids, and do not rely on the importer to invent ids.
 > - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
-> - Each follow-up action must include id, type, prompt, and required.
+> - Each follow-up action must include id, type, prompt, and required. It may also include promptI18n when bilingual feedback is requested.
 > - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
 > - Use required true unless the action is genuinely optional.
 > 
@@ -161,6 +164,7 @@ IDs are the contract's source of truth. Names and titles are included only to ma
 | `teacherNotes` | No | string | Optional teacher-facing notes. These should not be shown to students unless a later UI explicitly chooses to. |
 | `questionFeedback` | No | array | Optional question-level feedback linked to exported question IDs. Use an empty array or omit when only overall feedback is needed. |
 | `followUpActions` | No | array | Optional participant-level actions the student must complete after reading overall feedback. |
+| `strengthsI18n` / `targetsI18n` | No | object | Optional bilingual arrays with only `en` and `zh` keys. English-only imports can omit them. |
 
 ### Participant identifier fields
 
@@ -190,6 +194,8 @@ A participant who did not start the assignment has `submission: null` in the res
 | `targets` | No | array of strings | Optional targets specific to this answer. |
 | `teacherNotes` | No | string | Optional teacher-facing note for this question. |
 | `followUpActions` | No | array | Optional actions linked to this question. |
+| `feedbackI18n` | No | object | Optional bilingual question feedback with only `en` and `zh` string keys. English-only imports can omit it. |
+| `strengthsI18n` / `targetsI18n` | No | object | Optional bilingual arrays with only `en` and `zh` keys. English-only imports can omit them. |
 
 Question-level feedback should only be included when it is useful. ChatGPT does not need to produce one entry for every question.
 
@@ -203,6 +209,7 @@ Follow-up actions tell the future student feedback UI what the student must do a
 | `type` | Yes | string | Must be `ACKNOWLEDGEMENT`, `SHORT_REFLECTION`, or `ANSWER_FOLLOW_UP_QUESTION`. |
 | `prompt` | Yes | string | Student-facing instruction or question. Must not be empty after trimming. |
 | `required` | No | boolean | Defaults to `true` if omitted. |
+| `promptI18n` | No | object | Optional bilingual action prompt with only `en` and `zh` string keys. English-only imports can omit it. |
 
 Supported v1 action types:
 
@@ -475,7 +482,7 @@ The parser returns either:
 
 Fixture coverage lives under `docs/fixtures/feedback-import`:
 
-- `valid/fractions-feedback.json` is a valid feedback document checked against a representative response export context.
+- `valid/fractions-feedback.json` is a valid bilingual feedback document checked against a representative response export context. It keeps all required English fields and adds optional `overallFeedbackI18n`, `strengthsI18n`, `targetsI18n`, question-level i18n fields, and action `promptI18n` values.
 - `invalid/contract-violations.json` is valid JSON that violates the contract and reference checks.
 - `invalid/not-json.json` confirms invalid pasted JSON returns a structured parse error.
 

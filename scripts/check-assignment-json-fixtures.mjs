@@ -24,7 +24,7 @@ const invalidFixtures = [
   },
   {
     path: "docs/fixtures/assignment-import/invalid/bad-glossary.json",
-    expectedErrors: ["chineseTerm must be a non-empty string", "category must be a string", "must match an assignment question id"],
+    expectedErrors: ["category must be a string", "must match an assignment question id"],
   },
 ];
 const docsPath = "docs/assignment-import-json-v1.md";

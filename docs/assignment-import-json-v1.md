@@ -6,7 +6,7 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
-> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`.
+> Return only valid JSON using the Homework App assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`. English-only JSON still works. If bilingual output is requested, keep the required English fields and add optional i18n fields using only `en` and `zh`: `titleI18n`, `instructionsI18n`, question `textI18n`, option `textI18n`, and glossary `termI18n`/`definitionI18n`. Use natural Simplified Chinese, not literal machine-style translation.
 
 ## Stable root shape
 
@@ -48,7 +48,9 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | Field | Required | Type | Notes |
 | --- | --- | --- | --- |
 | `title` | Yes | string | Short teacher-facing assignment title. Must not be empty after trimming. |
+| `titleI18n` | No | object | Optional bilingual title with only `en` and `zh` string keys. English-only imports can omit it. |
 | `instructions` | Yes | string | Concise student-facing assignment instructions. Must not be empty after trimming. Do not include teacher generation context, syllabus notes, question mix, difficulty, marks expectations, or glossary choices here. |
+| `instructionsI18n` | No | object | Optional bilingual instructions with only `en` and `zh` string keys. English-only imports can omit it. |
 | `dueDate` | No | string or null | Optional local due date in `YYYY-MM-DD` format. Use `null` or omit the field when there is no due date. Do not include times or time zones in v1. |
 | `status` | Yes | string | Must be `DRAFT` or `PUBLISHED`. ChatGPT should normally use `DRAFT` unless Mark asks for a published assignment. |
 | `questions` | Yes | array | Ordered list of questions. Must contain at least one question. |
@@ -63,6 +65,7 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | `order` | Yes | integer | 1-based display order. Must be unique and sequential with no gaps. |
 | `type` | Yes | string | Must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. |
 | `prompt` | Yes | string | Student-facing question prompt. Must not be empty after trimming. |
+| `textI18n` | No | object | Optional bilingual question text with only `en` and `zh` string keys. English-only imports can omit it. |
 | `points` | No | integer | Optional point value for this question. When present, it must be a positive integer. |
 | `options` | Required only for `MULTIPLE_CHOICE` | array | Array of option objects. Must be omitted for `OPEN_TEXT`. |
 | `image` | No | object or null | Optional image reference metadata. This is only a reference; v1 does not upload or store image files. |
@@ -75,6 +78,7 @@ Use `OPEN_TEXT` for any written answer, including longer explanation or evaluati
 | --- | --- | --- | --- |
 | `id` | Yes | string | Stable option ID within the question, such as `a`, `b`, `c`, `d`. Must be unique within that question. |
 | `text` | Yes | string | Student-facing option text. Must not be empty after trimming. |
+| `textI18n` | No | object | Optional bilingual option text with only `en` and `zh` string keys. English-only imports can omit it. |
 
 The v1 contract includes optional per-question `points`, but does not include a correct answer, rubric, or automatic scoring field. If ChatGPT includes those fields, MAR-120 should reject them or ignore them according to the parser decision documented at implementation time.
 
@@ -321,7 +325,7 @@ MAR-120 should enforce these rules before writing anything to the database:
 
 ## Optional key vocabulary / glossary
 
-Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional array. Each item must include `englishTerm`, `chineseTerm`, `englishDefinition`, and `chineseDefinition`. Optional `category` is a string or null, and optional `questionIds` links terms to imported question `id` values. Use only one of `keyVocabulary` or `glossary` in the same assignment.
+Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional array. Each item must include `englishTerm` and `englishDefinition`; `chineseTerm` and `chineseDefinition` are optional strings for bilingual support and should use natural Simplified Chinese when present. Optional `termI18n` and `definitionI18n` may provide `{ "en": "...", "zh": "..." }` values using only `en` and `zh`. Optional `category` is a string or null, and optional `questionIds` links terms to imported question `id` values. Use only one of `keyVocabulary` or `glossary` in the same assignment. English-only JSON remains valid when the bilingual fields are omitted.
 
 ### Valid bilingual vocabulary fixture
 
@@ -341,7 +345,17 @@ Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional
         "englishDefinition": "A push or pull that can change how an object moves.",
         "chineseDefinition": "可以改变物体运动方式的推或拉。",
         "category": "Science",
-        "questionIds": ["q1"]
+        "questionIds": [
+          "q1"
+        ],
+        "termI18n": {
+          "en": "force",
+          "zh": "力"
+        },
+        "definitionI18n": {
+          "en": "A push or pull that can change how an object moves.",
+          "zh": "可以改变物体运动方式的推或拉。"
+        }
       },
       {
         "englishTerm": "friction",
@@ -349,7 +363,17 @@ Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional
         "englishDefinition": "A force that slows movement when surfaces rub together.",
         "chineseDefinition": "当表面相互摩擦时使运动减慢的力。",
         "category": "Science",
-        "questionIds": ["q2"]
+        "questionIds": [
+          "q2"
+        ],
+        "termI18n": {
+          "en": "friction",
+          "zh": "摩擦力"
+        },
+        "definitionI18n": {
+          "en": "A force that slows movement when surfaces rub together.",
+          "zh": "当表面相互摩擦时使运动减慢的力。"
+        }
       }
     ],
     "questions": [
@@ -358,16 +382,32 @@ Assignments may include `keyVocabulary` (or the alias `glossary`) as an optional
         "order": 1,
         "type": "OPEN_TEXT",
         "prompt": "What is one example of a force?",
-        "points": 1
+        "points": 1,
+        "textI18n": {
+          "en": "What is one example of a force?",
+          "zh": "请举出一个力的例子。"
+        }
       },
       {
         "id": "q2",
         "order": 2,
         "type": "OPEN_TEXT",
         "prompt": "Explain how friction affects a bicycle slowing down.",
-        "points": 2
+        "points": 2,
+        "textI18n": {
+          "en": "Explain how friction affects a bicycle slowing down.",
+          "zh": "解释摩擦力如何影响正在减速的自行车。"
+        }
       }
-    ]
+    ],
+    "titleI18n": {
+      "en": "Year 7 Forces Vocabulary Check",
+      "zh": "七年级力学词汇检查"
+    },
+    "instructionsI18n": {
+      "en": "Use the key vocabulary to help answer each question.",
+      "zh": "使用关键词汇帮助你回答每一道题。"
+    }
   }
 }
 ```

@@ -12,7 +12,17 @@
         "englishDefinition": "A push or pull that can change how an object moves.",
         "chineseDefinition": "可以改变物体运动方式的推或拉。",
         "category": "Science",
-        "questionIds": ["q1"]
+        "questionIds": [
+          "q1"
+        ],
+        "termI18n": {
+          "en": "force",
+          "zh": "力"
+        },
+        "definitionI18n": {
+          "en": "A push or pull that can change how an object moves.",
+          "zh": "可以改变物体运动方式的推或拉。"
+        }
       },
       {
         "englishTerm": "friction",
@@ -20,7 +30,17 @@
         "englishDefinition": "A force that slows movement when surfaces rub together.",
         "chineseDefinition": "当表面相互摩擦时使运动减慢的力。",
         "category": "Science",
-        "questionIds": ["q2"]
+        "questionIds": [
+          "q2"
+        ],
+        "termI18n": {
+          "en": "friction",
+          "zh": "摩擦力"
+        },
+        "definitionI18n": {
+          "en": "A force that slows movement when surfaces rub together.",
+          "zh": "当表面相互摩擦时使运动减慢的力。"
+        }
       }
     ],
     "questions": [
@@ -29,15 +49,31 @@
         "order": 1,
         "type": "OPEN_TEXT",
         "prompt": "What is one example of a force?",
-        "points": 1
+        "points": 1,
+        "textI18n": {
+          "en": "What is one example of a force?",
+          "zh": "请举出一个力的例子。"
+        }
       },
       {
         "id": "q2",
         "order": 2,
         "type": "OPEN_TEXT",
         "prompt": "Explain how friction affects a bicycle slowing down.",
-        "points": 2
+        "points": 2,
+        "textI18n": {
+          "en": "Explain how friction affects a bicycle slowing down.",
+          "zh": "解释摩擦力如何影响正在减速的自行车。"
+        }
       }
-    ]
+    ],
+    "titleI18n": {
+      "en": "Year 7 Forces Vocabulary Check",
+      "zh": "七年级力学词汇检查"
+    },
+    "instructionsI18n": {
+      "en": "Use the key vocabulary to help answer each question.",
+      "zh": "使用关键词汇帮助你回答每一道题。"
+    }
   }
 }

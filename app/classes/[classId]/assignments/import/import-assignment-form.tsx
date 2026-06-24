@@ -97,7 +97,7 @@ Teacher generation context to use:
 - Desired question mix: [for example, short written answer, longer written answer, multiple choice]
 - Difficulty: [fill in difficulty]
 - Marks/points expectations: [fill in total marks or per-question guidance]
-- Bilingual assignment wanted? [yes/no; if yes, include natural Simplified Chinese alongside English for title, instructions, question text, multiple-choice options, and key vocabulary/glossary]
+- Bilingual assignment wanted? [yes/no; if yes, keep the required English fields and add optional i18n fields using only en and zh for title, instructions, question text, multiple-choice options, and key vocabulary/glossary. Use natural Simplified Chinese, not literal machine-style translation.]
 
 Use the Homework App assignment import JSON v1 structure:
 - Root object with formatVersion set to "assignment-import-v1" and an assignment object.
@@ -108,7 +108,7 @@ Use the Homework App assignment import JSON v1 structure:
 - Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions.
 - MULTIPLE_CHOICE questions must include options with stable ids and text, plus optional textI18n on each option. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
-- Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, write natural Simplified Chinese that is appropriate for students rather than literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
+- Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, use natural Simplified Chinese, not literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
 
 Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.`;
 

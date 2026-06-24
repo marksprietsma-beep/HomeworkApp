@@ -108,7 +108,7 @@ export function FeedbackImportForm({
           ChatGPT feedback import
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Paste feedback JSON for this assignment. Validation runs locally
+          Paste feedback JSON for this assignment. English-only JSON still works; optional bilingual fields such as overallFeedbackI18n, feedbackI18n, strengthsI18n, targetsI18n, and promptI18n can use only en and zh. Validation runs locally
           against the current class, questions, participants, submissions, and
           responses.
         </p>
