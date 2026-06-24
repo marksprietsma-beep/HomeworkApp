@@ -10,7 +10,7 @@ export type DutyRow = DutyAssignmentSlot;
 export type DutyTargetReason = "normal-load" | "high-effective-load" | "p5-every-day" | "leadership-moderate-high-load";
 export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean>; teachesP5EveryDay: boolean; dutyTarget: number; targetReason: DutyTargetReason };
 export type DutyCountDistribution = { "0": number; "1": number; "2": number; "3": number; "4+": number };
-export type DutyScheduleSummary = { totalDuties: number; staffConsidered: number; twoDutyMinimumApplies: boolean; dutyCountDistribution: DutyCountDistribution; staffBelowTwoDuties: DutySchedulerStaff[]; staffWithNoBreakDuty: DutySchedulerStaff[]; staffWithNoLunchDuty: DutySchedulerStaff[]; leadershipStaffWithExtraDuties: DutySchedulerStaff[]; staffOverTarget: DutySchedulerStaff[]; staffUnderTarget: DutySchedulerStaff[]; warnings: string[] };
+export type DutyScheduleSummary = { totalDuties: number; staffConsidered: number; twoDutyMinimumApplies: boolean; dutyCountDistribution: DutyCountDistribution; staffBelowTwoDuties: DutySchedulerStaff[]; staffWithNoBreakDuty: DutySchedulerStaff[]; staffWithNoLunchDuty: DutySchedulerStaff[]; leadershipStaffWithExtraDuties: DutySchedulerStaff[]; staffOverTarget: DutySchedulerStaff[]; staffUnderTarget: DutySchedulerStaff[]; controlledFourthDutyStaff: DutySchedulerStaff[]; protectedStaffOverTarget: DutySchedulerStaff[]; targetBreachReasons: string[]; warnings: string[] };
 export type DutyScheduleResult = { duties: DutyAssignmentSlot[]; summary: DutyScheduleSummary };
 
 type AssignmentState = { total: number; breakCount: number; lunchCount: number };
@@ -18,6 +18,8 @@ type AssignmentState = { total: number; breakCount: number; lunchCount: number }
 export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
   belowTwoDutyMinimumBonus: -4000,
   thirdDutyBeforeFourthPenalty: 2600,
+  suitableFourthDutyPenalty: 900,
+  protectedFourthDutyPenalty: 5200,
   existingDutyPenalty: 140,
   teachingLessonLoadPenalty: 4,
   tutorPenalty: 6,
@@ -27,6 +29,7 @@ export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
   missingDutyTypeBonusWhenMinimumSlotsDoNotAllow: -120,
   belowDutyTargetBonus: -1200,
   atOrAboveDutyTargetPenalty: 1800,
+  protectedTargetBreachPenalty: 5200,
   fourthDutyBeforeTargetsMetPenalty: 4200,
   leadershipExtraDutyPenalty: 220,
   p2OrP5PreferenceBreachPenalty: 320,
@@ -40,6 +43,26 @@ function preferencePeriod(time: DutyTime) { return time === "Breaktime" ? "P2" :
 function hasPreferredFreePeriod(staff: DutySchedulerStaff, duty: DutyAssignmentSlot) { return duty.time === "Breaktime" ? !staff.teachesP2ByDay[duty.day] : !staff.teachesP5ByDay[duty.day]; }
 function sameTimeKey(duty: Pick<DutyAssignmentSlot, "day" | "time">) { return `${duty.day} ${duty.time}`; }
 function teachesP5EveryDay(teachesP5ByDay: Record<DutySchoolDay, boolean>) { return DUTY_SCHOOL_DAYS.every(day => teachesP5ByDay[day]); }
+
+function isProtectedTargetTwoStaff(staff: DutySchedulerStaff) {
+  return staff.dutyTarget === 2 && (staff.effectiveLoad >= 22 || staff.teachesP5EveryDay || (staff.isLeadership && staff.effectiveLoad >= 18));
+}
+
+function hasSignificantPreferenceBreaches(staff: DutySchedulerStaff, state: AssignmentState) {
+  // A staff member with several current duties and no balance across break/lunch is
+  // more likely to be carrying P2/P5 preference compromises already. Keep them out
+  // of the preferred fourth-duty pool unless unavoidable.
+  return state.total >= 3 && (state.breakCount === 0 || state.lunchCount === 0);
+}
+
+function isSuitableFourthDutyCandidate(staff: DutySchedulerStaff, state: AssignmentState, duty?: DutyAssignmentSlot) {
+  if (staff.dutyTarget !== 3) return false;
+  if (staff.effectiveLoad >= 22 || staff.teachesP5EveryDay) return false;
+  if (staff.isLeadership && staff.effectiveLoad >= 18) return false;
+  if (hasSignificantPreferenceBreaches(staff, state)) return false;
+  if (duty && !hasPreferredFreePeriod(staff, duty)) return false;
+  return true;
+}
 
 export function getStaffDutyTarget(staff: Pick<DutySchedulerStaff, "effectiveLoad" | "isLeadership" | "teachesP5EveryDay">): { dutyTarget: number; targetReason: DutyTargetReason } {
   if (staff.effectiveLoad >= 22) return { dutyTarget: 2, targetReason: "high-effective-load" };
@@ -79,7 +102,7 @@ function initialState(staff: DutySchedulerStaff[]) {
   return new Map(staff.map(member => [member.staffCode, { total: 0, breakCount: 0, lunchCount: 0 } satisfies AssignmentState]));
 }
 
-function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, state: AssignmentState, slotsAllowDutyMinimum: boolean, slotsAllowTypeMinimum: boolean, staffStillBelowTwoDuties: number, feasibleStaffBelowTarget: number) {
+function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, state: AssignmentState, slotsAllowDutyMinimum: boolean, slotsAllowTypeMinimum: boolean, staffStillBelowTwoDuties: number, feasibleStaffBelowTarget: number, feasibleSuitableFourthDutyStaff: number) {
   const isLunch = isLunchDuty(duty.time);
   const hasMinimumForType = isLunch ? state.lunchCount > 0 : state.breakCount > 0;
   const hasBothMinimums = state.breakCount > 0 && state.lunchCount > 0;
@@ -90,10 +113,13 @@ function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, sta
   // the same duty-count band.
   if (slotsAllowDutyMinimum && state.total < 2) score += DUTY_SCHEDULER_SCORING_CONSTANTS.belowTwoDutyMinimumBonus * (2 - state.total);
   if (slotsAllowDutyMinimum && state.total >= 3 && staffStillBelowTwoDuties > 0) score += DUTY_SCHEDULER_SCORING_CONSTANTS.thirdDutyBeforeFourthPenalty * 2;
-  if (state.total >= 3) score += DUTY_SCHEDULER_SCORING_CONSTANTS.thirdDutyBeforeFourthPenalty;
+  if (state.total >= 3) score += isSuitableFourthDutyCandidate(staff, state, duty) ? DUTY_SCHEDULER_SCORING_CONSTANTS.suitableFourthDutyPenalty : DUTY_SCHEDULER_SCORING_CONSTANTS.thirdDutyBeforeFourthPenalty;
   if (state.total < staff.dutyTarget) score += DUTY_SCHEDULER_SCORING_CONSTANTS.belowDutyTargetBonus * (staff.dutyTarget - state.total);
   if (state.total >= staff.dutyTarget) score += DUTY_SCHEDULER_SCORING_CONSTANTS.atOrAboveDutyTargetPenalty * (state.total - staff.dutyTarget + 1);
-  if (state.total >= 3 && feasibleStaffBelowTarget > 0) score += DUTY_SCHEDULER_SCORING_CONSTANTS.fourthDutyBeforeTargetsMetPenalty;
+  if (state.total >= staff.dutyTarget && isProtectedTargetTwoStaff(staff)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedTargetBreachPenalty * (state.total - staff.dutyTarget + 1);
+  if (state.total >= 3 && feasibleStaffBelowTarget > 0 && !isSuitableFourthDutyCandidate(staff, state, duty)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.fourthDutyBeforeTargetsMetPenalty;
+  if (state.total >= 3 && isProtectedTargetTwoStaff(staff)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedFourthDutyPenalty;
+  if (staff.dutyTarget === 2 && state.total >= 2 && feasibleSuitableFourthDutyStaff > 0) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedTargetBreachPenalty;
   score += state.total * DUTY_SCHEDULER_SCORING_CONSTANTS.existingDutyPenalty;
   score += staff.effectiveLoad * DUTY_SCHEDULER_SCORING_CONSTANTS.teachingLessonLoadPenalty;
   if (staff.isTutor) score += DUTY_SCHEDULER_SCORING_CONSTANTS.tutorPenalty;
@@ -128,9 +154,15 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
   }
   const staffBelowTwoDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < 2);
   const staffWithFourOrMoreDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) >= 4);
+  const controlledFourthDutyStaff = staffWithFourOrMoreDuties.filter(member => isSuitableFourthDutyCandidate(member, counts.get(member.staffCode)!));
   const leadershipStaffWithExtraDuties = staff.filter(member => member.isLeadership && (counts.get(member.staffCode)?.total ?? 0) > 2);
   const staffOverTarget = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) > member.dutyTarget);
   const staffUnderTarget = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < member.dutyTarget);
+  const protectedStaffOverTarget = staffOverTarget.filter(isProtectedTargetTwoStaff);
+  const targetBreachReasons = staffOverTarget.map(member => {
+    const total = counts.get(member.staffCode)?.total ?? 0;
+    return `${staffLabel(member)} is ${total}/${member.dutyTarget} duties because hard timetable/preference constraints or insufficient suitable target-3 capacity required a target breach (${member.targetReason}).`;
+  });
   for (const [key, duplicates] of sameTimeAssignments) {
     if (duplicates.length < 2) continue;
     const [staffCode, timeKey] = key.split("|");
@@ -153,10 +185,12 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
   if (staffWithNoBreakDuty.length) warnings.push(`${staffWithNoBreakDuty.length} staff member(s) currently have no Breaktime duty.`);
   if (staffWithNoLunchDuty.length) warnings.push(`${staffWithNoLunchDuty.length} staff member(s) currently have no Lunch duty.`);
   if (leadershipStaffWithExtraDuties.length) warnings.push(`${leadershipStaffWithExtraDuties.length} leadership staff member(s) have more than the two minimum expected duties.`);
+  if (controlledFourthDutyStaff.length) warnings.push(`${controlledFourthDutyStaff.length} suitable target-3 staff member(s) received controlled 4th duties to protect high-load/P5-heavy target-2 staff: ${controlledFourthDutyStaff.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget}`).join(", ")}.`);
   if (staffOverTarget.length) warnings.push(`${staffOverTarget.length} staff member(s) are over their duty target: ${staffOverTarget.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget} (${member.targetReason})`).join(", ")}.`);
+  if (protectedStaffOverTarget.length) warnings.push(`${protectedStaffOverTarget.length} protected target-2 staff member(s) are over target and should be reviewed before relying on this schedule: ${protectedStaffOverTarget.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget} (${member.targetReason})`).join(", ")}.`);
   const protectedAtThree = staff.filter(member => member.dutyTarget === 2 && (counts.get(member.staffCode)?.total ?? 0) >= 3);
   if (protectedAtThree.length) warnings.push(`${protectedAtThree.length} high-load, P5-heavy or moderate/high-load leadership staff member(s) received 3+ duties despite a target of 2: ${protectedAtThree.map(member => `${staffLabel(member)} (${member.targetReason})`).join(", ")}.`);
-  return { totalDuties: duties.length, staffConsidered: staff.length, twoDutyMinimumApplies, dutyCountDistribution, staffBelowTwoDuties, staffWithNoBreakDuty, staffWithNoLunchDuty, leadershipStaffWithExtraDuties, staffOverTarget, staffUnderTarget, warnings: [...new Set(warnings)] };
+  return { totalDuties: duties.length, staffConsidered: staff.length, twoDutyMinimumApplies, dutyCountDistribution, staffBelowTwoDuties, staffWithNoBreakDuty, staffWithNoLunchDuty, leadershipStaffWithExtraDuties, staffOverTarget, staffUnderTarget, controlledFourthDutyStaff, protectedStaffOverTarget, targetBreachReasons, warnings: [...new Set(warnings)] };
 }
 
 export function autoScheduleDuties(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[]): DutyScheduleResult {
@@ -173,9 +207,10 @@ export function autoScheduleDuties(duties: DutyAssignmentSlot[], staff: DutySche
     const staffStillBelowTwoDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < 2).length;
     const alreadyAssignedAtSameTime = new Set(scheduled.filter(slot => slot.slotId !== duty.slotId && slot.day === duty.day && slot.time === duty.time && slot.assignedStaffCode).map(slot => slot.assignedStaffCode));
     const feasibleStaffBelowTarget = staff.filter(member => !alreadyAssignedAtSameTime.has(member.staffCode) && (counts.get(member.staffCode)?.total ?? 0) < member.dutyTarget).length;
+    const feasibleSuitableFourthDutyStaff = staff.filter(member => !alreadyAssignedAtSameTime.has(member.staffCode) && isSuitableFourthDutyCandidate(member, counts.get(member.staffCode)!, duty)).length;
     const ranked = staff
       .filter(member => !alreadyAssignedAtSameTime.has(member.staffCode))
-      .map(member => ({ member, score: scoreCandidate(member, duty, counts.get(member.staffCode)!, slotsAllowDutyMinimum, slotsAllowTypeMinimum, staffStillBelowTwoDuties, feasibleStaffBelowTarget) }))
+      .map(member => ({ member, score: scoreCandidate(member, duty, counts.get(member.staffCode)!, slotsAllowDutyMinimum, slotsAllowTypeMinimum, staffStillBelowTwoDuties, feasibleStaffBelowTarget, feasibleSuitableFourthDutyStaff) }))
       .sort((a, b) => a.score - b.score || a.member.effectiveLoad - b.member.effectiveLoad || a.member.staffName.localeCompare(b.member.staffName));
     const selected = ranked[0]?.member;
     if (!selected) { warnings.push(`Could not assign ${duty.day} ${duty.time} duty "${duty.description || duty.time}" because every eligible staff member was already assigned to another duty at that same time.`); continue; }
