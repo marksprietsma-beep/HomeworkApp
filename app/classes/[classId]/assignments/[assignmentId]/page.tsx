@@ -1,4 +1,5 @@
 import { HomeworkAssignmentStatus } from "@prisma/client";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,6 +19,7 @@ type HomeworkDetailPageProps = {
     duplicated?: string;
     statusUpdated?: string;
     lang?: string;
+    statusView?: string;
   }>;
 };
 
@@ -32,6 +34,28 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
+function formatDateTime(date: Date | null) {
+  if (!date) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function StatusBadge({ tone, children }: { tone: "slate" | "emerald" | "amber" | "red" | "blue"; children: ReactNode }) {
+  const classes = {
+    slate: "bg-slate-100 text-slate-700",
+    emerald: "bg-emerald-100 text-emerald-800",
+    amber: "bg-amber-100 text-amber-900",
+    red: "bg-red-100 text-red-800",
+    blue: "bg-blue-100 text-blue-800",
+  }[tone];
+
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${classes}`}>{children}</span>;
+}
 
 function getMultipleChoiceChoices(options: unknown) {
   if (
@@ -134,6 +158,59 @@ export default async function HomeworkDetailPage({
     homework.status === HomeworkAssignmentStatus.PUBLISHED
       ? HomeworkAssignmentStatus.DRAFT
       : HomeworkAssignmentStatus.PUBLISHED;
+  const submissionsByStudentId = new Map(homework.submissions.map((submission) => [submission.studentId, submission]));
+  const feedbackByStudentId = new Map<number, (typeof homework.participantFeedback)[number]>();
+  for (const feedback of homework.participantFeedback) {
+    if (feedback.studentId && !feedbackByStudentId.has(feedback.studentId)) {
+      feedbackByStudentId.set(feedback.studentId, feedback);
+    }
+  }
+  const statusRows = homework.class.enrollments.map((enrollment) => {
+    const submission = submissionsByStudentId.get(enrollment.student.id) ?? null;
+    const feedback = feedbackByStudentId.get(enrollment.student.id) ?? null;
+    const actions = feedback ? [
+      ...feedback.followUpActions,
+      ...feedback.questionFeedback.flatMap((question) => question.followUpActions),
+    ] : [];
+    const completedActions = actions.filter((action) => action.status === "COMPLETED").length;
+
+    return {
+      student: enrollment.student,
+      submission,
+      isSubmitted: submission?.status === "SUBMITTED",
+      feedback,
+      feedbackImported: Boolean(feedback),
+      followUp: {
+        total: actions.length,
+        completed: completedActions,
+        pending: actions.length - completedActions,
+      },
+    };
+  });
+  const statusCounts = {
+    assigned: statusRows.length,
+    submitted: statusRows.filter((row) => row.isSubmitted).length,
+    missing: statusRows.filter((row) => !row.isSubmitted).length,
+    feedbackImported: statusRows.filter((row) => row.feedbackImported).length,
+    feedbackReleased: statusRows.filter((row) => row.feedback?.releaseState === "RELEASED").length,
+    feedbackDraft: statusRows.filter((row) => row.feedback?.releaseState === "DRAFT").length,
+    followUpPending: statusRows.filter((row) => row.followUp.pending > 0).length,
+  };
+  const activeStatusView = ["missing", "draft", "released", "follow-up"].includes(resolvedSearchParams.statusView ?? "") ? resolvedSearchParams.statusView : "all";
+  const filteredStatusRows = statusRows.filter((row) => {
+    if (activeStatusView === "missing") return !row.isSubmitted;
+    if (activeStatusView === "draft") return row.feedback?.releaseState === "DRAFT";
+    if (activeStatusView === "released") return row.feedback?.releaseState === "RELEASED";
+    if (activeStatusView === "follow-up") return row.followUp.pending > 0;
+    return true;
+  });
+  const statusFilters = [
+    { value: "all", label: "All" },
+    { value: "missing", label: "Missing submission" },
+    { value: "draft", label: "Feedback draft" },
+    { value: "released", label: "Feedback released" },
+    { value: "follow-up", label: "Follow-up pending" },
+  ];
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
@@ -257,6 +334,71 @@ export default async function HomeworkDetailPage({
           <StatCard label="Submissions" value={homework.totals.submissions} />
         </div>
       </section>
+
+
+      {canViewResponseOverview ? (
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Status overview</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">Assignment status matrix</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">One row per enrolled participant in {homework.class.name}, with submission, feedback release, and follow-up state for this assignment.</p>
+            </div>
+            <Link href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`} className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950">Response overview</Link>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+            <StatCard label="Assigned" value={statusCounts.assigned} />
+            <StatCard label="Submitted" value={statusCounts.submitted} />
+            <StatCard label="Missing" value={statusCounts.missing} />
+            <StatCard label="Feedback imported" value={statusCounts.feedbackImported} />
+            <StatCard label="Released" value={statusCounts.feedbackReleased} />
+            <StatCard label="Draft" value={statusCounts.feedbackDraft} />
+            <StatCard label="Follow-up pending" value={statusCounts.followUpPending} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {statusFilters.map((filter) => {
+              const href = filter.value === "all" ? `/classes/${homework.class.id}/assignments/${homework.id}?lang=${languageMode}` : `/classes/${homework.class.id}/assignments/${homework.id}?lang=${languageMode}&statusView=${filter.value}`;
+              return <Link key={filter.value} href={href} className={activeStatusView === filter.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950"}>{filter.label}</Link>;
+            })}
+          </div>
+
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Student</th>
+                  <th className="px-4 py-3">Class</th>
+                  <th className="px-4 py-3">Assigned</th>
+                  <th className="px-4 py-3">Submitted</th>
+                  <th className="px-4 py-3">Submission time</th>
+                  <th className="px-4 py-3">Feedback imported</th>
+                  <th className="px-4 py-3">Feedback status</th>
+                  <th className="px-4 py-3">Follow-up actions</th>
+                  <th className="px-4 py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredStatusRows.map((row) => (
+                  <tr key={row.student.id} className="align-top">
+                    <td className="px-4 py-4"><p className="font-semibold text-slate-950">{row.student.displayName}</p><p className="mt-1 text-xs text-slate-500">{row.student.email}</p></td>
+                    <td className="px-4 py-4 text-slate-700">{homework.class.name}</td>
+                    <td className="px-4 py-4"><StatusBadge tone="blue">Assigned</StatusBadge></td>
+                    <td className="px-4 py-4">{row.isSubmitted ? <StatusBadge tone="emerald">Submitted</StatusBadge> : row.submission ? <StatusBadge tone="amber">Saved draft</StatusBadge> : <StatusBadge tone="red">Missing</StatusBadge>}</td>
+                    <td className="px-4 py-4 text-slate-700">{row.submission ? formatDateTime(row.submission.submittedAt ?? row.submission.updatedAt) : "—"}</td>
+                    <td className="px-4 py-4">{row.feedbackImported ? <StatusBadge tone="emerald">Imported</StatusBadge> : <StatusBadge tone="slate">None</StatusBadge>}</td>
+                    <td className="px-4 py-4">{row.feedback?.releaseState === "RELEASED" ? <StatusBadge tone="emerald">Released</StatusBadge> : row.feedback?.releaseState === "DRAFT" ? <StatusBadge tone="amber">Draft</StatusBadge> : <StatusBadge tone="slate">None</StatusBadge>}</td>
+                    <td className="px-4 py-4">{row.followUp.total === 0 ? <StatusBadge tone="slate">None</StatusBadge> : row.followUp.pending > 0 ? <StatusBadge tone="amber">{row.followUp.pending} pending</StatusBadge> : <StatusBadge tone="emerald">Completed</StatusBadge>}<p className="mt-1 text-xs text-slate-500">{row.followUp.total === 0 ? "No imported actions" : `${row.followUp.completed}/${row.followUp.total} completed`}</p></td>
+                    <td className="px-4 py-4">{row.submission ? <Link href={`/classes/${homework.class.id}/assignments/${homework.id}/responses/${row.submission.id}`} className="inline-flex rounded-full bg-slate-950 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800">View response</Link> : <span className="text-xs font-semibold text-slate-500">No response yet</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filteredStatusRows.length === 0 ? <p className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">No students match this quick view.</p> : null}
+        </section>
+      ) : null}
 
       {homework.keyVocabulary.length > 0 ? (
         <section className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm sm:p-8">

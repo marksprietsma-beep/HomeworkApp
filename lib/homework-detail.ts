@@ -13,6 +13,13 @@ export type HomeworkDetailData = {
   class: {
     id: number;
     name: string;
+    enrollments: {
+      student: {
+        id: number;
+        displayName: string;
+        email: string;
+      };
+    }[];
     teacher: {
       id: number;
       displayName: string;
@@ -35,11 +42,21 @@ export type HomeworkDetailData = {
     id: number;
     status: string;
     submittedAt: Date | null;
+    updatedAt: Date;
+    studentId: number;
     student: {
       id: number;
       displayName: string;
       email: string;
     };
+  }[];
+  participantFeedback: {
+    studentId: number | null;
+    submissionId: number | null;
+    releaseState: string;
+    importedAt: Date;
+    followUpActions: { status: string }[];
+    questionFeedback: { followUpActions: { status: string }[] }[];
   }[];
   totals: {
     questions: number;
@@ -62,6 +79,18 @@ export async function getHomeworkDetailData(
         select: {
           id: true,
           name: true,
+          enrollments: {
+            orderBy: { student: { displayName: "asc" } },
+            select: {
+              student: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  email: true,
+                },
+              },
+            },
+          },
           teacher: {
             select: {
               id: true,
@@ -92,11 +121,31 @@ export async function getHomeworkDetailData(
           id: true,
           status: true,
           submittedAt: true,
+          updatedAt: true,
+          studentId: true,
           student: {
             select: {
               id: true,
               displayName: true,
               email: true,
+            },
+          },
+        },
+      },
+      participantFeedback: {
+        orderBy: [
+          { feedbackImport: { importedAt: "desc" } },
+          { updatedAt: "desc" },
+        ],
+        select: {
+          studentId: true,
+          submissionId: true,
+          releaseState: true,
+          importedAt: true,
+          followUpActions: { select: { status: true } },
+          questionFeedback: {
+            select: {
+              followUpActions: { select: { status: true } },
             },
           },
         },
@@ -126,6 +175,7 @@ export async function getHomeworkDetailData(
     class: assignment.class,
     questions: assignment.questions,
     submissions: assignment.submissions,
+    participantFeedback: assignment.participantFeedback,
     totals: {
       questions: assignment._count.questions,
       submissions: assignment._count.submissions,
