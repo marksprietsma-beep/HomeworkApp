@@ -8,6 +8,7 @@ import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../../lib/i18n-content";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
 import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
+import { saveAssignmentToLibrary } from "../../../../curriculum-library/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ type HomeworkDetailPageProps = {
     statusUpdated?: string;
     lang?: string;
     statusView?: string;
+    fromLibrary?: string;
   }>;
 };
 
@@ -155,6 +157,7 @@ export default async function HomeworkDetailPage({
     homework.class.id,
     homework.id,
   );
+  const saveToLibraryAction = saveAssignmentToLibrary.bind(null, homework.class.id, homework.id);
   const nextStatus =
     homework.status === HomeworkAssignmentStatus.PUBLISHED
       ? HomeworkAssignmentStatus.DRAFT
@@ -249,6 +252,12 @@ export default async function HomeworkDetailPage({
                 <p className="mt-1">This assignment is a new draft copy. Questions, points, options, and image references were copied; student responses and feedback were not copied.</p>
               </div>
             ) : null}
+            {resolvedSearchParams.fromLibrary === "1" ? (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                <p className="font-semibold">Assigned from curriculum library</p>
+                <p className="mt-1">This is an independent class assignment copy. Future submissions and feedback attach here, not to the reusable library item.</p>
+              </div>
+            ) : null}
             {resolvedSearchParams.statusUpdated ? (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 <p className="font-semibold">Assignment status updated</p>
@@ -299,6 +308,19 @@ export default async function HomeworkDetailPage({
                       Duplicate as draft
                     </button>
                   </form>
+                ) : null}
+                {canDuplicateAssignment ? (
+                  <details className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                    <summary className="cursor-pointer text-sm font-bold text-emerald-900">Save to curriculum library</summary>
+                    <form action={saveToLibraryAction} className="mt-3 grid gap-3 sm:min-w-72">
+                      <label className="text-sm font-semibold text-slate-700">Library title<input name="libraryTitle" defaultValue={homework.title} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <label className="text-sm font-semibold text-slate-700">Subject<input name="subject" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <label className="text-sm font-semibold text-slate-700">Year group / key stage<input name="yearGroup" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <label className="text-sm font-semibold text-slate-700">Unit / topic<input name="unitTopic" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <label className="text-sm font-semibold text-slate-700">Tags<input name="tags" placeholder="fractions, retrieval" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500">Save reusable item</button>
+                    </form>
+                  </details>
                 ) : null}
                 <Link
                   href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}

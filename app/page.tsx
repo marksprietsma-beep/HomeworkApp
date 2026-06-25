@@ -488,6 +488,14 @@ function DashboardShell({
                 </Link>
               </>
             ) : null}
+            {(isAdmin(selectedUser) || isTeacher(selectedUser)) ? (
+              <Link
+                href="/curriculum-library"
+                className="inline-flex rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+              >
+                Curriculum library
+              </Link>
+            ) : null}
             {isTeacher(selectedUser) ? (
               <Link
                 href="/classes/new"
