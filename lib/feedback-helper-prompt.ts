@@ -1,6 +1,11 @@
-export const FEEDBACK_HELPER_PROMPT = `Use the exported Clarion response JSON below as the only source data. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+export const FEEDBACK_HELPER_PROMPT = `Create teacher-review draft feedback for Clarion using only the exported Clarion response JSON below. The teacher will paste your JSON back into Clarion, review it, then release it to students. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 
-Required root object shape:
+Context to use from the export:
+- Read assignment.title, assignment.instructions, assignment status/due date, class name, keyVocabulary, ordered questions, question prompts, question points, options, images, participants, submissions, and responsesByQuestionId.
+- Treat question prompts, multiple-choice options, key vocabulary, instructions, and image captions/alt text as the available assignment context and expected-answer information. If no explicit expected answer is present, infer only from the question and the student's answer; do not invent a hidden mark scheme.
+- Match responsesByQuestionId keys to the exported questions[].id values. Preserve every ID exactly.
+
+Required root object shape and schema:
 - feedbackFormat
 - feedbackVersion
 - sourceExport
@@ -17,13 +22,23 @@ Feedback import contract:
 - Do not return root-level participants.
 - Do not rename participantFeedback to participants.
 - Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
-- Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, or converted to strings.
+- Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, converted to strings, translated, or reformatted.
+- Do not invent students, submissions, question IDs, responses, or extra unsupported fields.
 - For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
-- English-only feedback remains valid. When bilingual feedback is requested, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
+- English-only feedback remains valid. When bilingual feedback is requested by the teacher or indicated by bilingual assignment content, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
 - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
-- If you include Chinese, write natural Simplified Chinese for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
+- If you include Chinese, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
+
+Feedback quality guidance:
+- Make feedback specific to each student's actual answer and aligned with the assignment questions.
+- Keep it concise but useful for school use.
+- Focus on strengths, targets, and practical next steps.
+- Do not over-praise weak or missing answers; acknowledge effort only when supported by the response.
+- Do not be harsh, sarcastic, shaming, or personal.
+- Prefer clear classroom language over generic comments.
+- Do not assign scores unless the import schema already has a supported field for them; this schema does not require scores.
 
 Follow-up action requirements:
 - Every follow-up action requires a stable non-empty string id.
@@ -36,6 +51,7 @@ Follow-up action requirements:
 
 Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.`;
 
+
 export const FEEDBACK_RESPONSE_JSON_SEPARATOR = "Here is the response export JSON to mark:";
 
 export function buildFullFeedbackPrompt(responseJson: string) {
@@ -47,4 +63,4 @@ ${responseJson}`;
 }
 
 export const FEEDBACK_HELPER_DESCRIPTION =
-  "Copy this prompt with the response export. It keeps the manual ChatGPT export/import workflow explicit, preserves IDs, and matches the current feedback JSON contract, including optional bilingual feedback fields.";
+  "Copy this prompt with the response export, then paste ChatGPT’s JSON back into Clarion. It keeps the manual review-and-release workflow explicit, preserves IDs exactly, and matches the current feedback JSON v1 contract, including optional bilingual feedback fields.";

@@ -102,9 +102,15 @@ export default async function ResponseExportPage({
           {exportData.assignment.title}
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-          JSON is the stable primary format for ChatGPT review and future
-          feedback import work. Markdown is included as a human-readable
-          companion export.
+          Use the recommended copy-ready prompt to keep the manual workflow fast:
+          paste it into ChatGPT, copy the returned JSON, import it back into
+          Clarion, then review draft feedback before release. The response JSON
+          and Markdown exports remain available for debugging and human review.
+        </p>
+        <p className="mt-4 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          Teacher approval: AI-generated feedback is saved as draft feedback in
+          Clarion and should be checked by the teacher before it is released to
+          students.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -146,10 +152,10 @@ export default async function ResponseExportPage({
 
       <div className="mt-8 grid gap-8">
         <ExportCopyBlock
-          label="Full prompt (recommended copy-paste workflow)"
+          label="Copy feedback prompt (recommended)"
           value={fullFeedbackPrompt}
-          copyLabel="Copy full ChatGPT feedback prompt"
-          description="Copies the shared feedback-generation instructions plus the response JSON in one block. Paste this into ChatGPT and ask it to return only feedback import JSON."
+          copyLabel="Copy feedback prompt"
+          description="Copies complete ChatGPT-ready instructions, schema guidance, assignment context, IDs, and student responses in one block. Paste it into ChatGPT, then import the returned JSON back into Clarion for teacher review and release."
         />
         <ExportCopyBlock
           label="Response JSON only (debugging/manual use)"
