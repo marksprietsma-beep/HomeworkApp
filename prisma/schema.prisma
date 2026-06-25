@@ -90,6 +90,7 @@ model User {
   feedbackEntries        ParticipantFeedback[]           @relation("ParticipantFeedbackStudent")
   curriculumLibraryItems CurriculumHomeworkLibraryItem[] @relation("CurriculumLibraryItemCreator")
   departmentMemberships DepartmentTeamMembership[]
+  curriculumLibraryItemVersions CurriculumHomeworkLibraryItemVersion[] @relation("CurriculumLibraryVersionEditor")
 }
 
 model Class {
@@ -129,6 +130,7 @@ model HomeworkAssignment {
   status              HomeworkAssignmentStatus       @default(DRAFT)
   dueAt               DateTime?
   sourceLibraryItemId Int?
+  sourceLibraryVersion Int?
   createdAt           DateTime                       @default(now())
   updatedAt           DateTime                       @updatedAt
   class               Class                          @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -142,6 +144,7 @@ model HomeworkAssignment {
   @@index([classId])
   @@index([createdById])
   @@index([sourceLibraryItemId])
+  @@index([sourceLibraryItemId, sourceLibraryVersion])
 }
 
 model HomeworkQuestion {
@@ -377,13 +380,33 @@ model CurriculumHomeworkLibraryItem {
   visibility         CurriculumLibraryVisibility @default(PRIVATE)
   teamId             Int?
   createdAt          DateTime             @default(now())
+  version            Int                  @default(1)
+  archivedAt         DateTime?
+  updatedById        Int?
   updatedAt          DateTime             @updatedAt
   createdBy          User?                @relation("CurriculumLibraryItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
   team               DepartmentTeam?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   assignedCopies     HomeworkAssignment[] @relation("HomeworkAssignmentSourceLibraryItem")
+  versions           CurriculumHomeworkLibraryItemVersion[]
 
   @@index([createdById])
   @@index([teamId])
   @@index([visibility])
   @@index([sourceAssignmentId])
+  @@index([archivedAt])
+}
+
+model CurriculumHomeworkLibraryItemVersion {
+  id            Int       @id @default(autoincrement())
+  libraryItemId Int
+  version       Int
+  snapshotJson  Json
+  editedById    Int?
+  editedAt      DateTime  @default(now())
+  libraryItem   CurriculumHomeworkLibraryItem @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+  editedBy      User?     @relation("CurriculumLibraryVersionEditor", fields: [editedById], references: [id], onDelete: SetNull)
+
+  @@unique([libraryItemId, version])
+  @@index([editedById])
+  @@index([editedAt])
 }

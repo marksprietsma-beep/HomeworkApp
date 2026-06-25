@@ -52,6 +52,7 @@ export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters
     where: {
       AND: [
         visibilityWhere,
+        { archivedAt: null },
         filters.search ? { title: { contains: filters.search, mode: "insensitive" } } : {},
         filters.subject ? { subject: { contains: filters.subject, mode: "insensitive" } } : {},
         filters.yearGroup ? { yearGroup: { contains: filters.yearGroup, mode: "insensitive" } } : {},
@@ -59,11 +60,11 @@ export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters
       ],
     },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    include: { createdBy: { select: { displayName: true } }, team: { select: { id: true, name: true } }, assignedCopies: { select: { classId: true, id: true } } },
+    include: { createdBy: { select: { displayName: true } }, team: { select: { id: true, name: true } }, versions: { orderBy: { version: "desc" }, take: 3, include: { editedBy: { select: { displayName: true } } } }, assignedCopies: { select: { classId: true, id: true, sourceLibraryVersion: true } } },
   });
 
   const facets = await prisma.curriculumHomeworkLibraryItem.findMany({
-    where: visibilityWhere,
+    where: { AND: [visibilityWhere, { archivedAt: null }] },
     select: { subject: true, yearGroup: true, tags: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -119,4 +120,34 @@ export function parseAssignmentStatus(value: FormDataEntryValue | null) {
 
 export function parseClassIds(value: FormDataEntryValue[]) {
   return [...new Set(value.map((entry) => Number(entry)).filter((id) => Number.isInteger(id) && id > 0))];
+}
+
+
+export async function getCurriculumLibraryItemDetail(itemId: number, user: { id: number; role: UserRole } | null) {
+  return prisma.curriculumHomeworkLibraryItem.findFirst({
+    where: { id: itemId, ...getLibraryVisibilityWhere(user) },
+    include: {
+      createdBy: { select: { displayName: true, email: true } },
+      team: { select: { id: true, name: true } },
+      versions: { orderBy: { version: "desc" }, take: 10, include: { editedBy: { select: { displayName: true } } } },
+      assignedCopies: { select: { id: true, classId: true, title: true, sourceLibraryVersion: true, createdAt: true, class: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+export function buildLibraryVersionSnapshot(item: { title: string; subject: string | null; yearGroup: string | null; unitTopic: string | null; tags: string[]; visibility: CurriculumLibraryVisibility; teamId: number | null; assignmentJson: unknown; version: number; updatedAt: Date; updatedById: number | null; createdById: number | null; }) {
+  return {
+    title: item.title,
+    subject: item.subject,
+    yearGroup: item.yearGroup,
+    unitTopic: item.unitTopic,
+    tags: item.tags,
+    visibility: item.visibility,
+    teamId: item.teamId,
+    assignmentJson: item.assignmentJson,
+    version: item.version,
+    updatedAt: item.updatedAt.toISOString(),
+    updatedById: item.updatedById,
+    createdById: item.createdById,
+  };
 }
