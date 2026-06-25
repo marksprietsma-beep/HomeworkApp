@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
-import { getAssignmentResponseExportData } from "../../../../../../../lib/response-export";
+import { assignmentResponseExportHasBilingualContent, getAssignmentResponseExportData } from "../../../../../../../lib/response-export";
 import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT, buildFullFeedbackPrompt } from "../../../../../../../lib/feedback-helper-prompt";
 import { ExportCopyBlock } from "./export-copy-block";
 
@@ -68,7 +68,12 @@ export default async function ResponseExportPage({
 
   const jsonExport = JSON.stringify(exportData, null, 2);
   const feedbackChatGptPrompt = FEEDBACK_HELPER_PROMPT;
-  const fullFeedbackPrompt = buildFullFeedbackPrompt(jsonExport);
+  const feedbackLanguageModeValues = {
+    english: buildFullFeedbackPrompt(jsonExport, "english"),
+    bilingual: buildFullFeedbackPrompt(jsonExport, "bilingual"),
+    defaultMode: assignmentResponseExportHasBilingualContent(exportData) ? "bilingual" as const : "english" as const,
+  };
+  const fullFeedbackPrompt = feedbackLanguageModeValues[feedbackLanguageModeValues.defaultMode];
 
 
   return (
@@ -156,6 +161,7 @@ export default async function ResponseExportPage({
           value={fullFeedbackPrompt}
           copyLabel="Copy feedback prompt"
           description="Copies complete ChatGPT-ready instructions, schema guidance, assignment context, IDs, and student responses in one block. Paste it into ChatGPT, then import the returned JSON back into Clarion for teacher review and release."
+          languageModeValues={feedbackLanguageModeValues}
         />
         <ExportCopyBlock
           label="Response JSON only (debugging/manual use)"

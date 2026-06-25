@@ -198,6 +198,52 @@ export async function getAssignmentResponseExportData(
   };
 }
 
+function hasLocalizedText(value: unknown): boolean {
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(hasLocalizedText);
+  }
+
+  return Object.values(value).some(hasLocalizedText);
+}
+
+function hasBilingualOptionContent(options: unknown): boolean {
+  if (!options || typeof options !== "object") {
+    return false;
+  }
+
+  if (Array.isArray(options)) {
+    return options.some(hasBilingualOptionContent);
+  }
+
+  return Object.entries(options).some(([key, value]) =>
+    key.toLowerCase().includes("i18n") ? hasLocalizedText(value) : hasBilingualOptionContent(value),
+  );
+}
+
+export function assignmentResponseExportHasBilingualContent(exportData: AssignmentResponseExport) {
+  return (
+    hasLocalizedText(exportData.assignment.titleI18n) ||
+    hasLocalizedText(exportData.assignment.instructionsI18n) ||
+    exportData.questions.some((question) =>
+      hasLocalizedText(question.promptI18n) || hasBilingualOptionContent(question.options),
+    ) ||
+    exportData.keyVocabulary.some((item) =>
+      hasLocalizedText(item.chineseTerm) ||
+      hasLocalizedText(item.chineseDefinition) ||
+      hasLocalizedText(item.termI18n) ||
+      hasLocalizedText(item.definitionI18n),
+    )
+  );
+}
+
 function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
   const questionById = new Map(exportData.questions.map((question) => [String(question.id), question]));
   const lines = [
