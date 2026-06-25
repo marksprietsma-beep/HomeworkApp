@@ -122,31 +122,19 @@ export default async function ResponseOverviewPage({
               {overview.class.name} · {overview.status} · Due: {formatDateTime(overview.dueAt)}
             </p>
           </div>
-          <div className="flex flex-col gap-3 lg:min-w-72">
-            <Link
-              href={`/classes/${overview.class.id}/assignments/${overview.id}/responses/export`}
-              className="rounded-full bg-amber-400 px-4 py-2 text-center text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
-            >
-              Export responses
-            </Link>
-            <Link
-              href={`/classes/${overview.class.id}/assignments/${overview.id}/feedback/import`}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
-            >
-              Import feedback
-            </Link>
+          <div className="lg:min-w-72">
             <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Teacher
-            </p>
-            <p className="mt-2 text-lg font-semibold">{overview.class.teacher.displayName}</p>
-            <p className="text-sm text-amber-200">{overview.class.teacher.email}</p>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Assignment total
-            </p>
-            <p className="mt-2 font-semibold">
-              {overview.totals.questions} questions · {overview.totals.points ?? "No"} points
-            </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Teacher
+              </p>
+              <p className="mt-2 text-lg font-semibold">{overview.class.teacher.displayName}</p>
+              <p className="text-sm text-amber-200">{overview.class.teacher.email}</p>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Assignment total
+              </p>
+              <p className="mt-2 font-semibold">
+                {overview.totals.questions} questions · {overview.totals.points ?? "No"} points
+              </p>
             </div>
           </div>
         </div>

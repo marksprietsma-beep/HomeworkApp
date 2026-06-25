@@ -494,9 +494,9 @@ npm run check:feedback-json-fixtures
 
 ## Teacher import UI (MAR-146)
 
-Teachers can import feedback for one assignment at
-`/classes/[classId]/assignments/[assignmentId]/feedback/import`. The page is
-linked from the assignment detail, response overview, and response export pages.
+Teachers import feedback for one assignment from the response overview feedback workflow at
+`/classes/[classId]/assignments/[assignmentId]/responses#feedback-workflow`. The legacy
+feedback import URL redirects to that workflow so teachers are not sent to a disconnected page.
 It uses the temporary local development user switcher and is only available to
 the seeded class teacher.
 

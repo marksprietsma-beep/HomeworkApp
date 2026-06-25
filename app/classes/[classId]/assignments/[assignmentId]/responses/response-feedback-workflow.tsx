@@ -39,7 +39,7 @@ export function ResponseFeedbackWorkflow({
   }
 
   return (
-    <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50/80 p-6 shadow-sm sm:p-8">
+    <section id="feedback-workflow" className="mt-8 scroll-mt-8 rounded-3xl border border-amber-200 bg-amber-50/80 p-6 shadow-sm sm:p-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">
@@ -109,9 +109,20 @@ export function ResponseFeedbackWorkflow({
         >
           {copyStatus === "success"
             ? `Feedback prompt copied (${feedbackLanguageMode === "bilingual" ? "bilingual English + 中文" : "English only"}). Paste it into ChatGPT, then return here with the JSON.`
-            : "Could not copy automatically. Use the existing export page fallback to copy the prompt manually."}
+            : "Could not copy automatically. Open the manual prompt below, select all, and copy it into ChatGPT."}
         </p>
       ) : null}
+
+      <details className="mt-5 rounded-2xl border border-amber-200 bg-white/80 p-4 text-sm leading-6 text-amber-950">
+        <summary className="cursor-pointer font-bold text-slate-950">Manual prompt copy fallback</summary>
+        <p className="mt-2 text-slate-700">If clipboard copy is unavailable, select and copy this complete prompt for the selected language mode.</p>
+        <textarea
+          readOnly
+          value={feedbackPrompts[feedbackLanguageMode]}
+          className="mt-3 min-h-72 w-full rounded-2xl border border-amber-200 bg-white p-3 font-mono text-xs text-slate-900 shadow-inner"
+          aria-label="Complete feedback prompt"
+        />
+      </details>
 
       <div className="mt-5 rounded-2xl border border-amber-200 bg-white/80 p-4 text-sm leading-6 text-amber-950">
         Paste the JSON returned by ChatGPT. IDs must be preserved. Review feedback before release.
