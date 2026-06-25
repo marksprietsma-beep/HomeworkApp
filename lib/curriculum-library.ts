@@ -1,4 +1,4 @@
-import { HomeworkAssignmentStatus, UserRole } from "@prisma/client";
+import { CurriculumLibraryVisibility, HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type CurriculumLibraryFilters = {
@@ -6,6 +6,7 @@ export type CurriculumLibraryFilters = {
   subject: string;
   yearGroup: string;
   tag: string;
+  scope: "all" | "mine" | "team";
 };
 
 export function parseCurriculumLibraryFilters(searchParams?: Record<string, string | string[] | undefined>): CurriculumLibraryFilters {
@@ -13,7 +14,28 @@ export function parseCurriculumLibraryFilters(searchParams?: Record<string, stri
     const raw = searchParams?.[key];
     return (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
   };
-  return { search: value("search"), subject: value("subject"), yearGroup: value("yearGroup"), tag: value("tag") };
+  const scope = value("scope");
+  return { search: value("search"), subject: value("subject"), yearGroup: value("yearGroup"), tag: value("tag"), scope: scope === "mine" || scope === "team" ? scope : "all" };
+}
+
+
+export function getLibraryVisibilityWhere(user: { id: number; role: UserRole } | null, scope: CurriculumLibraryFilters["scope"] = "all") {
+  if (!user || user.role === UserRole.STUDENT) return { id: -1 };
+  if (user.role === UserRole.ADMIN) {
+    if (scope === "mine") return { createdById: user.id };
+    if (scope === "team") return { visibility: CurriculumLibraryVisibility.TEAM };
+    return {};
+  }
+
+  const own = { createdById: user.id };
+  const teamShared = { visibility: CurriculumLibraryVisibility.TEAM, team: { memberships: { some: { userId: user.id } } } };
+  if (scope === "mine") return own;
+  if (scope === "team") return { AND: [teamShared, { NOT: own }] };
+  return { OR: [own, teamShared] };
+}
+
+export function canManageLibraryItem(user: { id: number; role: UserRole } | null, item: { createdById: number | null }) {
+  return Boolean(user && (user.role === UserRole.ADMIN || item.createdById === user.id));
 }
 
 export function parseTags(value: FormDataEntryValue | null) {
@@ -24,10 +46,12 @@ export function parseTags(value: FormDataEntryValue | null) {
     .slice(0, 12);
 }
 
-export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters) {
+export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters, user: { id: number; role: UserRole } | null) {
+  const visibilityWhere = getLibraryVisibilityWhere(user, filters.scope);
   const items = await prisma.curriculumHomeworkLibraryItem.findMany({
     where: {
       AND: [
+        visibilityWhere,
         filters.search ? { title: { contains: filters.search, mode: "insensitive" } } : {},
         filters.subject ? { subject: { contains: filters.subject, mode: "insensitive" } } : {},
         filters.yearGroup ? { yearGroup: { contains: filters.yearGroup, mode: "insensitive" } } : {},
@@ -35,10 +59,11 @@ export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters
       ],
     },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    include: { createdBy: { select: { displayName: true } }, assignedCopies: { select: { classId: true, id: true } } },
+    include: { createdBy: { select: { displayName: true } }, team: { select: { id: true, name: true } }, assignedCopies: { select: { classId: true, id: true } } },
   });
 
   const facets = await prisma.curriculumHomeworkLibraryItem.findMany({
+    where: visibilityWhere,
     select: { subject: true, yearGroup: true, tags: true },
     orderBy: { updatedAt: "desc" },
   });

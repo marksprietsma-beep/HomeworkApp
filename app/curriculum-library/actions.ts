@@ -1,9 +1,10 @@
 "use server";
 
-import { HomeworkQuestionType, Prisma, UserRole } from "@prisma/client";
+import { CurriculumLibraryVisibility, HomeworkQuestionType, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { buildAssignmentTemplate, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
+import { buildAssignmentTemplate, canManageLibraryItem, getLibraryVisibilityWhere, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
+import { canUserShareToTeam, parsePositiveId } from "../../lib/department-teams";
 import { getSelectedLocalDevelopmentUser } from "../../lib/local-dev-user";
 import { prisma } from "../../lib/prisma";
 
@@ -24,6 +25,10 @@ export async function saveAssignmentToLibrary(classId: number, assignmentId: num
   const title = String(formData.get("libraryTitle") ?? assignment.title).trim();
   if (!title) throw new Error("Enter a library title.");
 
+  const visibility = formData.get("visibility") === CurriculumLibraryVisibility.TEAM ? CurriculumLibraryVisibility.TEAM : CurriculumLibraryVisibility.PRIVATE;
+  const teamId = visibility === CurriculumLibraryVisibility.TEAM ? parsePositiveId(formData.get("teamId"), "department/team") : null;
+  if (teamId && !(await canUserShareToTeam(user, teamId))) throw new Error("You can only share library items with teams you belong to.");
+
   await prisma.curriculumHomeworkLibraryItem.create({
     data: {
       title,
@@ -33,6 +38,8 @@ export async function saveAssignmentToLibrary(classId: number, assignmentId: num
       tags: parseTags(formData.get("tags")),
       sourceAssignmentId: assignment.id,
       createdById: user.id,
+      visibility,
+      teamId,
       assignmentJson: JSON.parse(JSON.stringify(buildAssignmentTemplate(assignment))) as Prisma.InputJsonValue,
     },
   });
@@ -49,7 +56,7 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
   if (classIds.length === 0) throw new Error("Choose at least one target class.");
 
   const [libraryItem, classes] = await Promise.all([
-    prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId } }),
+    prisma.curriculumHomeworkLibraryItem.findFirst({ where: { id: libraryItemId, ...getLibraryVisibilityWhere(user) } }),
     prisma.class.findMany({
       where: { id: { in: classIds }, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
       select: { id: true },
@@ -92,4 +99,36 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
     redirect(`/classes/${assignment.classId}/assignments/${assignment.id}?fromLibrary=1`);
   }
   redirect(`/curriculum-library?assigned=${createdAssignments.length}`);
+}
+
+
+export async function updateLibraryItemMetadata(libraryItemId: number, formData: FormData) {
+  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const user = requireTeacherOrAdmin(selectedUser);
+  const item = await prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId }, select: { id: true, createdById: true } });
+  if (!item || !canManageLibraryItem(user, item)) throw new Error("Only the creator or an admin can edit this library item.");
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) throw new Error("Enter a library title.");
+  const visibility = formData.get("visibility") === CurriculumLibraryVisibility.TEAM ? CurriculumLibraryVisibility.TEAM : CurriculumLibraryVisibility.PRIVATE;
+  const teamId = visibility === CurriculumLibraryVisibility.TEAM ? parsePositiveId(formData.get("teamId"), "department/team") : null;
+  if (teamId && !(await canUserShareToTeam(user, teamId))) throw new Error("You can only share library items with teams you belong to.");
+
+  await prisma.curriculumHomeworkLibraryItem.update({
+    where: { id: libraryItemId },
+    data: { title, subject: String(formData.get("subject") ?? "").trim() || null, yearGroup: String(formData.get("yearGroup") ?? "").trim() || null, unitTopic: String(formData.get("unitTopic") ?? "").trim() || null, tags: parseTags(formData.get("tags")), visibility, teamId },
+  });
+
+  revalidatePath("/curriculum-library");
+  redirect("/curriculum-library?updated=1");
+}
+
+export async function deleteLibraryItem(libraryItemId: number) {
+  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const user = requireTeacherOrAdmin(selectedUser);
+  const item = await prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId }, select: { id: true, createdById: true } });
+  if (!item || !canManageLibraryItem(user, item)) throw new Error("Only the creator or an admin can delete this library item.");
+  await prisma.curriculumHomeworkLibraryItem.delete({ where: { id: libraryItemId } });
+  revalidatePath("/curriculum-library");
+  redirect("/curriculum-library?deleted=1");
 }

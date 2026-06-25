@@ -475,6 +475,12 @@ function DashboardShell({
                   Manage classes
                 </Link>
                 <Link
+                  href="/admin/teams"
+                  className="inline-flex rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-200"
+                >
+                  Manage teams
+                </Link>
+                <Link
                   href="/admin/timetable-analyser"
                   className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-200"
                 >

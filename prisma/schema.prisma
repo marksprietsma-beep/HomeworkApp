@@ -56,6 +56,16 @@ enum FeedbackReleaseState {
   RELEASED
 }
 
+enum DepartmentTeamRole {
+  MEMBER
+  ADMIN
+}
+
+enum CurriculumLibraryVisibility {
+  PRIVATE
+  TEAM
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
@@ -79,6 +89,7 @@ model User {
   homeworkSubmissions    Submission[]                    @relation("SubmissionStudent")
   feedbackEntries        ParticipantFeedback[]           @relation("ParticipantFeedbackStudent")
   curriculumLibraryItems CurriculumHomeworkLibraryItem[] @relation("CurriculumLibraryItemCreator")
+  departmentMemberships DepartmentTeamMembership[]
 }
 
 model Class {
@@ -329,6 +340,30 @@ model DutySchedule {
   @@index([updatedAt])
 }
 
+model DepartmentTeam {
+  id          Int                        @id @default(autoincrement())
+  name        String                     @unique
+  description String?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  memberships DepartmentTeamMembership[]
+  libraryItems CurriculumHomeworkLibraryItem[]
+}
+
+model DepartmentTeamMembership {
+  id        Int                @id @default(autoincrement())
+  teamId    Int
+  userId    Int
+  role      DepartmentTeamRole @default(MEMBER)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  team      DepartmentTeam     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
 model CurriculumHomeworkLibraryItem {
   id                 Int                  @id @default(autoincrement())
   title              String
@@ -339,11 +374,16 @@ model CurriculumHomeworkLibraryItem {
   assignmentJson     Json
   sourceAssignmentId Int?
   createdById        Int?
+  visibility         CurriculumLibraryVisibility @default(PRIVATE)
+  teamId             Int?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   createdBy          User?                @relation("CurriculumLibraryItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  team               DepartmentTeam?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   assignedCopies     HomeworkAssignment[] @relation("HomeworkAssignmentSourceLibraryItem")
 
   @@index([createdById])
+  @@index([teamId])
+  @@index([visibility])
   @@index([sourceAssignmentId])
 }
