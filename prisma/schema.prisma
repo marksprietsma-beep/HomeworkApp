@@ -40,6 +40,11 @@ enum HomeworkQuestionType {
   MULTIPLE_CHOICE
 }
 
+enum HomeworkQuestionResponseMode {
+  TEXT
+  PSEUDOCODE
+}
+
 enum FeedbackFollowUpActionType {
   ACKNOWLEDGEMENT
   SHORT_REFLECTION
@@ -154,6 +159,7 @@ model HomeworkQuestion {
   prompt          String
   promptI18n      Json?
   questionType    HomeworkQuestionType @default(OPEN_TEXT)
+  responseMode    HomeworkQuestionResponseMode @default(TEXT)
   options         Json?
   imagePath       String?
   imageCaption    String?

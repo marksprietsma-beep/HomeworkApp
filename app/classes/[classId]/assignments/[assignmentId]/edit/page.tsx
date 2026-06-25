@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
 import { prisma } from "../../../../../../lib/prisma";
 import { EditAssignmentForm } from "./edit-assignment-form";
@@ -42,6 +42,7 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
             order: true,
             prompt: true,
             questionType: true,
+            responseMode: true,
             points: true,
             options: true,
             imagePath: true,
@@ -85,6 +86,7 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
               questions: assignment.questions.map((question) => ({
                 ...question,
                 questionType: question.questionType as HomeworkQuestionType,
+                responseMode: question.responseMode as HomeworkQuestionResponseMode,
               })),
               hasResponses: assignment._count.submissions > 0,
             }}

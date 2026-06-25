@@ -63,7 +63,7 @@ export async function saveParticipantSubmission(
 
     for (const question of assignment.questions) {
       const rawAnswer = formData.get(`question-${question.id}`);
-      const answerText = typeof rawAnswer === "string" ? rawAnswer.trim() : "";
+      const answerText = typeof rawAnswer === "string" ? rawAnswer : "";
 
       await tx.submissionAnswer.upsert({
         where: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { HomeworkAssignmentStatus, HomeworkQuestionType } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType } from "@prisma/client";
 import { updateAssignmentDetails, type EditAssignmentFormState } from "./actions";
 
 type EditableQuestion = {
@@ -9,6 +9,7 @@ type EditableQuestion = {
   order: number;
   prompt: string;
   questionType: HomeworkQuestionType;
+  responseMode: HomeworkQuestionResponseMode;
   points: number | null;
   options: unknown;
   imagePath: string | null;
@@ -119,7 +120,7 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
             <fieldset key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <input type="hidden" name="questionId" value={question.id} />
               <legend className="text-sm font-bold text-slate-950">Question {question.order}</legend>
-              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem_10rem]">
+              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_12rem_10rem]">
                 <label className="text-sm font-semibold text-slate-700">
                   Prompt
                   <textarea name="questionPrompt" required rows={3} defaultValue={question.prompt} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" />
@@ -132,6 +133,14 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
                     ))}
                   </select>
                   {assignment.hasResponses ? <input type="hidden" name="questionType" value={question.questionType} /> : null}
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Response mode
+                  <select name="questionResponseMode" defaultValue={question.responseMode} disabled={selectedType === HomeworkQuestionType.MULTIPLE_CHOICE} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
+                    <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
+                    <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
+                  </select>
+                  {selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
                 </label>
                 <label className="text-sm font-semibold text-slate-700">
                   Points (optional)

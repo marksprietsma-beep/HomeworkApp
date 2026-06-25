@@ -6,7 +6,7 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
-> Return only valid JSON using the Clarion assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`. English-only JSON still works. If bilingual output is requested, keep the required English fields and add optional i18n fields using only `en` and `zh`: `titleI18n`, `instructionsI18n`, question `textI18n`, option `textI18n`, and glossary `termI18n`/`definitionI18n`. Use natural Simplified Chinese, not literal machine-style translation.
+> Return only valid JSON using the Clarion assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. OPEN_TEXT questions may include optional `responseMode` set to `TEXT` or `PSEUDOCODE`; use `PSEUDOCODE` only when a code-style answer box is helpful. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`. English-only JSON still works. If bilingual output is requested, keep the required English fields and add optional i18n fields using only `en` and `zh`: `titleI18n`, `instructionsI18n`, question `textI18n`, option `textI18n`, and glossary `termI18n`/`definitionI18n`. Use natural Simplified Chinese, not literal machine-style translation.
 
 ## Stable root shape
 
@@ -67,6 +67,7 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 | `prompt` | Yes | string | Student-facing question prompt. Must not be empty after trimming. |
 | `textI18n` | No | object | Optional bilingual question text with only `en` and `zh` string keys. English-only imports can omit it. |
 | `points` | No | integer | Optional point value for this question. When present, it must be a positive integer. |
+| `responseMode` | No | string | Optional for `OPEN_TEXT`; `TEXT` (default) or `PSEUDOCODE` for code-style responses. Existing JSON can omit it. |
 | `options` | Required only for `MULTIPLE_CHOICE` | array | Array of option objects. Must be omitted for `OPEN_TEXT`. |
 | `image` | No | object or null | Optional image reference metadata. This is only a reference; v1 does not upload or store image files. |
 
@@ -301,7 +302,7 @@ MAR-120 should enforce these rules before writing anything to the database:
 9. Every question must be an object with `id`, `order`, `type`, and `prompt`.
 10. Question `id` values must be non-empty strings and unique within the assignment.
 11. Question `order` values must be integers, unique, start at `1`, and be sequential with no gaps.
-12. Question `type` must be one of `OPEN_TEXT` or `MULTIPLE_CHOICE`.
+12. Question `type` must be one of `OPEN_TEXT` or `MULTIPLE_CHOICE`. Optional question `responseMode` must be `TEXT` or `PSEUDOCODE` when present.
 13. Question `prompt` values must be strings with non-empty trimmed values.
 14. Optional question `points` must be a positive integer when present.
 15. `OPEN_TEXT` questions must not include `options`.

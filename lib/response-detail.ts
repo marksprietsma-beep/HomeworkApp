@@ -27,6 +27,7 @@ export type ResponseDetailData = {
     order: number;
     prompt: string;
     questionType: string;
+    responseMode: string;
     options: unknown;
     points: number | null;
     imagePath: string | null;
@@ -82,6 +83,7 @@ export async function getResponseDetailData(
               order: true,
               prompt: true,
               questionType: true,
+              responseMode: true,
               options: true,
               points: true,
               imagePath: true,
