@@ -4,7 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
 import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT } from "../../../../../../../lib/feedback-helper-prompt";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
-import { saveFeedbackImport } from "./actions";
+import { releaseFeedbackForAssignment, saveFeedbackImport } from "./actions";
 
 type Props = {
   classId: number;
@@ -84,6 +84,10 @@ export function FeedbackImportForm({
     saveFeedbackImport.bind(null, classId, assignmentId),
     { ok: false, message: "" },
   );
+  const [releaseState, releaseAction, releasePending] = useActionState(
+    releaseFeedbackForAssignment.bind(null, classId, assignmentId),
+    { ok: false, message: "" },
+  );
   const parseResult = useMemo(
     () => parseFeedbackImportJson(rawJson, context),
     [rawJson, context],
@@ -93,6 +97,10 @@ export function FeedbackImportForm({
     ? (parseResult.feedback as PreviewFeedback)
     : null;
   const payloadSaved = Boolean(state.ok && state.submittedRawJson === rawJson);
+  const importedStudents = feedback?.participantFeedback.length ?? 0;
+  const questionFeedbackCount = feedback?.participantFeedback.reduce((total, entry) => total + entry.questionFeedback.length, 0) ?? 0;
+  const followUpActionCount = feedback?.participantFeedback.reduce((total, entry) => total + entry.followUpActions.length + entry.questionFeedback.reduce((qTotal, question) => qTotal + question.followUpActions.length, 0), 0) ?? 0;
+  const bilingualDetected = rawJson.includes("I18n");
 
   function startNewImport() {
     setRawJson("");
@@ -150,9 +158,14 @@ export function FeedbackImportForm({
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             This assignment already has {existingImportCount} feedback import
             {existingImportCount === 1 ? "" : "s"}. V1 keeps historical
-            teacher-only import records and does not replace existing feedback,
-            but an exact duplicate payload is blocked so counters do not increase
-            from repeat clicks.
+            draft/released feedback. Saving another payload for the same student or submission requires one replace confirmation, and exact duplicate payloads are blocked.
+          </div>
+        ) : null}
+        {releaseState.message ? (
+          <div
+            className={`mt-5 rounded-2xl border p-4 text-sm font-semibold ${releaseState.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
+          >
+            {releaseState.message}
           </div>
         ) : null}
         {state.message ? (
@@ -191,7 +204,7 @@ export function FeedbackImportForm({
                   <p className="text-sm font-semibold text-emerald-900">
                     {payloadSaved
                       ? "Feedback saved. Import another feedback file to continue."
-                      : "JSON is valid. Review the preview, then save when ready."}
+                      : "JSON is valid. Review the summary, then save as Draft when ready."}
                   </p>
                   {payloadSaved ? (
                     <p className="mt-1 text-xs font-medium text-emerald-800">
@@ -206,7 +219,7 @@ export function FeedbackImportForm({
                       onClick={startNewImport}
                       className="rounded-full border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-400"
                     >
-                      Start new import
+                      Keep draft / new import
                     </button>
                   ) : null}
                   <button
@@ -214,11 +227,39 @@ export function FeedbackImportForm({
                     disabled={pending || payloadSaved}
                     className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {pending ? "Saving…" : payloadSaved ? "Feedback saved" : "Confirm and save"}
+                    {pending ? "Saving…" : payloadSaved ? "Saved as Draft" : "Save as Draft"}
                   </button>
-                </div>
+                
+                {payloadSaved && state.canRelease ? (
+                  <button
+                    formAction={releaseAction}
+                    disabled={releasePending}
+                    className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                  >
+                    {releasePending ? "Releasing…" : "Release feedback to students"}
+                  </button>
+                ) : null}</div>
               </div>
             </div>
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Import summary</p>
+              <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                <p><strong>Assignment:</strong> {feedback.assignment?.title ?? "Untitled assignment"}</p>
+                <p><strong>Class:</strong> {feedback.class?.name ?? "Unnamed"}</p>
+                <p><strong>Students with feedback:</strong> {importedStudents}</p>
+                <p><strong>Question feedback entries:</strong> {questionFeedbackCount}</p>
+                <p><strong>Follow-up actions:</strong> {followUpActionCount}</p>
+                <p><strong>Bilingual fields detected:</strong> {bilingualDetected ? "Yes" : "No"}</p>
+                <p><strong>Initial state:</strong> Draft (hidden from students)</p>
+                <p><strong>Warnings:</strong> {existingImportCount > 0 ? "Existing feedback may be replaced if it matches these students/submissions." : "None"}</p>
+              </div>
+              {existingImportCount > 0 && !payloadSaved ? (
+                <label className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-950">
+                  <input type="checkbox" name="confirmReplace" className="mt-1" />
+                  I understand this import may replace existing draft/released feedback for matching students or submissions.
+                </label>
+              ) : null}
+            </section>
             <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                 Source and match

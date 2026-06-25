@@ -150,7 +150,7 @@ export async function getParticipantWorkData(
         },
       },
       participantFeedback: {
-        where: { studentId },
+        where: { studentId, releaseState: "RELEASED" },
         orderBy: [
           { feedbackImport: { importedAt: "desc" } },
           { updatedAt: "desc" },

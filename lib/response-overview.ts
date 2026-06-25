@@ -88,6 +88,7 @@ export async function getResponseOverviewData(
         ],
         select: {
           studentId: true,
+          releaseState: true,
           followUpActions: {
             select: { status: true },
           },
@@ -156,6 +157,7 @@ export async function getResponseOverviewData(
             updatedAt: submission.updatedAt,
           }
         : null,
+      feedbackReleaseState: feedback?.releaseState ?? null,
       feedbackActions: {
         total: actions.length,
         completed,

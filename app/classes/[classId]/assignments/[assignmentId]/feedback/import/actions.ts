@@ -1,14 +1,14 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { FeedbackFollowUpActionType, Prisma, UserRole } from "@prisma/client";
+import { FeedbackFollowUpActionType, FeedbackReleaseState, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
 import { getFeedbackImportPageData } from "../../../../../../../lib/feedback-import";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
 import { prisma } from "../../../../../../../lib/prisma";
 
-type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string };
+type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
 
 type ImportContext = { participants: Array<{ id: number; submission: { id: number } | null }>; questions: Array<{ id: number }> };
 
@@ -78,6 +78,7 @@ export async function saveFeedbackImport(
   formData: FormData,
 ): Promise<SaveFeedbackImportState> {
   const rawJson = String(formData.get("rawJson") ?? "");
+  const confirmReplace = formData.get("confirmReplace") === "on";
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
 
   if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
@@ -112,12 +113,42 @@ export async function saveFeedbackImport(
   }
 
   const context = pageData.context as ImportContext;
+  const incomingKeys = feedback.participantFeedback.map((entry) => ({
+    studentId: entry.participant.id,
+    submissionId: entry.submission?.id ?? null,
+  }));
+  const existingFeedback = await prisma.participantFeedback.findMany({
+    where: {
+      assignmentId,
+      OR: incomingKeys.map((key) => ({ studentId: key.studentId, submissionId: key.submissionId })),
+    },
+    select: { id: true, releaseState: true },
+  });
+  if (existingFeedback.length > 0 && !confirmReplace) {
+    const released = existingFeedback.filter((item) => item.releaseState === FeedbackReleaseState.RELEASED).length;
+    const draft = existingFeedback.length - released;
+    return {
+      ok: false,
+      message: `This will replace existing feedback for ${existingFeedback.length} student${existingFeedback.length === 1 ? "" : "s"} (${draft} draft, ${released} released). Tick the replace confirmation and save again.`,
+      submittedRawJson: rawJson,
+      payloadHash: importPayloadHash,
+    };
+  }
+
   const students = new Set(context.participants.map((participant) => participant.id));
   const submissions = new Set(context.participants.flatMap((participant) => participant.submission ? [participant.submission.id] : []));
   const questions = new Set(context.questions.map((question) => question.id));
 
   try {
     const saved = await prisma.$transaction(async (tx) => {
+    if (existingFeedback.length > 0) {
+      await tx.participantFeedback.deleteMany({ where: { id: { in: existingFeedback.map((item) => item.id) } } });
+    }
+
+    const questionFeedbackCount = feedback.participantFeedback.reduce((total, entry) => total + entry.questionFeedback.length, 0);
+    const followUpActionCount = feedback.participantFeedback.reduce((total, entry) => total + entry.followUpActions.length + entry.questionFeedback.reduce((qTotal, question) => qTotal + question.followUpActions.length, 0), 0);
+    const hasBilingualFields = JSON.stringify(feedback).includes("I18n");
+
     const feedbackImport = await tx.feedbackImport.create({
       data: {
         assignmentId,
@@ -129,6 +160,17 @@ export async function saveFeedbackImport(
         generatedBy: feedback.generatedBy,
         generatedAt: optionalDate(feedback.generatedAt),
         importPayloadHash,
+        importedById: selectedUser.id,
+        classId,
+        operationSummary: {
+          created: feedback.participantFeedback.length - existingFeedback.length,
+          replaced: existingFeedback.length,
+          releaseState: "DRAFT",
+          students: feedback.participantFeedback.length,
+          questionFeedback: questionFeedbackCount,
+          followUpActions: followUpActionCount,
+          bilingualFieldsDetected: hasBilingualFields,
+        },
       },
       select: { id: true },
     });
@@ -145,6 +187,9 @@ export async function saveFeedbackImport(
           sourceParticipantEmail: entry.participant.email,
           sourceSubmissionId: entry.submission?.id,
           sourceSubmissionStatus: entry.submission?.status,
+          releaseState: FeedbackReleaseState.DRAFT,
+          importedById: selectedUser.id,
+          importAction: existingFeedback.length > 0 ? "replaced" : "created",
           overallFeedback: entry.overallFeedback,
           overallFeedbackI18n: entry.overallFeedbackI18n,
           strengths: entry.strengths,
@@ -208,7 +253,7 @@ export async function saveFeedbackImport(
   });
 
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
-    return { ok: true, message: `Feedback saved as import #${saved.id}. Saved. Import another feedback file to continue.`, payloadHash: importPayloadHash, submittedRawJson: rawJson };
+    return { ok: true, message: `Feedback saved as draft import #${saved.id}. Review it below, then release feedback to students when ready.`, payloadHash: importPayloadHash, submittedRawJson: rawJson, savedImportId: saved.id, canRelease: true };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       const duplicate = await prisma.feedbackImport.findUnique({
@@ -224,4 +269,24 @@ export async function saveFeedbackImport(
     }
     throw error;
   }
+}
+
+
+export async function releaseFeedbackForAssignment(classId: number, assignmentId: number) {
+  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
+    return { ok: false, message: "Switch to the class teacher to release feedback." };
+  }
+  const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
+  if (!pageData.found || !pageData.assignment || !pageData.canImport) {
+    return { ok: false, message: "Feedback release is only available to the class teacher." };
+  }
+  const result = await prisma.participantFeedback.updateMany({
+    where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT },
+    data: { releaseState: FeedbackReleaseState.RELEASED, releasedAt: new Date(), releasedById: selectedUser.id },
+  });
+  revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
+  revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
+  revalidatePath(`/assignments/${assignmentId}/work`);
+  return { ok: true, message: result.count > 0 ? `Released feedback for ${result.count} student${result.count === 1 ? "" : "s"}.` : "No draft feedback is waiting for release." };
 }

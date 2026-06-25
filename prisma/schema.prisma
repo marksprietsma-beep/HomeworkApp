@@ -51,6 +51,11 @@ enum FeedbackFollowUpActionStatus {
   COMPLETED
 }
 
+enum FeedbackReleaseState {
+  DRAFT
+  RELEASED
+}
+
 model LocalDatabaseCheck {
   id        Int      @id @default(autoincrement())
   message   String   @default("local database is reachable")
@@ -190,6 +195,9 @@ model FeedbackImport {
   generatedBy             String?
   generatedAt             DateTime?
   importPayloadHash       String?
+  importedById            Int?
+  classId                 Int?
+  operationSummary        Json?
   importedAt              DateTime              @default(now())
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -211,6 +219,12 @@ model ParticipantFeedback {
   sourceParticipantEmail String?
   sourceSubmissionId     Int?
   sourceSubmissionStatus String?
+  releaseState           FeedbackReleaseState    @default(RELEASED)
+  importedAt             DateTime                 @default(now())
+  importedById           Int?
+  importAction           String                   @default("created")
+  releasedAt             DateTime?
+  releasedById           Int?
   overallFeedback        String
   overallFeedbackI18n    Json?
   strengths              String[]
@@ -231,6 +245,8 @@ model ParticipantFeedback {
   @@index([assignmentId])
   @@index([studentId])
   @@index([submissionId])
+  @@index([releaseState])
+  @@unique([assignmentId, studentId, submissionId])
 }
 
 model QuestionFeedback {
