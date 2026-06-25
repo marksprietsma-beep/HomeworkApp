@@ -274,6 +274,25 @@ function StudentAssignmentCard({
   );
 }
 
+function getFollowUpItemKey(
+  assignment: LocalDashboardData["assignedWork"][number],
+  action: NonNullable<LocalDashboardData["assignedWork"][number]["feedback"]>["actions"][number] & {
+    questionFeedbackId?: number | null;
+    questionId?: number | null;
+  },
+) {
+  return [
+    "assignment",
+    assignment.id,
+    "feedback",
+    assignment.feedback?.id ?? "none",
+    "question",
+    action.questionId ?? action.questionFeedbackId ?? "overall",
+    "action",
+    action.id,
+  ].join("-");
+}
+
 function StudentAssignedWorkDashboard({
   selectedUser,
   dashboardData,
@@ -396,7 +415,7 @@ function StudentAssignedWorkDashboard({
                 ) : (
                   <ul className="mt-3 grid gap-3">
                     {followUpItems.map(({ assignment, action }) => (
-                      <li key={action.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                      <li key={getFollowUpItemKey(assignment, action)} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
                         <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">{formatFeedbackActionType(action.type)}</p>
                         <p className="mt-2 font-semibold text-slate-950">{renderBilingualText(assignment.title, assignment.titleI18n)}</p>
                         <p className="mt-1 line-clamp-2 leading-6 text-slate-700">{renderBilingualText(action.prompt, action.promptI18n)}</p>
