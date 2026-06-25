@@ -338,18 +338,6 @@ export default async function HomeworkDetailPage({
                 >
                   View response overview
                 </Link>
-                <Link
-                  href={`/classes/${homework.class.id}/assignments/${homework.id}/responses/export`}
-                  className="inline-flex rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
-                >
-                  Export responses
-                </Link>
-                <Link
-                  href={`/classes/${homework.class.id}/assignments/${homework.id}/feedback/import`}
-                  className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
-                >
-                  Import feedback
-                </Link>
               </div>
             ) : null}
           </div>

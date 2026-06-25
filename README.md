@@ -261,8 +261,8 @@ The smoke script is intentionally local and deterministic. It uses the existing 
   - participant work page: `/assignments/[assignmentId]/work`
   - teacher response overview: `/classes/[classId]/assignments/[assignmentId]/responses`
   - teacher response detail: `/classes/[classId]/assignments/[assignmentId]/responses/[submissionId]`
-  - teacher response export: `/classes/[classId]/assignments/[assignmentId]/responses/export`
-  - teacher feedback import: `/classes/[classId]/assignments/[assignmentId]/feedback/import`
+  - teacher feedback workflow: `/classes/[classId]/assignments/[assignmentId]/responses#feedback-workflow`
+  - legacy response export/import URLs redirect back to the response overview feedback workflow
 
 The script creates a throwaway feedback import with `generatedBy: "Core workflow smoke test"`, deletes any previous smoke-test feedback import for the seeded assignment, and then verifies that a participant feedback follow-up action can be completed with saved response text. This keeps the smoke data idempotent while exercising the full imported-feedback/action part of the local workflow.
 
@@ -270,7 +270,7 @@ Manual browser check, if Mark wants to verify rendered pages after the automated
 
 1. Run `npm run dev`.
 2. Open [http://localhost:3000](http://localhost:3000) as `Dev Teacher` and confirm the dashboard shows `Development Maths Class`, `Fractions practice`, and response links.
-3. Open the seeded assignment response overview, detail, export, and feedback import links from the teacher dashboard/assignment pages.
+3. Open the seeded assignment response overview and detail links from the teacher dashboard/assignment pages, then use the response overview feedback workflow to copy prompts and import feedback JSON.
 4. Switch to `Ada Student`, open `Fractions practice`, and confirm the submitted answers, imported smoke-test feedback, and feedback actions are visible.
 5. Complete or edit one acknowledgement/reflection/follow-up answer in the participant work page, then switch back to `Dev Teacher` and confirm the follow-up action status appears in the response detail/overview surfaces.
 

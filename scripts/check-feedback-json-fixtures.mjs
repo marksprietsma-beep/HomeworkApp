@@ -103,7 +103,7 @@ for (const fixture of invalidFixtures) {
   await checkInvalidFixture(fixture);
 }
 
-const responseExportPage = await readText("app/classes/[classId]/assignments/[assignmentId]/responses/export/page.tsx");
+const responseOverviewPage = await readText("app/classes/[classId]/assignments/[assignmentId]/responses/page.tsx");
 const feedbackImportForm = await readText("app/classes/[classId]/assignments/[assignmentId]/feedback/import/feedback-import-form.tsx");
 const sharedFeedbackHelper = await readText("lib/feedback-helper-prompt.ts");
 const requiredPromptText = [
@@ -130,8 +130,8 @@ for (const expectedText of requiredPromptText) {
     fail(`Shared feedback helper prompt is missing required text: ${expectedText}`);
   }
 }
-if (!responseExportPage.includes("FEEDBACK_HELPER_PROMPT")) {
-  fail("Response export page must use the shared feedback helper prompt");
+if (!responseOverviewPage.includes("buildFullFeedbackPrompt")) {
+  fail("Response overview page must build the shared feedback helper prompt");
 }
 if (!feedbackImportForm.includes("FEEDBACK_HELPER_PROMPT")) {
   fail("Feedback import form must use the shared feedback helper prompt");
