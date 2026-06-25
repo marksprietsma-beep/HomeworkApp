@@ -21,7 +21,18 @@ export type ResponseOverviewData = {
     notResponded: number;
     questions: number;
     points: number | null;
+    feedbackDraft: number;
+    feedbackReleased: number;
   };
+  feedbackReview: {
+    id: number;
+    studentName: string;
+    studentEmail: string | null;
+    releaseState: string;
+    overallFeedback: string;
+    questionFeedbackCount: number;
+    followUpActionCount: number;
+  }[];
   participants: {
     id: number;
     displayName: string;
@@ -88,6 +99,10 @@ export async function getResponseOverviewData(
         ],
         select: {
           studentId: true,
+          id: true,
+          sourceParticipantName: true,
+          sourceParticipantEmail: true,
+          overallFeedback: true,
           releaseState: true,
           followUpActions: {
             select: { status: true },
@@ -135,6 +150,16 @@ export async function getResponseOverviewData(
       feedbackByStudentId.set(feedback.studentId, feedback);
     }
   }
+
+  const feedbackReview = assignment.participantFeedback.map((feedback) => ({
+    id: feedback.id,
+    studentName: feedback.sourceParticipantName ?? `Student ${feedback.studentId ?? "unknown"}`,
+    studentEmail: feedback.sourceParticipantEmail,
+    releaseState: feedback.releaseState,
+    overallFeedback: feedback.overallFeedback,
+    questionFeedbackCount: feedback.questionFeedback.length,
+    followUpActionCount: feedback.followUpActions.length + feedback.questionFeedback.reduce((total, question) => total + question.followUpActions.length, 0),
+  }));
 
   const participants = assignment.class.enrollments.map((enrollment) => {
     const submission = submissionsByStudentId.get(enrollment.student.id) ?? null;
@@ -187,7 +212,10 @@ export async function getResponseOverviewData(
         notResponded: participants.length - responded,
         questions: assignment.questions.length,
         points: totalPoints,
+        feedbackDraft: feedbackReview.filter((feedback) => feedback.releaseState === "DRAFT").length,
+        feedbackReleased: feedbackReview.filter((feedback) => feedback.releaseState === "RELEASED").length,
       },
+      feedbackReview,
       participants,
     },
   };

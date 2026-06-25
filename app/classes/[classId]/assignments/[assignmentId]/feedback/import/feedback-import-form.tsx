@@ -11,6 +11,7 @@ type Props = {
   assignmentId: number;
   context: Record<string, unknown>;
   existingImportCount: number;
+  compact?: boolean;
 };
 
 type PreviewAction = {
@@ -78,6 +79,7 @@ export function FeedbackImportForm({
   assignmentId,
   context,
   existingImportCount,
+  compact = false,
 }: Props) {
   const [rawJson, setRawJson] = useState("");
   const [state, formAction, pending] = useActionState(
@@ -107,7 +109,7 @@ export function FeedbackImportForm({
   }
 
   return (
-    <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]">
+    <div className={compact ? "grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]" : "mt-8 grid gap-6 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)]"}>
       <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8 xl:sticky xl:top-6 xl:self-start">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
           Paste JSON

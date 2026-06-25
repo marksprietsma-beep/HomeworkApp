@@ -253,6 +253,7 @@ export async function saveFeedbackImport(
   });
 
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
+    revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
     return { ok: true, message: `Feedback saved as draft import #${saved.id}. Review it below, then release feedback to students when ready.`, payloadHash: importPayloadHash, submittedRawJson: rawJson, savedImportId: saved.id, canRelease: true };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {

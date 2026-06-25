@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
+import { getFeedbackImportPageData } from "../../../../../../lib/feedback-import";
+import { buildFullFeedbackPrompt } from "../../../../../../lib/feedback-helper-prompt";
+import { getAssignmentResponseExportData } from "../../../../../../lib/response-export";
 import { getResponseOverviewData } from "../../../../../../lib/response-overview";
+import { releaseFeedbackForAssignment } from "../feedback/import/actions";
+import { ResponseFeedbackWorkflow } from "./response-feedback-workflow";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +49,11 @@ export default async function ResponseOverviewPage({
   }
 
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
-  const { overview, found } = await getResponseOverviewData(
-    parsedClassId,
-    parsedAssignmentId,
-    selectedUser,
-  );
+  const [{ overview, found }, exportResult, importData] = await Promise.all([
+    getResponseOverviewData(parsedClassId, parsedAssignmentId, selectedUser),
+    getAssignmentResponseExportData(parsedClassId, parsedAssignmentId, selectedUser),
+    getFeedbackImportPageData(parsedClassId, parsedAssignmentId, selectedUser),
+  ]);
 
   if (!found) {
     notFound();
@@ -77,6 +82,18 @@ export default async function ResponseOverviewPage({
         </section>
       </main>
     );
+  }
+
+  const fullFeedbackPrompt = exportResult.exportData
+    ? buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2))
+    : null;
+
+  const overviewClassId = overview.class.id;
+  const overviewAssignmentId = overview.id;
+
+  async function releaseDraftFeedback() {
+    "use server";
+    await releaseFeedbackForAssignment(overviewClassId, overviewAssignmentId);
   }
 
   return (
@@ -130,12 +147,54 @@ export default async function ResponseOverviewPage({
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Enrolled participants" value={overview.totals.enrolledParticipants} />
           <StatCard label="Responded" value={overview.totals.responded} />
           <StatCard label="Not responded" value={overview.totals.notResponded} />
+          <StatCard label="Feedback draft" value={overview.totals.feedbackDraft} />
+          <StatCard label="Feedback released" value={overview.totals.feedbackReleased} />
         </div>
       </section>
+
+      {fullFeedbackPrompt && importData.canImport && importData.context ? (
+        <ResponseFeedbackWorkflow
+          classId={overview.class.id}
+          assignmentId={overview.id}
+          fullFeedbackPrompt={fullFeedbackPrompt}
+          importContext={importData.context}
+          existingImportCount={importData.existingImports.length}
+        />
+      ) : null}
+
+      {overview.feedbackReview.length > 0 ? (
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Feedback review</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">Review draft feedback before release</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Draft feedback is visible here for teachers, remains hidden from students, and can be released in bulk when review is complete.</p>
+            </div>
+            <form action={releaseDraftFeedback}>
+              <button type="submit" className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800">Release feedback to students</button>
+            </form>
+          </div>
+          <ul className="mt-6 grid gap-4">
+            {overview.feedbackReview.map((feedback) => (
+              <li key={feedback.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-950">{feedback.studentName}</p>
+                    <p className="mt-1 text-sm text-slate-600">{feedback.studentEmail ?? "No email"}</p>
+                  </div>
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${feedback.releaseState === "RELEASED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{feedback.releaseState === "RELEASED" ? "Released" : "Draft"}</span>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-800">{feedback.overallFeedback}</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{feedback.questionFeedbackCount} question feedback entries · {feedback.followUpActionCount} follow-up actions</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
