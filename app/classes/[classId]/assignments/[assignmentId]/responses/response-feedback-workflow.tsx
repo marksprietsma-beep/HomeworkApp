@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import type { FeedbackLanguageMode } from "../../../../../../lib/feedback-helper-prompt";
 import { FeedbackImportForm } from "../feedback/import/feedback-import-form";
 
 type Props = {
   classId: number;
   assignmentId: number;
-  fullFeedbackPrompt: string;
+  feedbackPrompts: {
+    english: string;
+    bilingual: string;
+    defaultMode: FeedbackLanguageMode;
+  };
   importContext: Record<string, unknown>;
   existingImportCount: number;
 };
@@ -16,16 +21,17 @@ type CopyStatus = "idle" | "success" | "error";
 export function ResponseFeedbackWorkflow({
   classId,
   assignmentId,
-  fullFeedbackPrompt,
+  feedbackPrompts,
   importContext,
   existingImportCount,
 }: Props) {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const [feedbackLanguageMode, setFeedbackLanguageMode] = useState<FeedbackLanguageMode>(feedbackPrompts.defaultMode);
   const [importOpen, setImportOpen] = useState(false);
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(fullFeedbackPrompt);
+      await navigator.clipboard.writeText(feedbackPrompts[feedbackLanguageMode]);
       setCopyStatus("success");
     } catch {
       setCopyStatus("error");
@@ -48,7 +54,36 @@ export function ResponseFeedbackWorkflow({
             students. No data is sent to ChatGPT automatically.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+        <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+          <fieldset className="rounded-2xl border border-amber-200 bg-white/80 p-3">
+            <legend className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+              Feedback language
+            </legend>
+            <div className="mt-2 grid gap-2 text-sm font-semibold text-slate-800">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="feedback-language-mode"
+                  value="english"
+                  checked={feedbackLanguageMode === "english"}
+                  onChange={() => setFeedbackLanguageMode("english")}
+                  className="h-4 w-4 accent-slate-950"
+                />
+                English only
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="feedback-language-mode"
+                  value="bilingual"
+                  checked={feedbackLanguageMode === "bilingual"}
+                  onChange={() => setFeedbackLanguageMode("bilingual")}
+                  className="h-4 w-4 accent-slate-950"
+                />
+                Bilingual English + 中文
+              </label>
+            </div>
+          </fieldset>
           <button
             type="button"
             onClick={copyPrompt}
@@ -73,7 +108,7 @@ export function ResponseFeedbackWorkflow({
           className={`mt-4 rounded-2xl border p-3 text-sm font-semibold ${copyStatus === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
         >
           {copyStatus === "success"
-            ? "Feedback prompt copied. Paste it into ChatGPT, then return here with the JSON."
+            ? `Feedback prompt copied (${feedbackLanguageMode === "bilingual" ? "bilingual English + 中文" : "English only"}). Paste it into ChatGPT, then return here with the JSON.`
             : "Could not copy automatically. Use the existing export page fallback to copy the prompt manually."}
         </p>
       ) : null}

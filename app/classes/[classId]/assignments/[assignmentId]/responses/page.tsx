@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
 import { getFeedbackImportPageData } from "../../../../../../lib/feedback-import";
 import { buildFullFeedbackPrompt } from "../../../../../../lib/feedback-helper-prompt";
-import { getAssignmentResponseExportData } from "../../../../../../lib/response-export";
+import { assignmentResponseExportHasBilingualContent, getAssignmentResponseExportData } from "../../../../../../lib/response-export";
 import { getResponseOverviewData } from "../../../../../../lib/response-overview";
 import { releaseFeedbackForAssignment } from "../feedback/import/actions";
 import { ResponseFeedbackWorkflow } from "./response-feedback-workflow";
@@ -84,8 +84,12 @@ export default async function ResponseOverviewPage({
     );
   }
 
-  const fullFeedbackPrompt = exportResult.exportData
-    ? buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2))
+  const feedbackPrompts = exportResult.exportData
+    ? {
+        english: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "english"),
+        bilingual: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "bilingual"),
+        defaultMode: assignmentResponseExportHasBilingualContent(exportResult.exportData) ? "bilingual" as const : "english" as const,
+      }
     : null;
 
   const overviewClassId = overview.class.id;
@@ -156,11 +160,11 @@ export default async function ResponseOverviewPage({
         </div>
       </section>
 
-      {fullFeedbackPrompt && importData.canImport && importData.context ? (
+      {feedbackPrompts && importData.canImport && importData.context ? (
         <ResponseFeedbackWorkflow
           classId={overview.class.id}
           assignmentId={overview.id}
-          fullFeedbackPrompt={fullFeedbackPrompt}
+          feedbackPrompts={feedbackPrompts}
           importContext={importData.context}
           existingImportCount={importData.existingImports.length}
         />

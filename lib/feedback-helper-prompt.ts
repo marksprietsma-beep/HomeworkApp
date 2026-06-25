@@ -1,4 +1,4 @@
-export const FEEDBACK_HELPER_PROMPT = `Create teacher-review draft feedback for Clarion using only the exported Clarion response JSON below. The teacher will paste your JSON back into Clarion, review it, then release it to students. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
+const FEEDBACK_HELPER_PROMPT_PREFIX = `Create teacher-review draft feedback for Clarion using only the exported Clarion response JSON below. The teacher will paste your JSON back into Clarion, review it, then release it to students. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 
 Context to use from the export:
 - Read assignment.title, assignment.instructions, assignment status/due date, class name, keyVocabulary, ordered questions, question prompts, question points, options, images, participants, submissions, and responsesByQuestionId.
@@ -24,10 +24,10 @@ Feedback import contract:
 - Do not nest class inside assignment. Do not return assignment.class. Use root-level class instead.
 - Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, converted to strings, translated, or reformatted.
 - Do not invent students, submissions, question IDs, responses, or extra unsupported fields.
-- For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback where useful, and followUpActions where appropriate.
-- English-only feedback remains valid. When bilingual feedback is requested by the teacher or indicated by bilingual assignment content, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
+- For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback when relevant to the response, and followUpActions where appropriate.
+__FEEDBACK_LANGUAGE_INSTRUCTION__
 - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
-- If you include Chinese, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
+- If bilingual feedback is requested, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 
@@ -45,17 +45,30 @@ Follow-up action requirements:
 - This applies to participant-level followUpActions and question-level followUpActions.
 - Do not omit follow-up action ids, and do not rely on the importer to invent ids.
 - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
-- Each follow-up action must include id, type, prompt, and required. It may also include promptI18n when bilingual feedback is requested.
+- Each follow-up action must include id, type, prompt, and required. Add promptI18n with en and zh when bilingual feedback is requested.
 - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
 - Use required true unless the action is genuinely optional.
 
 Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.`;
 
 
+export type FeedbackLanguageMode = "english" | "bilingual";
+
+const FEEDBACK_LANGUAGE_INSTRUCTIONS: Record<FeedbackLanguageMode, string> = {
+  english: "- Generate English-only feedback. Keep required English fields and do not require Chinese or i18n feedback fields.",
+  bilingual: "- Generate bilingual feedback. Keep all required English fields and add i18n fields with en and zh wherever the schema supports them: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh }.",
+};
+
+export function buildFeedbackHelperPrompt(languageMode: FeedbackLanguageMode = "english") {
+  return FEEDBACK_HELPER_PROMPT_PREFIX.replace("__FEEDBACK_LANGUAGE_INSTRUCTION__", FEEDBACK_LANGUAGE_INSTRUCTIONS[languageMode]);
+}
+
+export const FEEDBACK_HELPER_PROMPT = buildFeedbackHelperPrompt("english");
+
 export const FEEDBACK_RESPONSE_JSON_SEPARATOR = "Here is the response export JSON to mark:";
 
-export function buildFullFeedbackPrompt(responseJson: string) {
-  return `${FEEDBACK_HELPER_PROMPT}
+export function buildFullFeedbackPrompt(responseJson: string, languageMode: FeedbackLanguageMode = "english") {
+  return `${buildFeedbackHelperPrompt(languageMode)}
 
 ${FEEDBACK_RESPONSE_JSON_SEPARATOR}
 

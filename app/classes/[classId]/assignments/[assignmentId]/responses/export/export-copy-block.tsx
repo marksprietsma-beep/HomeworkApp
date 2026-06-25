@@ -4,19 +4,28 @@ import { useState } from "react";
 
 type CopyStatus = "idle" | "success" | "error";
 
+type FeedbackLanguageMode = "english" | "bilingual";
+
 type ExportCopyBlockProps = {
   label: string;
   value: string;
   copyLabel: string;
   description?: string;
+  languageModeValues?: {
+    english: string;
+    bilingual: string;
+    defaultMode: FeedbackLanguageMode;
+  };
 };
 
-export function ExportCopyBlock({ label, value, copyLabel, description }: ExportCopyBlockProps) {
+export function ExportCopyBlock({ label, value, copyLabel, description, languageModeValues }: ExportCopyBlockProps) {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const [languageMode, setLanguageMode] = useState<FeedbackLanguageMode>(languageModeValues?.defaultMode ?? "english");
+  const copyValue = languageModeValues ? languageModeValues[languageMode] : value;
 
   async function copyExport() {
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(copyValue);
       setCopyStatus("success");
     } catch {
       setCopyStatus("error");
@@ -43,6 +52,37 @@ export function ExportCopyBlock({ label, value, copyLabel, description }: Export
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
+          {languageModeValues ? (
+            <fieldset className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <legend className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                Feedback language
+              </legend>
+              <div className="mt-2 grid gap-2 text-sm font-semibold text-slate-800">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="export-feedback-language-mode"
+                    value="english"
+                    checked={languageMode === "english"}
+                    onChange={() => setLanguageMode("english")}
+                    className="h-4 w-4 accent-slate-950"
+                  />
+                  English only
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="export-feedback-language-mode"
+                    value="bilingual"
+                    checked={languageMode === "bilingual"}
+                    onChange={() => setLanguageMode("bilingual")}
+                    className="h-4 w-4 accent-slate-950"
+                  />
+                  Bilingual English + 中文
+                </label>
+              </div>
+            </fieldset>
+          ) : null}
           <button
             type="button"
             onClick={copyExport}
@@ -68,7 +108,7 @@ export function ExportCopyBlock({ label, value, copyLabel, description }: Export
         className="mt-5 h-[32rem] w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-50 shadow-inner outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
         readOnly
         spellCheck={false}
-        value={value}
+        value={copyValue}
       />
     </section>
   );
