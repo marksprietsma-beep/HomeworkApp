@@ -154,10 +154,12 @@ export async function getLocalDashboardData(user: {
               },
               questionFeedback: {
                 select: {
+                  id: true,
+                  questionId: true,
                   followUpActions: {
-                orderBy: { id: "asc" },
-                select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
-              },
+                    orderBy: { id: "asc" },
+                    select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
+                  },
                 },
               },
             },
@@ -192,9 +194,17 @@ export async function getLocalDashboardData(user: {
           const feedbackEntry = assignment.participantFeedback[0] ?? null;
           const feedbackActions = feedbackEntry
             ? [
-                ...feedbackEntry.followUpActions,
-                ...feedbackEntry.questionFeedback.flatMap(
-                  (question) => question.followUpActions,
+                ...feedbackEntry.followUpActions.map((action) => ({
+                  ...action,
+                  questionFeedbackId: null,
+                  questionId: null,
+                })),
+                ...feedbackEntry.questionFeedback.flatMap((question) =>
+                  question.followUpActions.map((action) => ({
+                    ...action,
+                    questionFeedbackId: question.id,
+                    questionId: question.questionId,
+                  })),
                 ),
               ]
             : [];
@@ -248,6 +258,8 @@ export async function getLocalDashboardData(user: {
                     prompt: action.prompt,
                     promptI18n: action.promptI18n,
                     status: action.status,
+                    questionFeedbackId: action.questionFeedbackId,
+                    questionId: action.questionId,
                   })),
                 }
               : null,
