@@ -82,7 +82,7 @@ function getPlainLocalizedText(fallback: string, i18n: unknown, mode: LanguageMo
 
 function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
   const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
-  return <span className="grid gap-1">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
+  return <span className="grid gap-1 [line-break:loose] [overflow-wrap:break-word] [word-break:normal]">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
 }
 
 function renderChoiceText(fallback: string, options: unknown, optionIndex: number, mode: LanguageMode) {
@@ -104,7 +104,7 @@ function LanguageLinks({ classId, assignmentId, mode }: { classId: number; assig
     { value: "zh", label: "中文" },
     { value: "bilingual", label: "Bilingual" },
   ];
-  return <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/classes/${classId}/assignments/${assignmentId}?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
+  return <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/classes/${classId}/assignments/${assignmentId}?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
 }
 
 function StatCard({ label, value }: { label: string; value: number }) {
@@ -225,7 +225,7 @@ export default async function HomeworkDetailPage({
   ];
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-6 py-12">
+    <main className="mx-auto min-h-screen max-w-7xl px-6 py-12">
       <Link
         href={`/classes/${homework.class.id}`}
         className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950"
@@ -237,14 +237,20 @@ export default async function HomeworkDetailPage({
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
           Homework detail
         </p>
-        <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-950">
-              {renderLocalizedText(homework.title, homework.titleI18n, languageMode)}
-            </h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-              {renderLocalizedText(homework.description ?? "No instructions have been added for this assignment.", homework.descriptionI18n, languageMode)}
-            </p>
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
+          <div className="min-w-0">
+            <div className="max-w-5xl">
+              <h1 className={`text-4xl font-bold tracking-tight text-slate-950 ${languageMode === "zh" ? "leading-tight sm:text-[2.35rem]" : ""}`}>
+                {renderLocalizedText(homework.title, homework.titleI18n, languageMode)}
+              </h1>
+              <p className="mt-4 text-base leading-8 text-slate-600 sm:text-lg">
+                {renderLocalizedText(homework.description ?? "No instructions have been added for this assignment.", homework.descriptionI18n, languageMode)}
+              </p>
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Reading language</p>
+                <LanguageLinks classId={homework.class.id} assignmentId={homework.id} mode={languageMode} />
+              </div>
+            </div>
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               {homework.status}{homework.dueAt ? ` · ${assignmentDueStatus.label}: ${formatDate(homework.dueAt)}` : ""}
             </p>
@@ -347,18 +353,22 @@ export default async function HomeworkDetailPage({
               </div>
             ) : null}
           </div>
-          <LanguageLinks classId={homework.class.id} assignmentId={homework.id} mode={languageMode} />
-          <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Class
+          <aside className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-700 shadow-sm xl:mt-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Assignment context
             </p>
-            <p className="mt-2 text-lg font-semibold">{homework.class.name}</p>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Teacher
-            </p>
-            <p className="mt-2 font-semibold">{homework.class.teacher.displayName}</p>
-            <p className="text-sm text-amber-200">{homework.class.teacher.email}</p>
-          </div>
+            <dl className="mt-3 grid gap-3 text-sm">
+              <div>
+                <dt className="font-semibold text-slate-950">Class</dt>
+                <dd className="mt-1">{homework.class.name}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-950">Teacher</dt>
+                <dd className="mt-1">{homework.class.teacher.displayName}</dd>
+                <dd className="text-xs text-slate-500">{homework.class.teacher.email}</dd>
+              </div>
+            </dl>
+          </aside>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -450,7 +460,7 @@ export default async function HomeworkDetailPage({
         </section>
       ) : null}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+      <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
             Questions
@@ -471,7 +481,7 @@ export default async function HomeworkDetailPage({
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                         Question {question.order} · {question.questionType}
                       </p>
