@@ -272,74 +272,101 @@ export default async function HomeworkDetailPage({
                 <p className="mt-1">Current status: {homework.status}. Published assignments appear for enrolled students; drafts stay hidden.</p>
               </div>
             ) : null}
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-950">
-                Status: <span className="uppercase tracking-[0.14em]">{homework.status}</span>
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                Draft assignments stay visible to teachers here, but are hidden from student assigned-work views and blocked on student work pages.
-              </p>
-              {canManagePublishStatus ? (
-                <form action={publishStatusAction} className="mt-3">
-                  <input type="hidden" name="status" value={nextStatus} />
-                  <button
-                    type="submit"
-                    className="inline-flex rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-300"
-                  >
-                    {nextStatus === HomeworkAssignmentStatus.PUBLISHED
-                      ? "Publish assignment"
-                      : "Move back to draft"}
-                  </button>
-                </form>
-              ) : (
-                <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                  Only admins or the teacher who owns this class can change publish status.
-                </p>
-              )}
-            </div>
-            {canViewResponseOverview ? (
-              <div className="mt-5 flex flex-wrap gap-3">
-                {canEditAssignment ? (
-                  <Link
-                    href={`/classes/${homework.class.id}/assignments/${homework.id}/edit`}
-                    className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
-                  >
-                    Edit assignment
-                  </Link>
-                ) : null}
-                {canDuplicateAssignment ? (
-                  <form action={duplicateAction}>
-                    <button
-                      type="submit"
-                      className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-100"
-                    >
-                      Duplicate as draft
-                    </button>
-                  </form>
-                ) : null}
-                {canDuplicateAssignment ? (
-                  <details className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
-                    <summary className="cursor-pointer text-sm font-bold text-emerald-900">Save to curriculum library</summary>
-                    <form action={saveToLibraryAction} className="mt-3 grid gap-3 sm:min-w-72">
-                      <label className="text-sm font-semibold text-slate-700">Library title<input name="libraryTitle" defaultValue={homework.title} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
-                      <label className="text-sm font-semibold text-slate-700">Subject<input name="subject" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
-                      <label className="text-sm font-semibold text-slate-700">Year group / key stage<input name="yearGroup" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
-                      <label className="text-sm font-semibold text-slate-700">Unit / topic<input name="unitTopic" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
-                      <label className="text-sm font-semibold text-slate-700">Tags<input name="tags" placeholder="fractions, retrieval" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
-                      <label className="text-sm font-semibold text-slate-700">Visibility<select name="visibility" defaultValue={CurriculumLibraryVisibility.PRIVATE} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value={CurriculumLibraryVisibility.PRIVATE}>Private to me/admin</option><option value={CurriculumLibraryVisibility.TEAM}>Shared with a team</option></select></label>
-                      <label className="text-sm font-semibold text-slate-700">Department/team<select name="teamId" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">Choose team if sharing</option>{shareableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
-                      <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500">Save reusable item</button>
-                    </form>
-                  </details>
-                ) : null}
-                <Link
-                  href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
-                  className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                >
-                  View response overview
-                </Link>
+            <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="assignment-actions-heading">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 id="assignment-actions-heading" className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Assignment actions
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Manage workflow, reusable copies, responses, and publishing without changing who can access each action.
+                  </p>
+                </div>
+                <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-700">
+                  {homework.status}
+                </span>
               </div>
-            ) : null}
+              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,auto)]">
+                {canViewResponseOverview ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Responses</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`}
+                        className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-bold leading-5 text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                      >
+                        View response overview
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-900">Publishing status</p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Draft assignments stay visible to teachers here, but are hidden from student assigned-work views and blocked on student work pages.
+                  </p>
+                  {canManagePublishStatus ? (
+                    <form action={publishStatusAction} className="mt-3">
+                      <input type="hidden" name="status" value={nextStatus} />
+                      <button
+                        type="submit"
+                        className="inline-flex min-h-10 items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-sm font-bold leading-5 text-slate-950 shadow-sm transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
+                      >
+                        {nextStatus === HomeworkAssignmentStatus.PUBLISHED
+                          ? "Publish assignment"
+                          : "Move back to draft"}
+                      </button>
+                    </form>
+                  ) : (
+                    <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                      Only admins or the teacher who owns this class can change publish status.
+                    </p>
+                  )}
+                </div>
+              </div>
+              {canViewResponseOverview ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Assignment management</p>
+                  <div className="mt-3 flex flex-wrap items-start gap-2">
+                    {canEditAssignment ? (
+                      <Link
+                        href={`/classes/${homework.class.id}/assignments/${homework.id}/edit`}
+                        className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold leading-5 text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                      >
+                        Edit assignment
+                      </Link>
+                    ) : null}
+                    {canDuplicateAssignment ? (
+                      <form action={duplicateAction}>
+                        <button
+                          type="submit"
+                          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold leading-5 text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                        >
+                          Duplicate as draft
+                        </button>
+                      </form>
+                    ) : null}
+                    {canDuplicateAssignment ? (
+                      <details className="group rounded-2xl border border-slate-300 bg-white px-4 py-2 shadow-sm open:basis-full open:p-4 sm:open:max-w-xl">
+                        <summary className="flex min-h-6 cursor-pointer items-center text-sm font-semibold leading-5 text-slate-700 transition hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2">
+                          Save to curriculum library
+                        </summary>
+                        <form action={saveToLibraryAction} className="mt-4 grid gap-3 sm:min-w-72">
+                          <label className="text-sm font-semibold text-slate-700">Library title<input name="libraryTitle" defaultValue={homework.title} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                          <label className="text-sm font-semibold text-slate-700">Subject<input name="subject" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                          <label className="text-sm font-semibold text-slate-700">Year group / key stage<input name="yearGroup" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                          <label className="text-sm font-semibold text-slate-700">Unit / topic<input name="unitTopic" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                          <label className="text-sm font-semibold text-slate-700">Tags<input name="tags" placeholder="fractions, retrieval" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                          <label className="text-sm font-semibold text-slate-700">Visibility<select name="visibility" defaultValue={CurriculumLibraryVisibility.PRIVATE} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value={CurriculumLibraryVisibility.PRIVATE}>Private to me/admin</option><option value={CurriculumLibraryVisibility.TEAM}>Shared with a team</option></select></label>
+                          <label className="text-sm font-semibold text-slate-700">Department/team<select name="teamId" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">Choose team if sharing</option>{shareableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
+                          <button type="submit" className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-bold leading-5 text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">Save reusable item</button>
+                        </form>
+                      </details>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </section>
           </div>
           <aside className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-700 shadow-sm xl:mt-2">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
