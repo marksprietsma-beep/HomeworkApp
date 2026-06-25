@@ -19,6 +19,7 @@ import {
 } from "../lib/assignment-list-filters";
 import { isAdmin, isStudent, isTeacher } from "../lib/permissions";
 import { hasInitialAdminUser } from "../lib/first-run-setup";
+import { getBilingualTextParts } from "../lib/i18n-content";
 import { CLARION_TAGLINE, ClarionLogo } from "./components/clarion-logo";
 
 export const dynamic = "force-dynamic";
@@ -129,31 +130,36 @@ const studentStatusLabels: Record<
 };
 
 const studentSectionLabels: Record<string, string> = {
-  todo: "To do",
-  submitted: "Submitted",
-  feedback: "Feedback/actions",
-  completed: "Completed",
+  todo: "Active assignments",
+  submitted: "Submitted — waiting for feedback",
+  feedback: "Released feedback",
+  followups: "Follow-up items",
 };
 
-function getStudentSectionKey(
-  assignment: LocalDashboardData["assignedWork"][number],
-) {
-  if (assignment.studentStatus === "completed") {
-    return "completed";
-  }
+const studentEmptyStates: Record<string, string> = {
+  todo: "No active assignments need a submission right now.",
+  submitted: "No submitted work is waiting for released feedback right now.",
+  feedback: "No released feedback is available to review right now.",
+  followups: "No follow-up items need your attention right now.",
+};
 
-  if (
-    assignment.studentStatus === "feedback-available" ||
-    assignment.studentStatus === "feedback-actions-pending"
-  ) {
-    return "feedback";
-  }
 
-  if (assignment.studentStatus === "submitted") {
-    return "submitted";
-  }
+function formatFeedbackActionType(type: string) {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
-  return "todo";
+function renderBilingualText(fallback: string, i18n: unknown) {
+  return (
+    <span className="grid gap-1">
+      {getBilingualTextParts(fallback, i18n).map((part, index) => (
+        <span key={index}>{part}</span>
+      ))}
+    </span>
+  );
 }
 
 function StudentAssignmentCard({
@@ -173,7 +179,7 @@ function StudentAssignmentCard({
             {assignment.subject ? ` · ${assignment.subject}` : ""}
           </p>
           <h4 className="mt-2 text-xl font-semibold text-slate-950">
-            {assignment.title}
+            {renderBilingualText(assignment.title, assignment.titleI18n)}
           </h4>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
             <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 shadow-sm ring-1 ring-amber-200">
@@ -182,9 +188,11 @@ function StudentAssignmentCard({
             <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
               Published
             </span>
-            <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-              Due: {formatDueDate(assignment.dueAt)}
-            </span>
+            {assignment.dueAt ? (
+              <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                Due: {formatDueDate(assignment.dueAt)}
+              </span>
+            ) : null}
             <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
               {assignment.questionCount} questions
             </span>
@@ -201,11 +209,13 @@ function StudentAssignmentCard({
             >
               {hasFeedback
                 ? assignment.feedback?.pendingActions
-                  ? "Open feedback actions"
+                  ? "Respond to follow-up"
                   : "View feedback"
-                : assignment.submission
-                  ? "Continue response"
-                  : "Start response"}
+                : assignment.submission?.status === "SUBMITTED"
+                  ? "View response"
+                  : assignment.submission
+                    ? "Continue"
+                    : "Start"}
             </Link>
           </div>
         </div>
@@ -272,6 +282,19 @@ function StudentAssignedWorkDashboard({
     dashboardData.assignedWork,
     studentFilters,
   );
+  const activeAssignments = assignments.filter((assignment) => assignment.studentStatus === "not-started");
+  const awaitingFeedback = assignments.filter((assignment) => assignment.studentStatus === "submitted");
+  const releasedFeedback = assignments.filter((assignment) => assignment.feedback !== null);
+  const followUpItems = assignments.flatMap((assignment) =>
+    (assignment.feedback?.actions ?? [])
+      .filter((action) => action.status === "PENDING")
+      .map((action) => ({ assignment, action })),
+  );
+  const sections = [
+    { key: "todo", assignments: activeAssignments },
+    { key: "submitted", assignments: awaitingFeedback },
+    { key: "feedback", assignments: releasedFeedback },
+  ];
   return (
     <section className="mt-10 w-full rounded-3xl border border-slate-200 bg-white/80 p-6 text-left shadow-sm sm:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -299,18 +322,10 @@ function StudentAssignedWorkDashboard({
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          label="Classes enrolled"
-          value={dashboardData.totals.classes}
-        />
-        <SummaryCard label="Assigned work" value={assignments.length} />
-        <SummaryCard label="Questions" value={dashboardData.totals.questions} />
-        <SummaryCard
-          label="Responses found"
-          value={
-            assignments.filter((assignment) => assignment.submission).length
-          }
-        />
+        <SummaryCard label="Active assignments" value={activeAssignments.length} />
+        <SummaryCard label="Awaiting feedback" value={awaitingFeedback.length} />
+        <SummaryCard label="Feedback available" value={releasedFeedback.length} />
+        <SummaryCard label="Follow-up items" value={followUpItems.length} />
       </div>
 
       <div className="mt-8">
@@ -330,13 +345,7 @@ function StudentAssignedWorkDashboard({
           </div>
         ) : (
           <div className="mt-4 grid gap-6">
-            {["todo", "submitted", "feedback", "completed"].map(
-              (sectionKey) => {
-                const sectionAssignments = assignments.filter(
-                  (assignment) =>
-                    getStudentSectionKey(assignment) === sectionKey,
-                );
-
+            {sections.map(({ key: sectionKey, assignments: sectionAssignments }) => {
                 return (
                   <section
                     key={sectionKey}
@@ -352,7 +361,7 @@ function StudentAssignedWorkDashboard({
                     </div>
                     {sectionAssignments.length === 0 ? (
                       <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                        Nothing in this section right now.
+                        {studentEmptyStates[sectionKey]}
                       </p>
                     ) : (
                       <div className="mt-3 grid gap-4">
@@ -366,8 +375,27 @@ function StudentAssignedWorkDashboard({
                     )}
                   </section>
                 );
-              },
-            )}
+              })}
+              <section className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-base font-semibold text-slate-950">{studentSectionLabels.followups}</h4>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{followUpItems.length}</span>
+                </div>
+                {followUpItems.length === 0 ? (
+                  <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">{studentEmptyStates.followups}</p>
+                ) : (
+                  <ul className="mt-3 grid gap-3">
+                    {followUpItems.map(({ assignment, action }) => (
+                      <li key={action.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">{formatFeedbackActionType(action.type)}</p>
+                        <p className="mt-2 font-semibold text-slate-950">{renderBilingualText(assignment.title, assignment.titleI18n)}</p>
+                        <p className="mt-1 line-clamp-2 leading-6 text-slate-700">{renderBilingualText(action.prompt, action.promptI18n)}</p>
+                        <Link href={`/assignments/${assignment.id}/work#feedback-action-${action.id}`} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Respond or view</Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
           </div>
         )}
       </div>
