@@ -22,6 +22,7 @@ export type DashboardClass = {
   assignments: {
     id: number;
     title: string;
+    titleI18n: unknown;
     status: string;
     classId: number;
     questionCount: number;
@@ -41,6 +42,7 @@ type AssignedWorkStudentStatus =
 export type AssignedWorkItem = {
   id: number;
   title: string;
+  titleI18n: unknown;
   classId: number;
   className: string;
   subject: string;
@@ -60,6 +62,13 @@ export type AssignedWorkItem = {
     totalActions: number;
     pendingActions: number;
     completedActions: number;
+    actions: {
+      id: number;
+      type: string;
+      prompt: string;
+      promptI18n: unknown;
+      status: string;
+    }[];
   } | null;
   studentStatus: AssignedWorkStudentStatus;
 };
@@ -109,6 +118,7 @@ export async function getLocalDashboardData(user: {
         select: {
           id: true,
           title: true,
+          titleI18n: true,
           status: true,
           dueAt: true,
           createdAt: true,
@@ -136,10 +146,16 @@ export async function getLocalDashboardData(user: {
             select: {
               id: true,
               feedbackImport: { select: { importedAt: true } },
-              followUpActions: { select: { status: true } },
+              followUpActions: {
+                orderBy: { id: "asc" },
+                select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
+              },
               questionFeedback: {
                 select: {
-                  followUpActions: { select: { status: true } },
+                  followUpActions: {
+                orderBy: { id: "asc" },
+                select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
+              },
                 },
               },
             },
@@ -200,6 +216,7 @@ export async function getLocalDashboardData(user: {
           return {
             id: assignment.id,
             title: assignment.title,
+            titleI18n: assignment.titleI18n,
             classId: classItem.id,
             className: classItem.name,
             subject: classItem.subject,
@@ -222,6 +239,13 @@ export async function getLocalDashboardData(user: {
                   totalActions: feedbackActions.length,
                   pendingActions,
                   completedActions,
+                  actions: feedbackActions.map((action) => ({
+                    id: action.id,
+                    type: action.type,
+                    prompt: action.prompt,
+                    promptI18n: action.promptI18n,
+                    status: action.status,
+                  })),
                 }
               : null,
             studentStatus,
@@ -253,6 +277,7 @@ export async function getLocalDashboardData(user: {
       assignments: classItem.homeworkAssignments.map((assignment) => ({
         id: assignment.id,
         title: assignment.title,
+        titleI18n: assignment.titleI18n,
         status: assignment.status,
         classId: classItem.id,
         dueAt: assignment.dueAt,

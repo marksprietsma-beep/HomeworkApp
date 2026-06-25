@@ -85,7 +85,7 @@ function FeedbackActionCard({ action, assignmentId, languageMode }: { action: { 
   const needsWrittenResponse = action.type !== "ACKNOWLEDGEMENT";
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <li id={`feedback-action-${action.id}`} className="scroll-mt-6 rounded-xl border border-slate-200 bg-slate-50 p-3">
       <p className="font-semibold text-slate-950">{formatFeedbackActionType(action.type)} · {action.required ? "Required" : "Optional"}</p>
       <p className="mt-1 leading-6">{renderLocalizedText(action.prompt, action.promptI18n, languageMode)}</p>
       {isCompleted ? (
