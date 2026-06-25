@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getAssignmentDueStatus } from "../../../../lib/assignment-due-status";
 import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../lib/i18n-content";
 import { getParticipantWorkData } from "../../../../lib/participant-work";
@@ -178,6 +179,7 @@ export default async function ParticipantWorkPage({
   }
 
   const saveAction = saveParticipantSubmission.bind(null, work.id);
+  const dueStatus = getAssignmentDueStatus(work.dueAt, work.submission);
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
@@ -201,7 +203,7 @@ export default async function ParticipantWorkPage({
               {renderLocalizedText(work.description ?? "No instructions have been added for this assignment.", work.descriptionI18n, languageMode)}
             </p>
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              {work.class.name} · {work.status} · Due: {formatDate(work.dueAt)}
+              {work.class.name} · {work.status}{work.dueAt ? ` · ${dueStatus.label}: ${formatDate(work.dueAt)}` : ""}
             </p>
           </div>
           <LanguageLinks assignmentId={work.id} mode={languageMode} />

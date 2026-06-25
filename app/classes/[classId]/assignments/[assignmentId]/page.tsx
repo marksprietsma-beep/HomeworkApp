@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getAssignmentDueStatus } from "../../../../../lib/assignment-due-status";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../../lib/i18n-content";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
@@ -165,6 +166,7 @@ export default async function HomeworkDetailPage({
       feedbackByStudentId.set(feedback.studentId, feedback);
     }
   }
+  const assignmentDueStatus = getAssignmentDueStatus(homework.dueAt, null);
   const statusRows = homework.class.enrollments.map((enrollment) => {
     const submission = submissionsByStudentId.get(enrollment.student.id) ?? null;
     const feedback = feedbackByStudentId.get(enrollment.student.id) ?? null;
@@ -173,12 +175,14 @@ export default async function HomeworkDetailPage({
       ...feedback.questionFeedback.flatMap((question) => question.followUpActions),
     ] : [];
     const completedActions = actions.filter((action) => action.status === "COMPLETED").length;
+    const dueStatus = getAssignmentDueStatus(homework.dueAt, submission);
 
     return {
       student: enrollment.student,
       submission,
       isSubmitted: submission?.status === "SUBMITTED",
       feedback,
+      dueStatus,
       feedbackImported: Boolean(feedback),
       followUp: {
         total: actions.length,
@@ -191,14 +195,16 @@ export default async function HomeworkDetailPage({
     assigned: statusRows.length,
     submitted: statusRows.filter((row) => row.isSubmitted).length,
     missing: statusRows.filter((row) => !row.isSubmitted).length,
+    late: statusRows.filter((row) => row.dueStatus.status === "late").length,
     feedbackImported: statusRows.filter((row) => row.feedbackImported).length,
     feedbackReleased: statusRows.filter((row) => row.feedback?.releaseState === "RELEASED").length,
     feedbackDraft: statusRows.filter((row) => row.feedback?.releaseState === "DRAFT").length,
     followUpPending: statusRows.filter((row) => row.followUp.pending > 0).length,
   };
-  const activeStatusView = ["missing", "draft", "released", "follow-up"].includes(resolvedSearchParams.statusView ?? "") ? resolvedSearchParams.statusView : "all";
+  const activeStatusView = ["missing", "late", "draft", "released", "follow-up"].includes(resolvedSearchParams.statusView ?? "") ? resolvedSearchParams.statusView : "all";
   const filteredStatusRows = statusRows.filter((row) => {
     if (activeStatusView === "missing") return !row.isSubmitted;
+    if (activeStatusView === "late") return row.dueStatus.status === "late";
     if (activeStatusView === "draft") return row.feedback?.releaseState === "DRAFT";
     if (activeStatusView === "released") return row.feedback?.releaseState === "RELEASED";
     if (activeStatusView === "follow-up") return row.followUp.pending > 0;
@@ -207,6 +213,7 @@ export default async function HomeworkDetailPage({
   const statusFilters = [
     { value: "all", label: "All" },
     { value: "missing", label: "Missing submission" },
+    { value: "late", label: "Late submissions" },
     { value: "draft", label: "Feedback draft" },
     { value: "released", label: "Feedback released" },
     { value: "follow-up", label: "Follow-up pending" },
@@ -234,7 +241,7 @@ export default async function HomeworkDetailPage({
               {renderLocalizedText(homework.description ?? "No instructions have been added for this assignment.", homework.descriptionI18n, languageMode)}
             </p>
             <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              {homework.status} · Due: {formatDate(homework.dueAt)}
+              {homework.status}{homework.dueAt ? ` · ${assignmentDueStatus.label}: ${formatDate(homework.dueAt)}` : ""}
             </p>
             {resolvedSearchParams.duplicated === "1" ? (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -342,15 +349,16 @@ export default async function HomeworkDetailPage({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Status overview</p>
               <h2 className="mt-2 text-2xl font-bold text-slate-950">Assignment status matrix</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">One row per enrolled participant in {homework.class.name}, with submission, feedback release, and follow-up state for this assignment.</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">One row per enrolled participant in {homework.class.name}, with submission timing, feedback release, and follow-up state for this assignment{homework.dueAt ? ` · due ${formatDate(homework.dueAt)}` : ""}.</p>
             </div>
             <Link href={`/classes/${homework.class.id}/assignments/${homework.id}/responses`} className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950">Response overview</Link>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-8">
             <StatCard label="Assigned" value={statusCounts.assigned} />
             <StatCard label="Submitted" value={statusCounts.submitted} />
             <StatCard label="Missing" value={statusCounts.missing} />
+            <StatCard label="Late" value={statusCounts.late} />
             <StatCard label="Feedback imported" value={statusCounts.feedbackImported} />
             <StatCard label="Released" value={statusCounts.feedbackReleased} />
             <StatCard label="Draft" value={statusCounts.feedbackDraft} />
@@ -372,6 +380,7 @@ export default async function HomeworkDetailPage({
                   <th className="px-4 py-3">Class</th>
                   <th className="px-4 py-3">Assigned</th>
                   <th className="px-4 py-3">Submitted</th>
+                  <th className="px-4 py-3">Timing</th>
                   <th className="px-4 py-3">Submission time</th>
                   <th className="px-4 py-3">Feedback imported</th>
                   <th className="px-4 py-3">Feedback status</th>
@@ -385,7 +394,8 @@ export default async function HomeworkDetailPage({
                     <td className="px-4 py-4"><p className="font-semibold text-slate-950">{row.student.displayName}</p><p className="mt-1 text-xs text-slate-500">{row.student.email}</p></td>
                     <td className="px-4 py-4 text-slate-700">{homework.class.name}</td>
                     <td className="px-4 py-4"><StatusBadge tone="blue">Assigned</StatusBadge></td>
-                    <td className="px-4 py-4">{row.isSubmitted ? <StatusBadge tone="emerald">Submitted</StatusBadge> : row.submission ? <StatusBadge tone="amber">Saved draft</StatusBadge> : <StatusBadge tone="red">Missing</StatusBadge>}</td>
+                    <td className="px-4 py-4">{row.isSubmitted ? <StatusBadge tone="emerald">Submitted</StatusBadge> : row.submission ? <StatusBadge tone="amber">Saved draft</StatusBadge> : row.dueStatus.status === "due" ? <StatusBadge tone="slate">Not submitted</StatusBadge> : <StatusBadge tone="red">Missing</StatusBadge>}</td>
+                    <td className="px-4 py-4"><StatusBadge tone={row.dueStatus.tone}>{row.dueStatus.label}</StatusBadge>{homework.dueAt ? <p className="mt-1 text-xs text-slate-500">Due {formatDateTime(homework.dueAt)}</p> : null}</td>
                     <td className="px-4 py-4 text-slate-700">{row.submission ? formatDateTime(row.submission.submittedAt ?? row.submission.updatedAt) : "—"}</td>
                     <td className="px-4 py-4">{row.feedbackImported ? <StatusBadge tone="emerald">Imported</StatusBadge> : <StatusBadge tone="slate">None</StatusBadge>}</td>
                     <td className="px-4 py-4">{row.feedback?.releaseState === "RELEASED" ? <StatusBadge tone="emerald">Released</StatusBadge> : row.feedback?.releaseState === "DRAFT" ? <StatusBadge tone="amber">Draft</StatusBadge> : <StatusBadge tone="slate">None</StatusBadge>}</td>

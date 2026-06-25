@@ -118,6 +118,16 @@ function formatDueDate(dueAt: Date | null) {
   }).format(dueAt);
 }
 
+function dueStatusBadgeClass(tone: LocalDashboardData["assignedWork"][number]["dueStatus"]["tone"]) {
+  return {
+    slate: "bg-white text-slate-600 ring-slate-200",
+    blue: "bg-blue-50 text-blue-800 ring-blue-200",
+    amber: "bg-amber-100 text-amber-900 ring-amber-200",
+    red: "bg-red-50 text-red-800 ring-red-200",
+    emerald: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  }[tone];
+}
+
 const studentStatusLabels: Record<
   LocalDashboardData["assignedWork"][number]["studentStatus"],
   string
@@ -189,8 +199,8 @@ function StudentAssignmentCard({
               Published
             </span>
             {assignment.dueAt ? (
-              <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">
-                Due: {formatDueDate(assignment.dueAt)}
+              <span className={`rounded-full px-3 py-1 shadow-sm ring-1 ${dueStatusBadgeClass(assignment.dueStatus.tone)}`}>
+                {assignment.dueStatus.label}: {formatDueDate(assignment.dueAt)}
               </span>
             ) : null}
             <span className="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm ring-1 ring-slate-200">

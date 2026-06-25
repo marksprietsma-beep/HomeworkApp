@@ -6,6 +6,7 @@ import {
   SubmissionStatus,
   type UserRole,
 } from "@prisma/client";
+import { getAssignmentDueStatus, type AssignmentDueStatusSummary } from "./assignment-due-status";
 import { isAdmin, isStudent, isTeacher } from "./permissions";
 import { prisma } from "./prisma";
 
@@ -71,6 +72,7 @@ export type AssignedWorkItem = {
     }[];
   } | null;
   studentStatus: AssignedWorkStudentStatus;
+  dueStatus: AssignmentDueStatusSummary;
 };
 
 export type LocalDashboardData = {
@@ -203,6 +205,7 @@ export async function getLocalDashboardData(user: {
             (action) =>
               action.status === FeedbackFollowUpActionStatus.COMPLETED,
           ).length;
+          const dueStatus = getAssignmentDueStatus(assignment.dueAt, submission);
           const studentStatus: AssignedWorkStudentStatus = feedbackEntry
             ? pendingActions > 0
               ? "feedback-actions-pending"
@@ -249,10 +252,18 @@ export async function getLocalDashboardData(user: {
                 }
               : null,
             studentStatus,
+            dueStatus,
           };
         }),
       )
     : [];
+
+  assignedWork.sort(
+    (left, right) =>
+      left.dueStatus.priority - right.dueStatus.priority ||
+      left.createdAt.getTime() - right.createdAt.getTime() ||
+      left.title.localeCompare(right.title),
+  );
 
   const dashboardClasses = classes.map((classItem) => {
     const questionCount = classItem.homeworkAssignments.reduce(
