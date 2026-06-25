@@ -35,6 +35,7 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
           <p className="rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-sm">{data.items.length} item{data.items.length === 1 ? "" : "s"}</p>
         </div>
         {resolvedSearchParams?.saved === "1" ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Saved to library</p><p className="mt-1">The source assignment was copied into a reusable library item without changing the original assignment.</p></div> : null}
+        {resolvedSearchParams?.assigned ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Assigned to {resolvedSearchParams.assigned} classes</p><p className="mt-1">Separate assignment copies were created for each selected class. Submissions, feedback, release state, due date and reporting remain class-specific.</p></div> : null}
         {!canUseLibrary ? <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Switch to a teacher or admin user to browse and assign curriculum library items.</div> : null}
         <form className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm font-semibold text-slate-700">Search<input name="search" defaultValue={filters.search} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
@@ -50,6 +51,8 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
         {data.items.map((item) => {
           const template = isAssignmentTemplate(item.assignmentJson) ? item.assignmentJson : null;
           const action = assignLibraryItemToClass.bind(null, item.id);
+          const assignedClassIds = new Set(item.assignedCopies.map((copy) => copy.classId));
+          const alreadyAssignedClasses = classes.filter((classItem) => assignedClassIds.has(classItem.id));
           return <article key={item.id} className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -63,12 +66,18 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
                 <p className="mt-3 text-sm text-slate-600">{template?.questions.length ?? 0} questions · Updated {formatDate(item.updatedAt)} · Created {formatDate(item.createdAt)}{item.createdBy ? ` by ${item.createdBy.displayName}` : ""}</p>
               </div>
               {canUseLibrary ? <form action={action} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 lg:min-w-80">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Assign copy</p>
-                <label className="mt-3 block text-sm font-semibold text-slate-700">Target class<select name="classId" required className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">Choose class…</option>{classes.map((classItem) => <option key={classItem.id} value={classItem.id}>{classItem.name} · {classItem.subject} · {classItem.teacher.displayName}</option>)}</select></label>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Assign copies</p>
+                <fieldset className="mt-3 rounded-xl border border-amber-200 bg-white/70 p-3">
+                  <legend className="px-1 text-sm font-semibold text-slate-700">Target classes</legend>
+                  <div className="mt-2 grid max-h-48 gap-2 overflow-auto pr-1">
+                    {classes.map((classItem) => <label key={classItem.id} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"><input name="classIds" type="checkbox" value={classItem.id} className="mt-1" /><span><span className="font-semibold text-slate-950">{classItem.name}</span><br /><span className="text-xs">{classItem.subject} · {classItem.teacher.displayName}{assignedClassIds.has(classItem.id) ? " · already assigned" : ""}</span></span></label>)}
+                  </div>
+                </fieldset>
+                {alreadyAssignedClasses.length > 0 ? <p className="mt-3 rounded-xl border border-amber-300 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">Duplicate warning: this library item already has assignment copies for {alreadyAssignedClasses.map((classItem) => classItem.name).join(", ")}. Uncheck those classes unless you intentionally need another copy.</p> : null}
                 <label className="mt-3 block text-sm font-semibold text-slate-700">Title<input name="title" defaultValue={item.title} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
                 <label className="mt-3 block text-sm font-semibold text-slate-700">Due date<input name="dueAt" type="datetime-local" className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
                 <label className="mt-3 block text-sm font-semibold text-slate-700">Status<select name="status" defaultValue={HomeworkAssignmentStatus.DRAFT} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value={HomeworkAssignmentStatus.DRAFT}>Draft</option><option value={HomeworkAssignmentStatus.PUBLISHED}>Published</option></select></label>
-                <button type="submit" className="mt-4 w-full rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-400">Assign to class</button>
+                <div className="mt-4 rounded-xl border border-amber-200 bg-white/70 p-3 text-xs text-slate-700"><p className="font-bold text-slate-900">Before publishing</p><p className="mt-1">Creates one independent assignment copy per selected class using the title, bilingual content, due date and status above.</p></div><button type="submit" className="mt-4 w-full rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-amber-400">Assign to selected classes</button>
               </form> : null}
             </div>
           </article>;

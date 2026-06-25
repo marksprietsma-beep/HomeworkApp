@@ -35,7 +35,7 @@ export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters
       ],
     },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    include: { createdBy: { select: { displayName: true } } },
+    include: { createdBy: { select: { displayName: true } }, assignedCopies: { select: { classId: true, id: true } } },
   });
 
   const facets = await prisma.curriculumHomeworkLibraryItem.findMany({
@@ -89,4 +89,9 @@ export function parseLibraryDueAt(value: FormDataEntryValue | null) {
 
 export function parseAssignmentStatus(value: FormDataEntryValue | null) {
   return value === HomeworkAssignmentStatus.PUBLISHED ? HomeworkAssignmentStatus.PUBLISHED : HomeworkAssignmentStatus.DRAFT;
+}
+
+
+export function parseClassIds(value: FormDataEntryValue[]) {
+  return [...new Set(value.map((entry) => Number(entry)).filter((id) => Number.isInteger(id) && id > 0))];
 }

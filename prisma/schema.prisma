@@ -63,21 +63,21 @@ model LocalDatabaseCheck {
 }
 
 model User {
-  id                  Int                   @id @default(autoincrement())
-  email               String                @unique
-  displayName         String
-  role                UserRole
-  passwordHash        String?
-  accountStatus       AccountStatus         @default(ACTIVE)
-  yearGroup           String?
-  isDevelopmentUser   Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  teachingClasses     Class[]               @relation("ClassTeacher")
-  classEnrollments    ClassEnrollment[]
-  createdAssignments  HomeworkAssignment[]  @relation("HomeworkAssignmentCreator")
-  homeworkSubmissions Submission[]          @relation("SubmissionStudent")
-  feedbackEntries     ParticipantFeedback[] @relation("ParticipantFeedbackStudent")
+  id                     Int                             @id @default(autoincrement())
+  email                  String                          @unique
+  displayName            String
+  role                   UserRole
+  passwordHash           String?
+  accountStatus          AccountStatus                   @default(ACTIVE)
+  yearGroup              String?
+  isDevelopmentUser      Boolean                         @default(true)
+  createdAt              DateTime                        @default(now())
+  updatedAt              DateTime                        @updatedAt
+  teachingClasses        Class[]                         @relation("ClassTeacher")
+  classEnrollments       ClassEnrollment[]
+  createdAssignments     HomeworkAssignment[]            @relation("HomeworkAssignmentCreator")
+  homeworkSubmissions    Submission[]                    @relation("SubmissionStudent")
+  feedbackEntries        ParticipantFeedback[]           @relation("ParticipantFeedbackStudent")
   curriculumLibraryItems CurriculumHomeworkLibraryItem[] @relation("CurriculumLibraryItemCreator")
 }
 
@@ -107,7 +107,7 @@ model ClassEnrollment {
 }
 
 model HomeworkAssignment {
-  id                  Int                      @id @default(autoincrement())
+  id                  Int                            @id @default(autoincrement())
   classId             Int
   createdById         Int
   title               String
@@ -115,19 +115,22 @@ model HomeworkAssignment {
   description         String?
   descriptionI18n     Json?
   keyVocabulary       Json?
-  status              HomeworkAssignmentStatus @default(DRAFT)
+  status              HomeworkAssignmentStatus       @default(DRAFT)
   dueAt               DateTime?
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  class               Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  createdBy           User                     @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
+  sourceLibraryItemId Int?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  class               Class                          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy           User                           @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
   questions           HomeworkQuestion[]
   submissions         Submission[]
   feedbackImports     FeedbackImport[]
   participantFeedback ParticipantFeedback[]
+  sourceLibraryItem   CurriculumHomeworkLibraryItem? @relation("HomeworkAssignmentSourceLibraryItem", fields: [sourceLibraryItemId], references: [id], onDelete: SetNull)
 
   @@index([classId])
   @@index([createdById])
+  @@index([sourceLibraryItemId])
 }
 
 model HomeworkQuestion {
@@ -220,7 +223,7 @@ model ParticipantFeedback {
   sourceParticipantEmail String?
   sourceSubmissionId     Int?
   sourceSubmissionStatus String?
-  releaseState           FeedbackReleaseState    @default(RELEASED)
+  releaseState           FeedbackReleaseState     @default(RELEASED)
   importedAt             DateTime                 @default(now())
   importedById           Int?
   importAction           String                   @default("created")
@@ -242,12 +245,12 @@ model ParticipantFeedback {
   questionFeedback       QuestionFeedback[]
   followUpActions        FeedbackFollowUpAction[]
 
+  @@unique([assignmentId, studentId, submissionId])
   @@index([feedbackImportId])
   @@index([assignmentId])
   @@index([studentId])
   @@index([submissionId])
   @@index([releaseState])
-  @@unique([assignmentId, studentId, submissionId])
 }
 
 model QuestionFeedback {
@@ -327,18 +330,19 @@ model DutySchedule {
 }
 
 model CurriculumHomeworkLibraryItem {
-  id             Int      @id @default(autoincrement())
-  title          String
-  subject        String?
-  yearGroup      String?
-  unitTopic      String?
-  tags           String[]
-  assignmentJson Json
+  id                 Int                  @id @default(autoincrement())
+  title              String
+  subject            String?
+  yearGroup          String?
+  unitTopic          String?
+  tags               String[]
+  assignmentJson     Json
   sourceAssignmentId Int?
-  createdById    Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  createdBy      User?    @relation("CurriculumLibraryItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById        Int?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  createdBy          User?                @relation("CurriculumLibraryItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedCopies     HomeworkAssignment[] @relation("HomeworkAssignmentSourceLibraryItem")
 
   @@index([createdById])
   @@index([sourceAssignmentId])
