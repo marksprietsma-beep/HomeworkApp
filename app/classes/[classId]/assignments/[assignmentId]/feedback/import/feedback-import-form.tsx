@@ -116,9 +116,18 @@ export function FeedbackImportForm({
           ChatGPT feedback import
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Paste feedback JSON for this assignment. English-only JSON still works; optional bilingual fields such as overallFeedbackI18n, feedbackI18n, strengthsI18n, targetsI18n, and promptI18n can use only en and zh. Validation runs locally
-          against the current class, questions, participants, submissions, and
-          responses.
+          Paste the feedback JSON returned by ChatGPT for this assignment. It
+          must preserve assignment, class, participant, submission, and question
+          IDs exactly from the response export. English-only JSON still works;
+          optional bilingual fields such as overallFeedbackI18n, feedbackI18n,
+          strengthsI18n, targetsI18n, and promptI18n can use only en and zh.
+          Validation runs locally against the current class, questions,
+          participants, submissions, and responses.
+        </p>
+        <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          Teacher approval: imported AI-generated feedback stays in the draft
+          workflow until the teacher reviews it and chooses to release it to
+          students.
         </p>
         <ChatGptJsonHelper
           title="Ask ChatGPT for importable feedback JSON"
