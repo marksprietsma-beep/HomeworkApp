@@ -221,9 +221,11 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                         }`}>
                           {assignment.status}
                         </span>
-                        <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                          Due: {formatDate(assignment.dueAt)}
-                        </span>
+                        {assignment.dueAt ? (
+                          <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                            Due: {formatDate(assignment.dueAt)}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <p className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
