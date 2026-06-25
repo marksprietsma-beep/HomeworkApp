@@ -78,6 +78,7 @@ model User {
   createdAssignments  HomeworkAssignment[]  @relation("HomeworkAssignmentCreator")
   homeworkSubmissions Submission[]          @relation("SubmissionStudent")
   feedbackEntries     ParticipantFeedback[] @relation("ParticipantFeedbackStudent")
+  curriculumLibraryItems CurriculumHomeworkLibraryItem[] @relation("CurriculumLibraryItemCreator")
 }
 
 model Class {
@@ -323,4 +324,22 @@ model DutySchedule {
   @@index([isActive])
   @@index([sourceTimetableImportId])
   @@index([updatedAt])
+}
+
+model CurriculumHomeworkLibraryItem {
+  id             Int      @id @default(autoincrement())
+  title          String
+  subject        String?
+  yearGroup      String?
+  unitTopic      String?
+  tags           String[]
+  assignmentJson Json
+  sourceAssignmentId Int?
+  createdById    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      User?    @relation("CurriculumLibraryItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([sourceAssignmentId])
 }
