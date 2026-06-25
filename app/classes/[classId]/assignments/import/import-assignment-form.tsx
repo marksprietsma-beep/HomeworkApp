@@ -165,9 +165,14 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
           the save action creates the assignment and ordered question records.
         </p>
         <ChatGptJsonHelper
-          title="Ask ChatGPT for assignment JSON"
-          description="Generic prompt for any subject. Fill in teacher context, then ask ChatGPT to keep assignment.instructions short and student-facing."
+          variant="direct-copy"
+          title="Copy ChatGPT assignment prompt"
+          description="Copy this prompt, paste it into ChatGPT, then replace the topic, year group, question count and bilingual preference with what you want."
           prompt={assignmentChatGptPrompt}
+          copyLabel="Copy ChatGPT assignment prompt"
+          successMessage="Assignment prompt copied."
+          failureMessage="Could not copy the assignment prompt. Use View/edit prompt to copy it manually."
+          manualCopyLabel="View/edit prompt"
           docsHref="/docs/assignment-import-json-v1.md"
           docsLabel="Open assignment JSON documentation"
         />
