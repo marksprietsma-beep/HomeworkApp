@@ -1,4 +1,4 @@
-import { HomeworkAssignmentStatus } from "@prisma/client";
+import { CurriculumLibraryVisibility, HomeworkAssignmentStatus } from "@prisma/client";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../.
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
 import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
 import { saveAssignmentToLibrary } from "../../../../curriculum-library/actions";
+import { getShareableTeamsForUser } from "../../../../../lib/department-teams";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,7 @@ export default async function HomeworkDetailPage({
     homework.id,
   );
   const saveToLibraryAction = saveAssignmentToLibrary.bind(null, homework.class.id, homework.id);
+  const shareableTeams = await getShareableTeamsForUser(selectedUser);
   const nextStatus =
     homework.status === HomeworkAssignmentStatus.PUBLISHED
       ? HomeworkAssignmentStatus.DRAFT
@@ -318,6 +320,8 @@ export default async function HomeworkDetailPage({
                       <label className="text-sm font-semibold text-slate-700">Year group / key stage<input name="yearGroup" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
                       <label className="text-sm font-semibold text-slate-700">Unit / topic<input name="unitTopic" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
                       <label className="text-sm font-semibold text-slate-700">Tags<input name="tags" placeholder="fractions, retrieval" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
+                      <label className="text-sm font-semibold text-slate-700">Visibility<select name="visibility" defaultValue={CurriculumLibraryVisibility.PRIVATE} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value={CurriculumLibraryVisibility.PRIVATE}>Private to me/admin</option><option value={CurriculumLibraryVisibility.TEAM}>Shared with a team</option></select></label>
+                      <label className="text-sm font-semibold text-slate-700">Department/team<select name="teamId" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">Choose team if sharing</option>{shareableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
                       <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500">Save reusable item</button>
                     </form>
                   </details>

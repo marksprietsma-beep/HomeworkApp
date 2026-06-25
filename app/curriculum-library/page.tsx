@@ -1,8 +1,9 @@
-import { HomeworkAssignmentStatus } from "@prisma/client";
+import { CurriculumLibraryVisibility, HomeworkAssignmentStatus } from "@prisma/client";
 import Link from "next/link";
-import { assignLibraryItemToClass } from "./actions";
-import { getAssignableClassesForUser, getCurriculumLibraryData, isAssignmentTemplate, parseCurriculumLibraryFilters } from "../../lib/curriculum-library";
+import { assignLibraryItemToClass, deleteLibraryItem, updateLibraryItemMetadata } from "./actions";
+import { canManageLibraryItem, getAssignableClassesForUser, getCurriculumLibraryData, isAssignmentTemplate, parseCurriculumLibraryFilters } from "../../lib/curriculum-library";
 import { getSelectedLocalDevelopmentUser } from "../../lib/local-dev-user";
+import { getShareableTeamsForUser } from "../../lib/department-teams";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,11 @@ function formatDate(date: Date) {
 export default async function CurriculumLibraryPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const filters = parseCurriculumLibraryFilters(resolvedSearchParams);
-  const [{ selectedUser }, data, classes] = await Promise.all([
-    getSelectedLocalDevelopmentUser(),
-    getCurriculumLibraryData(filters),
-    getSelectedLocalDevelopmentUser().then(({ selectedUser }) => getAssignableClassesForUser(selectedUser)),
+  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const [data, classes, teams] = await Promise.all([
+    getCurriculumLibraryData(filters, selectedUser),
+    getAssignableClassesForUser(selectedUser),
+    getShareableTeamsForUser(selectedUser),
   ]);
   const canUseLibrary = selectedUser?.role === "ADMIN" || selectedUser?.role === "TEACHER";
 
@@ -35,14 +37,16 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
           <p className="rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-sm">{data.items.length} item{data.items.length === 1 ? "" : "s"}</p>
         </div>
         {resolvedSearchParams?.saved === "1" ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Saved to library</p><p className="mt-1">The source assignment was copied into a reusable library item without changing the original assignment.</p></div> : null}
+        {resolvedSearchParams?.updated === "1" ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Library item updated</p><p className="mt-1">Visibility and metadata changes were saved.</p></div> : null}
+        {resolvedSearchParams?.deleted === "1" ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Library item deleted</p></div> : null}
         {resolvedSearchParams?.assigned ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Assigned to {resolvedSearchParams.assigned} classes</p><p className="mt-1">Separate assignment copies were created for each selected class. Submissions, feedback, release state, due date and reporting remain class-specific.</p></div> : null}
         {!canUseLibrary ? <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Switch to a teacher or admin user to browse and assign curriculum library items.</div> : null}
-        <form className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5">
+        <form className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-6">
           <label className="text-sm font-semibold text-slate-700">Search<input name="search" defaultValue={filters.search} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm" /></label>
           <label className="text-sm font-semibold text-slate-700">Subject<select name="subject" defaultValue={filters.subject} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">All subjects</option>{data.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
           <label className="text-sm font-semibold text-slate-700">Year group<select name="yearGroup" defaultValue={filters.yearGroup} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">All years</option>{data.yearGroups.map((yearGroup) => <option key={yearGroup} value={yearGroup}>{yearGroup}</option>)}</select></label>
           <label className="text-sm font-semibold text-slate-700">Tag<select name="tag" defaultValue={filters.tag} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="">All tags</option>{data.tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select></label>
-          <div className="flex gap-2 self-end"><button type="submit" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm">Apply</button><Link href="/curriculum-library" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">Reset</Link></div>
+          <label className="text-sm font-semibold text-slate-700">Scope<select name="scope" defaultValue={filters.scope} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm"><option value="all">All available</option><option value="mine">My items</option><option value="team">Team items</option></select></label><div className="flex gap-2 self-end"><button type="submit" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm">Apply</button><Link href="/curriculum-library" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">Reset</Link></div>
         </form>
       </section>
 
@@ -51,6 +55,9 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
         {data.items.map((item) => {
           const template = isAssignmentTemplate(item.assignmentJson) ? item.assignmentJson : null;
           const action = assignLibraryItemToClass.bind(null, item.id);
+          const updateAction = updateLibraryItemMetadata.bind(null, item.id);
+          const deleteAction = deleteLibraryItem.bind(null, item.id);
+          const canManageItem = canManageLibraryItem(selectedUser, item);
           const assignedClassIds = new Set(item.assignedCopies.map((copy) => copy.classId));
           const alreadyAssignedClasses = classes.filter((classItem) => assignedClassIds.has(classItem.id));
           return <article key={item.id} className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
@@ -61,10 +68,12 @@ export default async function CurriculumLibraryPage({ searchParams }: Props) {
                   {item.subject ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{item.subject}</span> : null}
                   {item.yearGroup ? <span className="rounded-full bg-slate-100 px-3 py-1">{item.yearGroup}</span> : null}
                   {item.unitTopic ? <span className="rounded-full bg-slate-100 px-3 py-1">{item.unitTopic}</span> : null}
+                  {item.visibility === CurriculumLibraryVisibility.TEAM ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">Shared with {item.team?.name ?? "team"}</span> : <span className="rounded-full bg-slate-100 px-3 py-1">Private</span>}
                   {item.tags.map((tag) => <span key={tag} className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">#{tag}</span>)}
                 </div>
                 <p className="mt-3 text-sm text-slate-600">{template?.questions.length ?? 0} questions · Updated {formatDate(item.updatedAt)} · Created {formatDate(item.createdAt)}{item.createdBy ? ` by ${item.createdBy.displayName}` : ""}</p>
               </div>
+              {canManageItem ? <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer text-sm font-bold text-slate-900">Edit library metadata</summary><form action={updateAction} className="mt-3 grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold text-slate-700">Title<input name="title" defaultValue={item.title} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm font-semibold text-slate-700">Subject<input name="subject" defaultValue={item.subject ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm font-semibold text-slate-700">Year group<input name="yearGroup" defaultValue={item.yearGroup ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm font-semibold text-slate-700">Unit / topic<input name="unitTopic" defaultValue={item.unitTopic ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm font-semibold text-slate-700 sm:col-span-2">Tags<input name="tags" defaultValue={item.tags.join(", ")} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm font-semibold text-slate-700">Visibility<select name="visibility" defaultValue={item.visibility} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value={CurriculumLibraryVisibility.PRIVATE}>Private</option><option value={CurriculumLibraryVisibility.TEAM}>Team shared</option></select></label><label className="text-sm font-semibold text-slate-700">Shared team<select name="teamId" defaultValue={item.teamId ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="">Choose team</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label><button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Save metadata</button></form><form action={deleteAction} className="mt-3"><button className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700">Delete library item</button></form></details> : null}
               {canUseLibrary ? <form action={action} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 lg:min-w-80">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Assign copies</p>
                 <fieldset className="mt-3 rounded-xl border border-amber-200 bg-white/70 p-3">
