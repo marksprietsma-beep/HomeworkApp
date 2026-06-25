@@ -40,7 +40,7 @@ function getMultipleChoiceChoices(options: unknown) {
   return [];
 }
 
-function ResponseAnswer({ answerText, questionType }: { answerText: string; questionType: string }) {
+function ResponseAnswer({ answerText, questionType, responseMode }: { answerText: string; questionType: string; responseMode: string }) {
   if (!answerText) {
     return (
       <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
@@ -63,9 +63,9 @@ function ResponseAnswer({ answerText, questionType }: { answerText: string; ques
   return (
     <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-        Written response
+        {responseMode === "PSEUDOCODE" ? "Pseudocode response" : "Written response"}
       </p>
-      <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-slate-950">{answerText}</p>
+      <p className={`mt-2 whitespace-pre-wrap text-base leading-7 text-slate-950 ${responseMode === "PSEUDOCODE" ? "font-mono" : ""}`}>{answerText}</p>
     </div>
   );
 }
@@ -248,7 +248,7 @@ export default async function ResponseDetailPage({ params }: ResponseDetailPageP
                   </div>
                 ) : null}
 
-                <ResponseAnswer answerText={question.answerText} questionType={question.questionType} />
+                <ResponseAnswer answerText={question.answerText} questionType={question.questionType} responseMode={question.responseMode} />
               </article>
             );
           })

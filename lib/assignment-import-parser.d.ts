@@ -21,6 +21,7 @@ export type AssignmentImportQuestion = {
   id: string;
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
+  responseMode: "TEXT" | "PSEUDOCODE";
   prompt: string;
   textI18n?: I18nText;
   points: number | null;
@@ -47,3 +48,4 @@ export function parseAssignmentImportJson(rawJsonText: string): AssignmentImport
 export const FORMAT_VERSION: "assignment-import-v1";
 export const ALLOWED_STATUSES: Set<string>;
 export const ALLOWED_QUESTION_TYPES: Set<string>;
+export const ALLOWED_RESPONSE_MODES: Set<string>;

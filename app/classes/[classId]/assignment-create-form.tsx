@@ -2,7 +2,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { HomeworkAssignmentStatus, HomeworkQuestionType } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType } from "@prisma/client";
 import { createAssignmentForClass, type CreateAssignmentFormState } from "./actions";
 
 type AssignmentCreateFormProps = {
@@ -12,6 +12,7 @@ type AssignmentCreateFormProps = {
 type DraftQuestion = {
   id: number;
   questionType: HomeworkQuestionType;
+  responseMode: HomeworkQuestionResponseMode;
   imagePreviewUrl?: string;
 };
 
@@ -25,7 +26,7 @@ const questionTypeLabels: Record<HomeworkQuestionType, string> = {
 
 export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
   const [questions, setQuestions] = useState<DraftQuestion[]>([
-    { id: 1, questionType: HomeworkQuestionType.OPEN_TEXT },
+    { id: 1, questionType: HomeworkQuestionType.OPEN_TEXT, responseMode: HomeworkQuestionResponseMode.TEXT },
   ]);
   const [clientError, setClientError] = useState<string | null>(null);
 
@@ -38,7 +39,7 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
   function addQuestion() {
     setQuestions((currentQuestions) => [
       ...currentQuestions,
-      { id: Date.now(), questionType: HomeworkQuestionType.OPEN_TEXT },
+      { id: Date.now(), questionType: HomeworkQuestionType.OPEN_TEXT, responseMode: HomeworkQuestionResponseMode.TEXT },
     ]);
   }
 
@@ -65,7 +66,16 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
   function updateQuestionType(id: number, questionType: HomeworkQuestionType) {
     setQuestions((currentQuestions) =>
       currentQuestions.map((question) =>
-        question.id === id ? { ...question, questionType } : question,
+        question.id === id ? { ...question, questionType, responseMode: questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? HomeworkQuestionResponseMode.TEXT : question.responseMode } : question,
+      ),
+    );
+  }
+
+
+  function updateResponseMode(id: number, responseMode: HomeworkQuestionResponseMode) {
+    setQuestions((currentQuestions) =>
+      currentQuestions.map((question) =>
+        question.id === id ? { ...question, responseMode } : question,
       ),
     );
   }
@@ -157,7 +167,7 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem_10rem]">
+              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_12rem_10rem]">
                 <label className="text-sm font-semibold text-slate-700">
                   Prompt
                   <textarea
@@ -187,6 +197,20 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Response mode
+                  <select
+                    name="questionResponseMode"
+                    value={question.responseMode}
+                    disabled={question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE}
+                    onChange={(event) => updateResponseMode(question.id, event.target.value as HomeworkQuestionResponseMode)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  >
+                    <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
+                    <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
+                  </select>
+                  {question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
                 </label>
                 <label className="text-sm font-semibold text-slate-700">
                   Points (optional)

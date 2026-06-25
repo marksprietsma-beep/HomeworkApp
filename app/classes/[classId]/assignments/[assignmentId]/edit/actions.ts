@@ -1,6 +1,6 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
@@ -57,7 +57,7 @@ export async function updateAssignmentDetails(
         submissions: { select: { id: true }, take: 1 },
         questions: {
           orderBy: { order: "asc" },
-          select: { id: true, questionType: true },
+          select: { id: true, questionType: true, responseMode: true },
         },
       },
     });
@@ -88,6 +88,7 @@ export async function updateAssignmentDetails(
     const prompts = formData.getAll("questionPrompt");
     const types = formData.getAll("questionType");
     const optionSets = formData.getAll("questionOptions");
+    const responseModes = formData.getAll("questionResponseMode");
     const pointValues = formData.getAll("questionPoints");
     const imagePaths = formData.getAll("questionImagePath");
     const imageCaptions = formData.getAll("questionImageCaption");
@@ -119,6 +120,12 @@ export async function updateAssignmentDetails(
         )
           ? (requestedType as HomeworkQuestionType)
           : existingQuestion.questionType;
+        const requestedResponseMode = valueAt(responseModes, index);
+        const responseMode = Object.values(HomeworkQuestionResponseMode).includes(
+          requestedResponseMode as HomeworkQuestionResponseMode,
+        )
+          ? (requestedResponseMode as HomeworkQuestionResponseMode)
+          : existingQuestion.responseMode;
         const rawPoints = valueAt(pointValues, index);
         const points = rawPoints === "" ? null : Number(rawPoints);
         const choices = valueAt(optionSets, index)
@@ -150,6 +157,7 @@ export async function updateAssignmentDetails(
           data: {
             prompt,
             questionType,
+            responseMode: questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? HomeworkQuestionResponseMode.TEXT : responseMode,
             points,
             options:
               questionType === HomeworkQuestionType.MULTIPLE_CHOICE

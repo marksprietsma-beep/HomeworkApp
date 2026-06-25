@@ -6,6 +6,7 @@ import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user"
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../lib/i18n-content";
 import { getParticipantWorkData } from "../../../../lib/participant-work";
 import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./actions";
+import { PseudocodeAnswerEditor } from "./pseudocode-answer-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -478,13 +479,19 @@ export default async function ParticipantWorkPage({
                 </div>
               ) : null}
 
-              {question.questionType === "LONG_TEXT" ? (
+              {question.responseMode === "PSEUDOCODE" ? (
+                <PseudocodeAnswerEditor
+                  id={`question-${question.id}`}
+                  name={`question-${question.id}`}
+                  defaultValue={question.answerText}
+                />
+              ) : question.questionType === "LONG_TEXT" || question.questionType === "OPEN_TEXT" ? (
                 <textarea
                   id={`question-${question.id}`}
                   name={`question-${question.id}`}
                   defaultValue={question.answerText}
-                  rows={8}
-                  className="mt-5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  rows={question.questionType === "LONG_TEXT" ? 10 : 6}
+                  className="mt-5 min-h-40 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 />
               ) : question.questionType === "MULTIPLE_CHOICE" ? (
                 <fieldset className="mt-5 grid gap-3">

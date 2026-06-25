@@ -1,6 +1,6 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
@@ -23,6 +23,7 @@ type AssignmentImportGlossaryItem = {
 type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
+  responseMode?: "TEXT" | "PSEUDOCODE";
   prompt: string;
   textI18n?: I18nText;
   points: number | null;
@@ -126,6 +127,7 @@ export async function importAssignmentForClass(
       prompt: question.prompt,
       promptI18n: question.textI18n ?? undefined,
       questionType: question.type as HomeworkQuestionType,
+      responseMode: question.type === "OPEN_TEXT" && question.responseMode === "PSEUDOCODE" ? HomeworkQuestionResponseMode.PSEUDOCODE : HomeworkQuestionResponseMode.TEXT,
       points: question.points,
       options:
         question.type === "MULTIPLE_CHOICE"
