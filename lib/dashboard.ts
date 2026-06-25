@@ -127,7 +127,7 @@ export async function getLocalDashboardData(user: {
             take: 1,
           },
           participantFeedback: {
-            where: { studentId: user.id },
+            where: { studentId: user.id, releaseState: "RELEASED" },
             orderBy: [
               { feedbackImport: { importedAt: "desc" } },
               { updatedAt: "desc" },
