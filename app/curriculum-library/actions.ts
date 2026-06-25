@@ -3,7 +3,7 @@
 import { HomeworkQuestionType, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { buildAssignmentTemplate, isAssignmentTemplate, parseAssignmentStatus, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
+import { buildAssignmentTemplate, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
 import { getSelectedLocalDevelopmentUser } from "../../lib/local-dev-user";
 import { prisma } from "../../lib/prisma";
 
@@ -45,15 +45,18 @@ export async function saveAssignmentToLibrary(classId: number, assignmentId: num
 export async function assignLibraryItemToClass(libraryItemId: number, formData: FormData) {
   const { selectedUser } = await getSelectedLocalDevelopmentUser();
   const user = requireTeacherOrAdmin(selectedUser);
-  const classId = Number(formData.get("classId"));
-  if (!Number.isInteger(classId)) throw new Error("Choose a target class.");
+  const classIds = parseClassIds(formData.getAll("classIds"));
+  if (classIds.length === 0) throw new Error("Choose at least one target class.");
 
-  const [libraryItem, classItem] = await Promise.all([
+  const [libraryItem, classes] = await Promise.all([
     prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId } }),
-    prisma.class.findFirst({ where: { id: classId, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) }, select: { id: true } }),
+    prisma.class.findMany({
+      where: { id: { in: classIds }, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
+      select: { id: true },
+    }),
   ]);
   if (!libraryItem || !isAssignmentTemplate(libraryItem.assignmentJson)) throw new Error("Choose an existing library item.");
-  if (!classItem) throw new Error("Only admins or the target class teacher can assign library homework to that class.");
+  if (classes.length !== classIds.length) throw new Error("Only admins or target class teachers can assign library homework to those classes.");
 
   const template = libraryItem.assignmentJson;
   const title = String(formData.get("title") ?? template.title).trim();
@@ -61,24 +64,32 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
   const dueAt = parseLibraryDueAt(formData.get("dueAt"));
   const status = parseAssignmentStatus(formData.get("status"));
 
-  const assignment = await prisma.homeworkAssignment.create({
-    data: {
-      classId,
-      createdById: user.id,
-      title,
-      titleI18n: template.titleI18n ?? undefined,
-      description: template.description,
-      descriptionI18n: template.descriptionI18n ?? undefined,
-      keyVocabulary: template.keyVocabulary ?? undefined,
-      dueAt,
-      status,
-      questions: { create: template.questions.map((question, index) => ({ order: index + 1, prompt: question.prompt, promptI18n: question.promptI18n ?? undefined, questionType: Object.values(HomeworkQuestionType).includes(question.questionType as HomeworkQuestionType) ? (question.questionType as HomeworkQuestionType) : HomeworkQuestionType.OPEN_TEXT, points: question.points, options: question.options ?? undefined, imagePath: question.imagePath, imageCaption: question.imageCaption, imageAltText: question.imageAltText })) },
-    },
-    select: { id: true },
-  });
+  const createdAssignments = await prisma.$transaction(
+    classIds.map((classId) => prisma.homeworkAssignment.create({
+      data: {
+        classId,
+        createdById: user.id,
+        sourceLibraryItemId: libraryItem.id,
+        title,
+        titleI18n: template.titleI18n ?? undefined,
+        description: template.description,
+        descriptionI18n: template.descriptionI18n ?? undefined,
+        keyVocabulary: template.keyVocabulary ?? undefined,
+        dueAt,
+        status,
+        questions: { create: template.questions.map((question, index) => ({ order: index + 1, prompt: question.prompt, promptI18n: question.promptI18n ?? undefined, questionType: Object.values(HomeworkQuestionType).includes(question.questionType as HomeworkQuestionType) ? (question.questionType as HomeworkQuestionType) : HomeworkQuestionType.OPEN_TEXT, points: question.points, options: question.options ?? undefined, imagePath: question.imagePath, imageCaption: question.imageCaption, imageAltText: question.imageAltText })) },
+      },
+      select: { id: true, classId: true },
+    })),
+  );
 
   revalidatePath("/");
   revalidatePath("/curriculum-library");
-  revalidatePath(`/classes/${classId}`);
-  redirect(`/classes/${classId}/assignments/${assignment.id}?fromLibrary=1`);
+  for (const created of createdAssignments) revalidatePath(`/classes/${created.classId}`);
+
+  if (createdAssignments.length === 1) {
+    const assignment = createdAssignments[0];
+    redirect(`/classes/${assignment.classId}/assignments/${assignment.id}?fromLibrary=1`);
+  }
+  redirect(`/curriculum-library?assigned=${createdAssignments.length}`);
 }
