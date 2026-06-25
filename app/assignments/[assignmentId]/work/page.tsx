@@ -40,7 +40,7 @@ function getPlainLocalizedText(fallback: string, i18n: unknown, mode: LanguageMo
 
 function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
   const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
-  return <span className="grid gap-1">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
+  return <span className="grid gap-1 [line-break:loose] [overflow-wrap:break-word] [word-break:normal]">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
 }
 
 function getLocalizedList(fallback: string[], i18n: unknown, mode: LanguageMode) {
@@ -77,7 +77,7 @@ function LanguageLinks({ assignmentId, mode }: { assignmentId: number; mode: Lan
     { value: "zh", label: "中文" },
     { value: "bilingual", label: "Bilingual" },
   ];
-  return <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/assignments/${assignmentId}/work?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
+  return <div className="inline-flex flex-wrap rounded-full border border-slate-200 bg-white p-1 shadow-sm">{items.map((item) => <Link key={item.value} href={`/assignments/${assignmentId}/work?lang=${item.value}`} className={mode === item.value ? "rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" : "rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950"}>{item.label}</Link>)}</div>;
 }
 
 function FeedbackActionCard({ action, assignmentId, languageMode }: { action: { id: number; type: string; prompt: string; promptI18n: unknown; required: boolean; status: string; responseText: string | null; completedAt: Date | null }; assignmentId: number; languageMode: LanguageMode }) {
@@ -190,35 +190,51 @@ export default async function ParticipantWorkPage({
         ← Back to assigned work
       </Link>
 
-      <section className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <section className="mt-6 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+        <div className="grid gap-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
               Participant work
             </p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
               {renderLocalizedText(work.title, work.titleI18n, languageMode)}
             </h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+            <p className="mt-3 max-w-4xl text-base leading-7 text-slate-700">
               {renderLocalizedText(work.description ?? "No instructions have been added for this assignment.", work.descriptionI18n, languageMode)}
             </p>
-            <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              {work.class.name} · {work.status}{work.dueAt ? ` · ${dueStatus.label}: ${formatDate(work.dueAt)}` : ""}
-            </p>
           </div>
-          <LanguageLinks assignmentId={work.id} mode={languageMode} />
-          <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm lg:min-w-72">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Working as
-            </p>
-            <p className="mt-2 text-lg font-semibold">{selectedUser.displayName}</p>
-            <p className="text-sm text-amber-200">{selectedUser.email}</p>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Total
-            </p>
-            <p className="mt-2 font-semibold">
-              {work.totals.questions} questions · {work.totals.points ?? "No"} points
-            </p>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                Assignment language
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Applies to the instructions, vocabulary, questions, and feedback on this work page.
+              </p>
+            </div>
+            <LanguageLinks assignmentId={work.id} mode={languageMode} />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Working as</p>
+              <p className="mt-1 font-semibold text-slate-950">{selectedUser.displayName}</p>
+              <p className="truncate text-xs text-slate-500">{selectedUser.email}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Class</p>
+              <p className="mt-1 font-semibold text-slate-950">{work.class.name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Status</p>
+              <p className="mt-1 font-semibold text-slate-950">{work.status}</p>
+              {work.dueAt ? <p className="text-xs text-slate-500">{dueStatus.label}: {formatDate(work.dueAt)}</p> : null}
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Task size</p>
+              <p className="mt-1 font-semibold text-slate-950">{work.totals.questions} questions · {work.totals.points ?? "No"} points</p>
+            </div>
           </div>
         </div>
 
@@ -412,7 +428,7 @@ export default async function ParticipantWorkPage({
         </section>
       ) : null}
 
-      <form action={saveAction} className="mt-8 grid gap-5">
+      <form action={saveAction} className="mt-6 grid gap-5">
         {work.questions.map((question) => {
           const choices = getMultipleChoiceChoices(question.options);
 
@@ -420,7 +436,7 @@ export default async function ParticipantWorkPage({
             <section
               id={`question-${question.id}`}
               key={question.id}
-              className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8"
+              className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -429,7 +445,7 @@ export default async function ParticipantWorkPage({
                   </p>
                   <label
                     htmlFor={`question-${question.id}`}
-                    className="mt-2 block text-lg font-semibold leading-7 text-slate-950"
+                    className="mt-2 block max-w-4xl text-lg font-semibold leading-8 text-slate-950"
                   >
                     {renderLocalizedText(question.prompt, question.promptI18n, languageMode)}
                   </label>
@@ -490,7 +506,7 @@ export default async function ParticipantWorkPage({
                           defaultChecked={question.answerText === choice}
                           className="mt-1"
                         />
-                        <span>{renderChoiceText(choice, question.options, optionIndex, languageMode)}</span>
+                        <span className="min-w-0 flex-1 leading-6">{renderChoiceText(choice, question.options, optionIndex, languageMode)}</span>
                       </label>
                     ))
                   )}
