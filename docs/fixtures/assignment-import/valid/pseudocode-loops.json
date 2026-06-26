@@ -1,0 +1,29 @@
+{
+  "formatVersion": "assignment-import-v1",
+  "assignment": {
+    "title": "Cambridge 9618 pseudocode loops",
+    "instructions": "Write pseudocode using Cambridge 9618 conventions. Preserve indentation.",
+    "dueDate": null,
+    "status": "DRAFT",
+    "questions": [
+      {
+        "id": "q1",
+        "order": 1,
+        "type": "OPEN_TEXT",
+        "prompt": "Write pseudocode that inputs 10 test scores and outputs their total.",
+        "points": 5,
+        "responseMode": "PSEUDOCODE",
+        "pseudocodeDialect": "CAMBRIDGE_9618_2026"
+      },
+      {
+        "id": "q2",
+        "order": 2,
+        "type": "OPEN_TEXT",
+        "prompt": "Complete a WHILE loop that repeatedly inputs values until -1 is entered, then outputs the count of values entered.",
+        "points": 6,
+        "responseMode": "PSEUDOCODE",
+        "pseudocodeDialect": "CAMBRIDGE_9618_2026"
+      }
+    ]
+  }
+}
