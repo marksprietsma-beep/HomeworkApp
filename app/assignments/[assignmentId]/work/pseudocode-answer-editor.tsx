@@ -50,11 +50,63 @@ export function PseudocodeAnswerEditor({ id, name, defaultValue }: PseudocodeAns
     const textarea = event.currentTarget;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const nextValue = `${textarea.value.slice(0, start)}  ${textarea.value.slice(end)}`;
+    const value = textarea.value;
+
+    if (start !== end) {
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      const selectedText = value.slice(lineStart, end);
+      const selectedLines = selectedText.split("\n");
+      const adjustedLines = selectedLines.map((line) => {
+        if (!event.shiftKey) {
+          return `  ${line}`;
+        }
+
+        if (line.startsWith("  ")) {
+          return line.slice(2);
+        }
+
+        if (line.startsWith("\t")) {
+          return line.slice(1);
+        }
+
+        return line;
+      });
+      const nextSelectedText = adjustedLines.join("\n");
+      const nextValue = `${value.slice(0, lineStart)}${nextSelectedText}${value.slice(end)}`;
+      const selectionDelta = nextSelectedText.length - selectedText.length;
+
+      textarea.value = nextValue;
+      textarea.selectionStart = lineStart;
+      textarea.selectionEnd = end + selectionDelta;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    if (event.shiftKey) {
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      const beforeCursor = value.slice(lineStart, start);
+      const removableIndent = beforeCursor.match(/(?:  |\t)$/)?.[0];
+
+      if (!removableIndent) {
+        return;
+      }
+
+      const removalStart = start - removableIndent.length;
+      const nextValue = `${value.slice(0, removalStart)}${value.slice(start)}`;
+
+      textarea.value = nextValue;
+      textarea.selectionStart = removalStart;
+      textarea.selectionEnd = removalStart;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    const nextValue = `${value.slice(0, start)}  ${value.slice(end)}`;
 
     textarea.value = nextValue;
     textarea.selectionStart = start + 2;
     textarea.selectionEnd = start + 2;
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   function handleFormat() {

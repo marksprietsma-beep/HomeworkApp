@@ -118,7 +118,8 @@ The documented valid example below is mirrored in [`docs/fixtures/assignment-imp
         "id": "q2",
         "order": 2,
         "type": "OPEN_TEXT",
-        "prompt": "Explain how to compare 3/4 and 5/8 without using a calculator.",
+        "responseMode": "PSEUDOCODE",
+        "prompt": "Write pseudocode for a function that compares 3/4 and 5/8 without using a calculator.",
         "image": {
           "path": "teacher-provided fraction wall image",
           "caption": "Fraction wall for comparison",
