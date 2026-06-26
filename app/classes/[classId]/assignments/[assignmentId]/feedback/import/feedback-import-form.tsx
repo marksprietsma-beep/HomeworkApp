@@ -131,13 +131,15 @@ export function FeedbackImportForm({
           workflow until the teacher reviews it and chooses to release it to
           students.
         </p>
-        <ChatGptJsonHelper
-          title="Ask ChatGPT for importable feedback JSON"
-          description={FEEDBACK_HELPER_DESCRIPTION}
-          prompt={feedbackImportChatGptPrompt}
-          docsHref="/docs/feedback-json-v1.md"
-          docsLabel="Open feedback JSON documentation"
-        />
+        {!compact ? (
+          <ChatGptJsonHelper
+            title="Ask ChatGPT for importable feedback JSON"
+            description={FEEDBACK_HELPER_DESCRIPTION}
+            prompt={feedbackImportChatGptPrompt}
+            docsHref="/docs/feedback-json-v1.md"
+            docsLabel="Open feedback JSON documentation"
+          />
+        ) : null}
         <textarea
           value={rawJson}
           onChange={(event) => setRawJson(event.target.value)}
