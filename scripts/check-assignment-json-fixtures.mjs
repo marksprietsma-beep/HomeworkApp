@@ -4,7 +4,7 @@ import process from "node:process";
 import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
 const repoRoot = process.cwd();
-const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json", "docs/fixtures/assignment-import/valid/bilingual-vocabulary.json"];
+const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json", "docs/fixtures/assignment-import/valid/bilingual-vocabulary.json", "docs/fixtures/assignment-import/valid/pseudocode-loops.json"];
 const invalidFixtures = [
   {
     path: "docs/fixtures/assignment-import/invalid/contract-violations.json",
@@ -102,7 +102,14 @@ async function checkHelperPromptDoesNotAdvertiseUnsupportedTypes() {
     return;
   }
 
-  pass("assignment import helper prompt only advertises supported question types");
+  for (const requiredText of ["responseMode: \"PSEUDOCODE\"", "pseudocodeDialect: \"CAMBRIDGE_9618_2026\"", "write, complete, trace, debug, or explain pseudocode/code-style answers", "Do not add pseudocode metadata to ordinary prose questions"]) {
+    if (!promptMatch[1].includes(requiredText)) {
+      fail(`assignment import helper prompt is missing pseudocode guidance: ${requiredText}`);
+      return;
+    }
+  }
+
+  pass("assignment import helper prompt only advertises supported question types and includes pseudocode metadata guidance");
 }
 
 async function checkDocumentationSync() {

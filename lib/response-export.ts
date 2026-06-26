@@ -250,6 +250,11 @@ export function assignmentResponseExportHasBilingualContent(exportData: Assignme
   );
 }
 
+function fenceCodeBlock(value: string) {
+  const fence = value.includes("```") ? "````" : "```";
+  return `${fence}pseudocode\n${value || "No answer saved."}\n${fence}`;
+}
+
 function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
   const questionById = new Map(exportData.questions.map((question) => [String(question.id), question]));
   const lines = [
@@ -331,7 +336,13 @@ function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
 
     for (const question of exportData.questions) {
       const answer = participant.submission.responsesByQuestionId[String(question.id)] ?? "";
-      lines.push(`**Question ${question.order} (${question.id})**`, "", question.prompt, "", answer || "No answer saved.", "");
+      const isPseudocode = question.responseMode === "PSEUDOCODE";
+      lines.push(`**Question ${question.order} (${question.id})${isPseudocode ? " — pseudocode answer" : ""}**`, "", question.prompt, "");
+      if (isPseudocode) {
+        lines.push("Student pseudocode answer (preserve indentation and line breaks):", "", fenceCodeBlock(answer), "");
+      } else {
+        lines.push(answer || "No answer saved.", "");
+      }
     }
 
     for (const [questionId, answer] of Object.entries(participant.submission.responsesByQuestionId)) {

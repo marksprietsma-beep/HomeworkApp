@@ -26,6 +26,9 @@ type PreviewQuestionFeedback = {
   feedback: string;
   strengths: string[];
   targets: string[];
+  pseudocodeNotes?: string;
+  syntaxGuidance?: string;
+  formattingGuidance?: string;
   followUpActions: PreviewAction[];
 };
 type PreviewParticipantFeedback = {
@@ -369,6 +372,14 @@ export function FeedbackImportForm({
                             <List items={question.targets} />
                           </div>
                         </div>
+                        {(question.pseudocodeNotes || question.syntaxGuidance || question.formattingGuidance) ? (
+                          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                            <p className="font-semibold">Pseudocode guidance</p>
+                            {question.pseudocodeNotes ? <p className="mt-1 whitespace-pre-wrap"><strong>Notes:</strong> {question.pseudocodeNotes}</p> : null}
+                            {question.syntaxGuidance ? <p className="mt-1 whitespace-pre-wrap"><strong>Syntax:</strong> {question.syntaxGuidance}</p> : null}
+                            {question.formattingGuidance ? <p className="mt-1 whitespace-pre-wrap"><strong>Formatting:</strong> {question.formattingGuidance}</p> : null}
+                          </div>
+                        ) : null}
                         <div className="mt-3 text-sm">
                           <p className="font-semibold">
                             Question follow-up actions

@@ -1,0 +1,45 @@
+{
+  "feedbackFormat": "homework-feedback",
+  "feedbackVersion": 1,
+  "sourceExport": {
+    "exportFormat": "homework-assignment-responses-v2",
+    "exportVersion": 2,
+    "generatedAt": "2026-06-26T12:00:00.000Z"
+  },
+  "assignment": {
+    "id": 42,
+    "title": "Pseudocode loops"
+  },
+  "class": {
+    "id": 7,
+    "name": "Computer Science"
+  },
+  "generatedBy": "ChatGPT",
+  "participantFeedback": [
+    {
+      "participant": {
+        "id": 3,
+        "name": "Alex"
+      },
+      "submission": {
+        "id": 18,
+        "status": "SUBMITTED"
+      },
+      "overallFeedback": "You have the right loop idea. Tighten the Cambridge pseudocode syntax before release.",
+      "strengths": ["Uses a repeated step to process values."],
+      "targets": ["Use the assignment arrow and preserve indentation consistently."],
+      "questionFeedback": [
+        {
+          "questionId": 101,
+          "questionOrder": 1,
+          "feedback": "Your algorithmic idea is mostly clear; check the initialisation and final output wording.",
+          "strengths": ["The loop processes the data in a sensible order."],
+          "targets": ["Separate the counter update from the output step."],
+          "pseudocodeNotes": "Keep the student's structure, but check whether every variable is declared before use.",
+          "syntaxGuidance": "Use ← for assignment rather than = in Cambridge 9618 pseudocode.",
+          "formattingGuidance": "Keep the loop body indented on its own lines. Preserve line breaks in any examples."
+        }
+      ]
+    }
+  ]
+}

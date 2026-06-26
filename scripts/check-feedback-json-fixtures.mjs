@@ -4,7 +4,7 @@ import process from "node:process";
 import { parseFeedbackImportJson } from "../lib/feedback-import-parser.mjs";
 
 const repoRoot = process.cwd();
-const validFixtures = ["docs/fixtures/feedback-import/valid/fractions-feedback.json"];
+const validFixtures = ["docs/fixtures/feedback-import/valid/fractions-feedback.json", "docs/fixtures/feedback-import/valid/pseudocode-feedback.json"];
 const invalidFixtures = [
   {
     path: "docs/fixtures/feedback-import/invalid/contract-violations.json",
@@ -80,11 +80,16 @@ async function checkValidFixture(relativePath) {
     .flatMap((participant) => participant.questionFeedback)
     .flatMap((question) => question.followUpActions)
     .find((action) => action.id === "pf-3-q101-followup");
-  if (bilingualQuestionAction?.promptI18n?.zh !== "你把分子和分母都乘以了多少？") {
+  if (relativePath.includes("fractions") && bilingualQuestionAction?.promptI18n?.zh !== "你把分子和分母都乘以了多少？") {
     fail(`${relativePath} did not preserve bilingual question-level follow-up action promptI18n during parser normalisation`);
     return;
   }
-  pass(`${relativePath} parsed and produced normalised feedback for ${result.feedback.participantFeedback.length} participant(s) and ${actionCount} action(s), preserving question-level action promptI18n`);
+  const pseudocodeQuestion = result.feedback.participantFeedback.flatMap((participant) => participant.questionFeedback).find((question) => question.pseudocodeNotes || question.syntaxGuidance || question.formattingGuidance);
+  if (relativePath.includes("pseudocode") && (!pseudocodeQuestion || !pseudocodeQuestion.syntaxGuidance?.includes("←"))) {
+    fail(`${relativePath} did not preserve optional pseudocode-specific feedback fields during parser normalisation`);
+    return;
+  }
+  pass(`${relativePath} parsed and produced normalised feedback for ${result.feedback.participantFeedback.length} participant(s) and ${actionCount} action(s), preserving question-level action promptI18n and optional pseudocode notes`);
 }
 
 async function checkInvalidFixture(fixture) {
@@ -134,6 +139,9 @@ const requiredPromptText = [
   "pf1-q86-action1",
   "pf1-q91-action1",
   "Each follow-up action must include id, type, prompt, and required",
+  "pseudocodeNotes",
+  "syntaxGuidance",
+  "formattingGuidance",
 ];
 for (const expectedText of requiredPromptText) {
   if (!sharedFeedbackHelper.includes(expectedText)) {

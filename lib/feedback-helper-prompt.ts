@@ -29,7 +29,13 @@ __FEEDBACK_LANGUAGE_INSTRUCTION__
 - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
 - If bilingual feedback is requested, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
+- For pseudocode/code-style questions, questionFeedback may also include optional string fields pseudocodeNotes, syntaxGuidance, and formattingGuidance. Use them only when helpful; do not require them for every question. Existing feedback fields are still required.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
+
+Pseudocode response guidance:
+- Some exported questions use responseMode "PSEUDOCODE" and pseudocodeDialect "CAMBRIDGE_9618_2026". Treat those answers as code-style content and preserve indentation, spacing, line breaks, comments, and the ← assignment arrow when referring to them.
+- Cambridge 9618 pseudocode convention reminders: keywords are uppercase; identifiers use mixed case and start with a letter; comments use //; assignment uses ←; common structures include DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
+- Do not rewrite a student's pseudocode unless you are explicitly giving a correction or short example. Separate syntax/formatting guidance from algorithmic logic feedback. Syntax hints are guidance for teacher review, not automatic marks.
 
 Feedback quality guidance:
 - Make feedback specific to each student's actual answer and aligned with the assignment questions.

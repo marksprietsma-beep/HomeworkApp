@@ -40,6 +40,9 @@ type NormalizedFeedback = {
       targets: string[];
       targetsI18n?: JsonI18n;
       teacherNotes?: string;
+      pseudocodeNotes?: string;
+      syntaxGuidance?: string;
+      formattingGuidance?: string;
       followUpActions: Array<{ id: string; type: string; prompt: string; promptI18n?: JsonI18n; required: boolean; status: string }>;
     }>;
     followUpActions: Array<{ id: string; type: string; prompt: string; promptI18n?: JsonI18n; required: boolean; status: string }>;
@@ -228,7 +231,12 @@ export async function saveFeedbackImport(
             strengthsI18n: question.strengthsI18n,
             targets: question.targets,
             targetsI18n: question.targetsI18n,
-            teacherNotes: question.teacherNotes,
+            teacherNotes: [
+              question.teacherNotes,
+              question.pseudocodeNotes ? `Pseudocode notes: ${question.pseudocodeNotes}` : undefined,
+              question.syntaxGuidance ? `Syntax guidance: ${question.syntaxGuidance}` : undefined,
+              question.formattingGuidance ? `Formatting guidance: ${question.formattingGuidance}` : undefined,
+            ].filter(Boolean).join("\n\n") || undefined,
           },
           select: { id: true },
         });
