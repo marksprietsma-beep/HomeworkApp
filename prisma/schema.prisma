@@ -45,6 +45,10 @@ enum HomeworkQuestionResponseMode {
   PSEUDOCODE
 }
 
+enum PseudocodeDialect {
+  CAMBRIDGE_9618_2026
+}
+
 enum FeedbackFollowUpActionType {
   ACKNOWLEDGEMENT
   SHORT_REFLECTION
@@ -160,6 +164,7 @@ model HomeworkQuestion {
   promptI18n      Json?
   questionType    HomeworkQuestionType @default(OPEN_TEXT)
   responseMode    HomeworkQuestionResponseMode @default(TEXT)
+  pseudocodeDialect PseudocodeDialect?
   options         Json?
   imagePath       String?
   imageCaption    String?

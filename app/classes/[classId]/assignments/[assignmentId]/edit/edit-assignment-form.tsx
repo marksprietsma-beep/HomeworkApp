@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
 import { updateAssignmentDetails, type EditAssignmentFormState } from "./actions";
 
 type EditableQuestion = {
@@ -141,6 +141,11 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
                     <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
                   </select>
                   {selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
+                  {question.responseMode === HomeworkQuestionResponseMode.PSEUDOCODE && selectedType !== HomeworkQuestionType.MULTIPLE_CHOICE ? (
+                    <input type="hidden" name="questionPseudocodeDialect" value={PseudocodeDialect.CAMBRIDGE_9618_2026} />
+                  ) : (
+                    <input type="hidden" name="questionPseudocodeDialect" value="" />
+                  )}
                 </label>
                 <label className="text-sm font-semibold text-slate-700">
                   Points (optional)
