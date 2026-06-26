@@ -29,6 +29,7 @@ export type AssignmentResponseExport = {
     promptI18n: unknown;
     questionType: string;
     responseMode: string;
+    pseudocodeDialect: string | null;
     points: number | null;
     options?: unknown;
     image: {
@@ -97,6 +98,7 @@ export async function getAssignmentResponseExportData(
           options: true,
           questionType: true,
           responseMode: true,
+          pseudocodeDialect: true,
           points: true,
           imagePath: true,
           imageCaption: true,
@@ -157,6 +159,7 @@ export async function getAssignmentResponseExportData(
       options: question.options,
       questionType: question.questionType,
       responseMode: question.responseMode,
+      pseudocodeDialect: question.pseudocodeDialect,
       points: question.points,
       image: {
         path: question.imagePath,
@@ -291,7 +294,7 @@ function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
   } else {
     for (const question of exportData.questions) {
       lines.push(
-        `### Question ${question.order} (${question.questionType}${question.responseMode === "PSEUDOCODE" ? ", PSEUDOCODE" : ""})`,
+        `### Question ${question.order} (${question.questionType}${question.responseMode === "PSEUDOCODE" ? `, PSEUDOCODE${question.pseudocodeDialect ? ` / ${question.pseudocodeDialect}` : ""}` : ""})`,
         "",
         `- Question ID: ${question.id}`,
         `- Points: ${question.points ?? "Not set"}`,

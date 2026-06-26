@@ -22,6 +22,7 @@ export type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
   responseMode: "TEXT" | "PSEUDOCODE";
+  pseudocodeDialect: "CAMBRIDGE_9618_2026" | null;
   prompt: string;
   textI18n?: I18nText;
   points: number | null;
@@ -49,3 +50,4 @@ export const FORMAT_VERSION: "assignment-import-v1";
 export const ALLOWED_STATUSES: Set<string>;
 export const ALLOWED_QUESTION_TYPES: Set<string>;
 export const ALLOWED_RESPONSE_MODES: Set<string>;
+export const ALLOWED_PSEUDOCODE_DIALECTS: Set<string>;

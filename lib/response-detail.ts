@@ -28,6 +28,7 @@ export type ResponseDetailData = {
     prompt: string;
     questionType: string;
     responseMode: string;
+    pseudocodeDialect: string | null;
     options: unknown;
     points: number | null;
     imagePath: string | null;
@@ -84,6 +85,7 @@ export async function getResponseDetailData(
               prompt: true,
               questionType: true,
               responseMode: true,
+          pseudocodeDialect: true,
               options: true,
               points: true,
               imagePath: true,

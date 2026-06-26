@@ -1,6 +1,6 @@
 "use server";
 
-import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -19,6 +19,7 @@ type ParsedQuestion = {
   prompt: string;
   questionType: HomeworkQuestionType;
   responseMode: HomeworkQuestionResponseMode;
+  pseudocodeDialect?: PseudocodeDialect;
   options?: { choices: string[] };
   points?: number;
   imagePath?: string;
@@ -54,6 +55,7 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
   const types = formData.getAll("questionType");
   const optionSets = formData.getAll("questionOptions");
   const responseModes = formData.getAll("questionResponseMode");
+  const pseudocodeDialects = formData.getAll("questionPseudocodeDialect");
   const pointValues = formData.getAll("questionPoints");
   const imagePaths = formData.getAll("questionImagePath");
   const imageCaptions = formData.getAll("questionImageCaption");
@@ -75,6 +77,10 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
       )
         ? (requestedResponseMode as HomeworkQuestionResponseMode)
         : HomeworkQuestionResponseMode.TEXT;
+      const requestedDialect = valueAt(pseudocodeDialects, index);
+      const pseudocodeDialect = Object.values(PseudocodeDialect).includes(requestedDialect as PseudocodeDialect)
+        ? (requestedDialect as PseudocodeDialect)
+        : undefined;
       const rawPoints = valueAt(pointValues, index);
       const points = rawPoints === "" ? undefined : Number(rawPoints);
       const choices = valueAt(optionSets, index)
@@ -94,6 +100,7 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
         prompt,
         questionType,
         responseMode: questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? HomeworkQuestionResponseMode.TEXT : responseMode,
+        pseudocodeDialect: questionType !== HomeworkQuestionType.MULTIPLE_CHOICE && responseMode === HomeworkQuestionResponseMode.PSEUDOCODE ? pseudocodeDialect ?? PseudocodeDialect.CAMBRIDGE_9618_2026 : undefined,
         options:
           questionType === HomeworkQuestionType.MULTIPLE_CHOICE
             ? { choices }

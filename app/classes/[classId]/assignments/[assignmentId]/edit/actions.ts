@@ -1,6 +1,6 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
@@ -89,6 +89,7 @@ export async function updateAssignmentDetails(
     const types = formData.getAll("questionType");
     const optionSets = formData.getAll("questionOptions");
     const responseModes = formData.getAll("questionResponseMode");
+    const pseudocodeDialects = formData.getAll("questionPseudocodeDialect");
     const pointValues = formData.getAll("questionPoints");
     const imagePaths = formData.getAll("questionImagePath");
     const imageCaptions = formData.getAll("questionImageCaption");
@@ -126,6 +127,10 @@ export async function updateAssignmentDetails(
         )
           ? (requestedResponseMode as HomeworkQuestionResponseMode)
           : existingQuestion.responseMode;
+        const requestedDialect = valueAt(pseudocodeDialects, index);
+        const pseudocodeDialect = Object.values(PseudocodeDialect).includes(requestedDialect as PseudocodeDialect)
+          ? (requestedDialect as PseudocodeDialect)
+          : undefined;
         const rawPoints = valueAt(pointValues, index);
         const points = rawPoints === "" ? null : Number(rawPoints);
         const choices = valueAt(optionSets, index)
@@ -158,6 +163,7 @@ export async function updateAssignmentDetails(
             prompt,
             questionType,
             responseMode: questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? HomeworkQuestionResponseMode.TEXT : responseMode,
+            pseudocodeDialect: questionType !== HomeworkQuestionType.MULTIPLE_CHOICE && responseMode === HomeworkQuestionResponseMode.PSEUDOCODE ? pseudocodeDialect ?? PseudocodeDialect.CAMBRIDGE_9618_2026 : null,
             points,
             options:
               questionType === HomeworkQuestionType.MULTIPLE_CHOICE

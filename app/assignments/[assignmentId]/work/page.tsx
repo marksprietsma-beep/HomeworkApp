@@ -484,6 +484,7 @@ export default async function ParticipantWorkPage({
                   id={`question-${question.id}`}
                   name={`question-${question.id}`}
                   defaultValue={question.answerText}
+                  dialect={question.pseudocodeDialect}
                 />
               ) : question.questionType === "LONG_TEXT" || question.questionType === "OPEN_TEXT" ? (
                 <textarea

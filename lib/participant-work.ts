@@ -25,6 +25,7 @@ export type ParticipantWorkData = {
     promptI18n: unknown;
     questionType: string;
     responseMode: string;
+    pseudocodeDialect: string | null;
     points: number | null;
     options: unknown;
     imagePath: string | null;
@@ -128,6 +129,7 @@ export async function getParticipantWorkData(
           promptI18n: true,
           questionType: true,
           responseMode: true,
+          pseudocodeDialect: true,
           points: true,
           options: true,
           imagePath: true,

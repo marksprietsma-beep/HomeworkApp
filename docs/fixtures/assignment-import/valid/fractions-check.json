@@ -18,6 +18,7 @@
         "order": 2,
         "type": "OPEN_TEXT",
         "responseMode": "PSEUDOCODE",
+        "pseudocodeDialect": "CAMBRIDGE_9618_2026",
         "prompt": "Write pseudocode for a function that compares 3/4 and 5/8 without using a calculator.",
         "image": {
           "path": "teacher-provided fraction wall image",
