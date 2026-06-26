@@ -76,7 +76,15 @@ async function checkValidFixture(relativePath) {
     return;
   }
   const actionCount = result.feedback.participantFeedback.reduce((total, participant) => total + participant.followUpActions.length + participant.questionFeedback.reduce((questionTotal, question) => questionTotal + question.followUpActions.length, 0), 0);
-  pass(`${relativePath} parsed and produced normalised feedback for ${result.feedback.participantFeedback.length} participant(s) and ${actionCount} action(s)`);
+  const bilingualQuestionAction = result.feedback.participantFeedback
+    .flatMap((participant) => participant.questionFeedback)
+    .flatMap((question) => question.followUpActions)
+    .find((action) => action.id === "pf-3-q101-followup");
+  if (bilingualQuestionAction?.promptI18n?.zh !== "你把分子和分母都乘以了多少？") {
+    fail(`${relativePath} did not preserve bilingual question-level follow-up action promptI18n during parser normalisation`);
+    return;
+  }
+  pass(`${relativePath} parsed and produced normalised feedback for ${result.feedback.participantFeedback.length} participant(s) and ${actionCount} action(s), preserving question-level action promptI18n`);
 }
 
 async function checkInvalidFixture(fixture) {
@@ -105,6 +113,8 @@ for (const fixture of invalidFixtures) {
 
 const responseOverviewPage = await readText("app/classes/[classId]/assignments/[assignmentId]/responses/page.tsx");
 const feedbackImportForm = await readText("app/classes/[classId]/assignments/[assignmentId]/feedback/import/feedback-import-form.tsx");
+const feedbackImportActions = await readText("app/classes/[classId]/assignments/[assignmentId]/feedback/import/actions.ts");
+const prismaSchema = await readText("prisma/schema.prisma");
 const sharedFeedbackHelper = await readText("lib/feedback-helper-prompt.ts");
 const requiredPromptText = [
   "feedbackFormat",
@@ -135,6 +145,21 @@ if (!responseOverviewPage.includes("buildFullFeedbackPrompt")) {
 }
 if (!feedbackImportForm.includes("FEEDBACK_HELPER_PROMPT")) {
   fail("Feedback import form must use the shared feedback helper prompt");
+}
+if (!feedbackImportForm.includes("!compact ?") || !feedbackImportForm.includes("<ChatGptJsonHelper")) {
+  fail("Compact feedback import form must hide the older ChatGPT helper card while keeping it available on the full import page");
+}
+if (!feedbackImportActions.includes("releaseState: FeedbackReleaseState.DRAFT")) {
+  fail("Feedback import persistence must explicitly save newly imported participant feedback as Draft");
+}
+if (!feedbackImportActions.includes("where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT }") || !feedbackImportActions.includes("releaseState: FeedbackReleaseState.RELEASED")) {
+  fail("Feedback release action must continue to update Draft feedback to Released");
+}
+if (!feedbackImportActions.includes("questionFeedbackId: questionFeedback.id") || !feedbackImportActions.includes("promptI18n: action.promptI18n")) {
+  fail("Question-level follow-up action persistence must save promptI18n while preserving its questionFeedback link");
+}
+if (!prismaSchema.includes("releaseState           FeedbackReleaseState     @default(DRAFT)")) {
+  fail("ParticipantFeedback.releaseState schema default must be DRAFT");
 }
 if (failureCount === 0) {
   pass("shared feedback helper prompt includes import-contract and follow-up action id guardrails");

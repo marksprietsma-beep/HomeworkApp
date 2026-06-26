@@ -241,6 +241,7 @@ export async function saveFeedbackImport(
               sourceActionId: action.id,
               type: action.type as FeedbackFollowUpActionType,
               prompt: action.prompt,
+              promptI18n: action.promptI18n,
               required: action.required,
               status: "PENDING",
             },
