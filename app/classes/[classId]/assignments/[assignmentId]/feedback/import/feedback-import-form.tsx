@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
 import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT } from "../../../../../../../lib/feedback-helper-prompt";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
@@ -85,6 +85,8 @@ export function FeedbackImportForm({
   compact = false,
 }: Props) {
   const [rawJson, setRawJson] = useState("");
+  const [fileImportMessage, setFileImportMessage] = useState<{ ok: boolean; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, formAction, pending] = useActionState(
     saveFeedbackImport.bind(null, classId, assignmentId),
     { ok: false, message: "" },
@@ -109,6 +111,42 @@ export function FeedbackImportForm({
 
   function startNewImport() {
     setRawJson("");
+    setFileImportMessage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function importJsonFile(file: File | undefined) {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+      setFileImportMessage({ ok: false, message: "Choose a .json feedback file to import." });
+      return;
+    }
+
+    if (file.size === 0) {
+      setFileImportMessage({ ok: false, message: "This JSON file is empty. Choose a file exported from your feedback helper." });
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      if (text.trim().length === 0) {
+        setFileImportMessage({ ok: false, message: "This JSON file is empty. Choose a file exported from your feedback helper." });
+        return;
+      }
+
+      try {
+        JSON.parse(text);
+      } catch {
+        setFileImportMessage({ ok: false, message: "This file is not valid JSON. Check for missing commas, brackets or trailing text." });
+        return;
+      }
+
+      setRawJson(text);
+      setFileImportMessage({ ok: true, message: `Loaded ${file.name}. Review the validation summary before saving.` });
+    } catch {
+      setFileImportMessage({ ok: false, message: "Clarion could not read this file. Choose a local .json file and try again." });
+    }
   }
 
   return (
@@ -134,6 +172,41 @@ export function FeedbackImportForm({
           workflow until the teacher reviews it and chooses to release it to
           students.
         </p>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-950">Import JSON file</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Upload a feedback JSON file generated from the Clarion export. The file will be checked before feedback is saved.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="shrink-0 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
+            >
+              Import JSON file
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            aria-label="Import feedback JSON file"
+            onChange={(event) => {
+              void importJsonFile(event.target.files?.[0]);
+            }}
+          />
+          {fileImportMessage ? (
+            <p
+              role="status"
+              className={`mt-3 rounded-xl border p-3 text-sm font-semibold ${fileImportMessage.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
+            >
+              {fileImportMessage.message}
+            </p>
+          ) : null}
+        </div>
         {!compact ? (
           <ChatGptJsonHelper
             title="Ask ChatGPT for importable feedback JSON"
@@ -145,7 +218,10 @@ export function FeedbackImportForm({
         ) : null}
         <textarea
           value={rawJson}
-          onChange={(event) => setRawJson(event.target.value)}
+          onChange={(event) => {
+            setRawJson(event.target.value);
+            setFileImportMessage(null);
+          }}
           rows={24}
           className="mt-5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 xl:min-h-[34rem]"
           placeholder={placeholderJson}
@@ -194,7 +270,7 @@ export function FeedbackImportForm({
 
         {!hasInput ? (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            Paste feedback JSON to see validation feedback and a complete
+            Paste feedback JSON or import a .json file to see validation feedback and a complete
             preview.
           </div>
         ) : !parseResult.ok ? (
