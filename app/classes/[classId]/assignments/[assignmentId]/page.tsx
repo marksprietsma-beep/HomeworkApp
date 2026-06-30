@@ -286,9 +286,9 @@ export default async function HomeworkDetailPage({
                   {homework.status}
                 </span>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,auto)]">
+              <div className="mt-4 flex flex-col gap-4">
                 {canViewResponseOverview ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Responses</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
@@ -300,13 +300,13 @@ export default async function HomeworkDetailPage({
                     </div>
                   </div>
                 ) : null}
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                <div className="w-full min-w-0 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-900">Publishing status</p>
                   <p className="mt-2 text-sm text-slate-700">
                     Draft assignments stay visible to teachers here, but are hidden from student assigned-work views and blocked on student work pages.
                   </p>
                   {canManagePublishStatus ? (
-                    <form action={publishStatusAction} className="mt-3">
+                    <form action={publishStatusAction} className="mt-3 flex flex-wrap gap-2">
                       <input type="hidden" name="status" value={nextStatus} />
                       <button
                         type="submit"
@@ -325,7 +325,7 @@ export default async function HomeworkDetailPage({
                 </div>
               </div>
               {canViewResponseOverview ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="mt-4 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Assignment management</p>
                   <div className="mt-3 flex flex-wrap items-start gap-2">
                     {canEditAssignment ? (
