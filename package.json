@@ -18,7 +18,10 @@
     "smoke:core": "node scripts/core-workflow-smoke.mjs",
     "db:reset:local": "node scripts/db-reset-local.mjs",
     "db:clean-start:check": "node scripts/db-clean-start-check.mjs",
-    "check:timetable-analyser": "node scripts/timetable-analyser-fixture-check.mjs"
+    "check:timetable-analyser": "node scripts/timetable-analyser-fixture-check.mjs",
+    "list:classes": "node scripts/list-classes.mjs",
+    "list:assignments": "node scripts/list-assignments.mjs",
+    "seed:submissions": "node scripts/seed-submissions.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
