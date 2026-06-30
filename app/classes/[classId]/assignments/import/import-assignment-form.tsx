@@ -3,6 +3,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
+import { CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT, CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
 import { importAssignmentForClass, type ImportAssignmentActionState } from "./actions";
 
@@ -113,7 +114,11 @@ Use the Clarion assignment import JSON v1 structure:
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
 - Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, use natural Simplified Chinese, not literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
 
-Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.`;
+Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.
+
+${CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT}
+
+${CHATGPT_RAW_JSON_ONLY_INSTRUCTION}`;
 
 const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
   OPEN_TEXT: "Open text",

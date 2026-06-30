@@ -1,3 +1,5 @@
+import { CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT, CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "./chatgpt-json-quality-control";
+
 const FEEDBACK_HELPER_PROMPT_PREFIX = `Create teacher-review draft feedback for Clarion using only the exported Clarion response JSON below. The teacher will paste your JSON back into Clarion, review it, then release it to students. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 
 Context to use from the export:
@@ -28,7 +30,7 @@ Feedback import contract:
 __FEEDBACK_LANGUAGE_INSTRUCTION__
 - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
 - If bilingual feedback is requested, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
-- Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
+- Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions. Prefer participant-level followUpActions by default; use question-level followUpActions only when the action must be tied to a specific question.
 - For pseudocode/code-style questions, questionFeedback may also include optional string fields pseudocodeNotes, syntaxGuidance, and formattingGuidance. Use them only when helpful; do not require them for every question. Existing feedback fields are still required.
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 
@@ -53,7 +55,11 @@ Follow-up action requirements:
 - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
 - Each follow-up action must include id, type, prompt, and required. Add promptI18n with en and zh when bilingual feedback is requested.
 - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
-- Use required true unless the action is genuinely optional.
+- Use required true unless the action is genuinely optional. Prefer participant-level followUpActions unless question-level followUpActions are essential to avoid unnecessary deep nesting.
+
+${CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT}
+
+${CHATGPT_RAW_JSON_ONLY_INSTRUCTION}
 
 Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.`;
 

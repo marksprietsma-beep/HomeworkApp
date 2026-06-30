@@ -40,7 +40,7 @@ Mark can paste this into ChatGPT after the exported response JSON:
 > - English-only feedback remains valid. When bilingual feedback is requested, keep the existing English fields and additionally include optional i18n fields: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh } where useful.
 > - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
 > - If you include Chinese, write natural Simplified Chinese for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
-> - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions.
+> - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions. Prefer participant-level followUpActions by default; use question-level followUpActions only when the action must be tied to a specific question.
 > - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 > 
 > Follow-up action requirements:
@@ -50,7 +50,19 @@ Mark can paste this into ChatGPT after the exported response JSON:
 > - Example stable ids: pf1-action1, pf1-q86-action1, pf1-q91-action1.
 > - Each follow-up action must include id, type, prompt, and required. It may also include promptI18n when bilingual feedback is requested.
 > - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
-> - Use required true unless the action is genuinely optional.
+> - Use required true unless the action is genuinely optional. Prefer participant-level followUpActions unless question-level followUpActions are essential to avoid unnecessary deep nesting.
+> 
+> Quality-control requirement before returning:
+> 1. Build the complete JSON object first.
+> 2. Internally check that every { has a matching }, every [ has a matching ], and every array item is separated by a comma.
+> 3. Check that the whole response would succeed with JSON.parse.
+> 4. Do not return the response unless it is valid parseable JSON.
+> 5. Do not include Markdown fences, comments, explanations, trailing commas, or any text outside the JSON object.
+> 6. Prefer flatter structures where valid. Use participant-level followUpActions unless question-level followUpActions are essential.
+> 7. Preserve every ID exactly as provided in the Clarion export.
+> 8. If an attached export file is available, use the full attached file contents rather than relying only on visible pasted text in the chat.
+> 
+> Return raw importable JSON only. No Markdown. No explanation. No comments. No trailing commas.
 > 
 > Return valid importable feedback JSON only. After this prompt, paste the exported response JSON.
 
