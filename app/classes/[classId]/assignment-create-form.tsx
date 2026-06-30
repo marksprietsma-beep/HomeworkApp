@@ -167,67 +167,70 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_12rem_10rem]">
-                <label className="text-sm font-semibold text-slate-700">
+              <div className="mt-4 grid gap-4">
+                <label className="block text-sm font-semibold text-slate-700">
                   Prompt
                   <textarea
                     name="questionPrompt"
                     required
-                    rows={3}
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    rows={5}
+                    className="mt-2 min-h-32 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     placeholder="Write the question prompt"
                   />
                 </label>
-                <label className="text-sm font-semibold text-slate-700">
-                  Type
-                  <select
-                    name="questionType"
-                    value={question.questionType}
-                    onChange={(event) =>
-                      updateQuestionType(
-                        question.id,
-                        event.target.value as HomeworkQuestionType,
-                      )
-                    }
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                  >
-                    {Object.values(HomeworkQuestionType).map((type) => (
-                      <option key={type} value={type}>
-                        {questionTypeLabels[type]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm font-semibold text-slate-700">
-                  Response mode
-                  <select
-                    name="questionResponseMode"
-                    value={question.responseMode}
-                    disabled={question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE}
-                    onChange={(event) => updateResponseMode(question.id, event.target.value as HomeworkQuestionResponseMode)}
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                  >
-                    <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
-                    <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
-                  </select>
-                  {question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
-                  {question.responseMode === HomeworkQuestionResponseMode.PSEUDOCODE && question.questionType !== HomeworkQuestionType.MULTIPLE_CHOICE ? (
-                    <input type="hidden" name="questionPseudocodeDialect" value={PseudocodeDialect.CAMBRIDGE_9618_2026} />
-                  ) : (
-                    <input type="hidden" name="questionPseudocodeDialect" value="" />
-                  )}
-                </label>
-                <label className="text-sm font-semibold text-slate-700">
-                  Points (optional)
-                  <input
-                    name="questionPoints"
-                    type="number"
-                    min="1"
-                    step="1"
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    placeholder="e.g. 2"
-                  />
-                </label>
+
+                <div className="grid gap-4 md:grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(8rem,0.75fr)]">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Type
+                    <select
+                      name="questionType"
+                      value={question.questionType}
+                      onChange={(event) =>
+                        updateQuestionType(
+                          question.id,
+                          event.target.value as HomeworkQuestionType,
+                        )
+                      }
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    >
+                      {Object.values(HomeworkQuestionType).map((type) => (
+                        <option key={type} value={type}>
+                          {questionTypeLabels[type]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    Response mode
+                    <select
+                      name="questionResponseMode"
+                      value={question.responseMode}
+                      disabled={question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE}
+                      onChange={(event) => updateResponseMode(question.id, event.target.value as HomeworkQuestionResponseMode)}
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    >
+                      <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
+                      <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
+                    </select>
+                    {question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
+                    {question.responseMode === HomeworkQuestionResponseMode.PSEUDOCODE && question.questionType !== HomeworkQuestionType.MULTIPLE_CHOICE ? (
+                      <input type="hidden" name="questionPseudocodeDialect" value={PseudocodeDialect.CAMBRIDGE_9618_2026} />
+                    ) : (
+                      <input type="hidden" name="questionPseudocodeDialect" value="" />
+                    )}
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    Points (optional)
+                    <input
+                      name="questionPoints"
+                      type="number"
+                      min="1"
+                      step="1"
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                      placeholder="e.g. 2"
+                    />
+                  </label>
+                </div>
               </div>
 
               {question.questionType === HomeworkQuestionType.MULTIPLE_CHOICE ? (
