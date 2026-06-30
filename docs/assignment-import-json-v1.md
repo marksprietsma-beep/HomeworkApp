@@ -7,6 +7,18 @@ This document defines the stable JSON shape that ChatGPT should generate for ass
 Mark can paste this into ChatGPT when asking it to create an assignment:
 
 > Return only valid JSON using the Clarion assignment import JSON v1 format. Do not wrap it in Markdown. Use this root shape: `formatVersion`, `assignment`. Use my teacher generation context to create the homework, but do not copy teacher choices, syllabus notes, question mix, difficulty, marks expectations, glossary choices, or other prompt metadata into `assignment.instructions`. The assignment must include `title`, `instructions`, `status`, and ordered `questions`. `assignment.instructions` must be concise and student-facing, for example: “Answer all questions. Show your working where appropriate. Use full sentences for explanation questions.” `dueDate` is optional and must be `YYYY-MM-DD` or `null`. Status must be `DRAFT` or `PUBLISHED`. Question types must be `OPEN_TEXT` or `MULTIPLE_CHOICE`. Use `OPEN_TEXT` for any written answer, including longer explanation or evaluation questions. OPEN_TEXT questions may include optional `responseMode` set to `TEXT` or `PSEUDOCODE`; use `PSEUDOCODE` only when a code-style answer box is helpful. Pseudocode questions may include optional `pseudocodeDialect: "CAMBRIDGE_9618_2026"`. Questions may include optional `points` as a positive integer. Multiple choice questions must include an `options` array with stable string `id` values and `text` values. Optional question images use an `image` object with `path`, `caption`, and `altText`. English-only JSON still works. If bilingual output is requested, keep the required English fields and add optional i18n fields using only `en` and `zh`: `titleI18n`, `instructionsI18n`, question `textI18n`, option `textI18n`, and glossary `termI18n`/`definitionI18n`. Use natural Simplified Chinese, not literal machine-style translation.
+> 
+> Quality-control requirement before returning:
+> 1. Build the complete JSON object first.
+> 2. Internally check that every { has a matching }, every [ has a matching ], and every array item is separated by a comma.
+> 3. Check that the whole response would succeed with JSON.parse.
+> 4. Do not return the response unless it is valid parseable JSON.
+> 5. Do not include Markdown fences, comments, explanations, trailing commas, or any text outside the JSON object.
+> 6. Prefer flatter structures where valid. Use participant-level followUpActions unless question-level followUpActions are essential.
+> 7. Preserve every ID exactly as provided in the Clarion export.
+> 8. If an attached export file is available, use the full attached file contents rather than relying only on visible pasted text in the chat.
+> 
+> Return raw importable JSON only. No Markdown. No explanation. No comments. No trailing commas.
 
 ## Stable root shape
 
