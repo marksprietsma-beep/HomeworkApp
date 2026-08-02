@@ -1,0 +1,14 @@
+:root {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #f5ecd8;
+  background: #111712;
+  font-synthesis: none;
+}
+
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at top, #344a35, #111712 60%); }
+.app-shell { box-sizing: border-box; width: min(760px, calc(100% - 2rem)); margin: 0 auto; padding: 18vh 0 4rem; }
+.eyebrow { color: #d5b96d; font: 600 0.75rem system-ui, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+h1 { max-width: 650px; margin: 0.4rem 0 1rem; font-size: clamp(2.8rem, 9vw, 5.8rem); line-height: 0.95; }
+p, li { font-size: 1.1rem; line-height: 1.65; }
+section { margin-top: 3rem; padding: 1.25rem 1.5rem; border: 1px solid #6e7f5a; background: rgb(11 18 12 / 65%); }
+h2 { color: #d5b96d; }
