@@ -6,7 +6,7 @@ const source = fs.readFileSync(new URL("../lib/duty-scheduler.ts", import.meta.u
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const commonJsModule = { exports: {} };
 Function("exports", "module", compiled)(commonJsModule.exports, commonJsModule);
-const { autoScheduleDuties, getDutySchedulerStaff, getStaffDutyTarget, hasDutyTimetableClash } = commonJsModule.exports;
+const { autoScheduleDuties, getDutySchedulerStaff, getStaffDutyTarget, hasDutyTimetableClash, summariseManualSchedule } = commonJsModule.exports;
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const periods = value => Object.fromEntries(days.map(day => [day, value]));
 const staff = (staffCode, overrides = {}) => ({
@@ -55,5 +55,18 @@ const b = staff("B", { teachesP2ByDay: { ...periods(false), Monday: true } });
 const global = autoScheduleDuties([duty("m", "Monday"), duty("t", "Tuesday")], [a, b], { staffDutyCaps: { A: 1, B: 1 } });
 assert.deepEqual(global.duties.map(item => item.assignedStaffCode), ["A", "B"], "global allocation should reach zero P2 clashes");
 assert.equal(global.summary.warnings.some(warning => warning.includes("preference breach")), false);
+
+const lunchPair = [duty("lunch-a", "Monday", "Lunch A"), duty("lunch-b", "Monday", "Lunch B")];
+const oneLunchCandidate = autoScheduleDuties(lunchPair, [staff("ONLY")]);
+assert.equal(oneLunchCandidate.duties.filter(item => item.assignedStaffCode === "ONLY").length, 1, "one person cannot cover both lunches on the same day");
+assert.match(oneLunchCandidate.summary.warnings.join("\n"), /one-lunch-per-person-per-day constraint/, "an impossible allocation reports the hard constraint shortage");
+
+const twoLunchCandidates = autoScheduleDuties(lunchPair, [staff("LUNCH-A"), staff("LUNCH-B")]);
+assert.equal(new Set(twoLunchCandidates.duties.map(item => item.assignedStaffCode)).size, 2, "Lunch A and Lunch B are assigned to different people");
+assert.equal(twoLunchCandidates.duties.every(item => item.assignedStaffCode), true, "both lunches remain fillable when two people are available");
+
+const invalidManualLunches = lunchPair.map(item => ({ ...item, assignedStaffCode: "DUPLICATE" }));
+const invalidManualSummary = summariseManualSchedule(invalidManualLunches, [staff("DUPLICATE", { staffName: "Duplicate Person" })]);
+assert.match(invalidManualSummary.warnings.join("\n"), /Invalid duty allocation: Duplicate Person \(DUPLICATE\) is assigned both Lunch A and Lunch B on Monday\./, "manual schedules and exports identify same-day double-lunch assignments");
 
 console.log("Duty scheduler regression checks passed.");

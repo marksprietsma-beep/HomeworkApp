@@ -114,11 +114,16 @@ function initialState(staff: DutySchedulerStaff[]) {
 function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[], warnings: string[]): DutyScheduleSummary {
   const staffByCode = new Map(staff.map(member => [member.staffCode, member]));
   const sameTimeAssignments = new Map<string, DutyAssignmentSlot[]>();
+  const lunchAssignmentsByStaffDay = new Map<string, DutyAssignmentSlot[]>();
   const counts = initialState(staff);
   for (const duty of duties) {
     if (!duty.assignedStaffCode) continue;
     const duplicateKey = `${duty.assignedStaffCode}|${sameTimeKey(duty)}`;
     sameTimeAssignments.set(duplicateKey, [...(sameTimeAssignments.get(duplicateKey) ?? []), duty]);
+    if (isLunchDuty(duty.time)) {
+      const lunchKey = `${duty.assignedStaffCode}|${duty.day}`;
+      lunchAssignmentsByStaffDay.set(lunchKey, [...(lunchAssignmentsByStaffDay.get(lunchKey) ?? []), duty]);
+    }
     const state = counts.get(duty.assignedStaffCode);
     if (!state) continue;
     state.total += 1;
@@ -149,6 +154,13 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
     const [staffCode, timeKey] = key.split("|");
     const member = staffByCode.get(staffCode);
     warnings.push(`${member ? staffLabel(member) : staffCode} is assigned to ${duplicates.length} duties at the same time (${timeKey}): ${duplicates.map(duty => duty.description || duty.time).join(", ")}.`);
+  }
+  for (const [key, lunchAssignments] of lunchAssignmentsByStaffDay) {
+    const lunchTimes = new Set(lunchAssignments.map(duty => duty.time));
+    if (!lunchTimes.has("Lunch A") || !lunchTimes.has("Lunch B")) continue;
+    const [staffCode, day] = key.split("|");
+    const member = staffByCode.get(staffCode);
+    warnings.push(`Invalid duty allocation: ${member ? staffLabel(member) : staffCode} is assigned both Lunch A and Lunch B on ${day}.`);
   }
   for (const duty of duties) {
     if (!duty.assignedStaffCode) continue;
@@ -198,6 +210,7 @@ export function autoScheduleDuties(
   };
   const staffNodes = new Map(staff.map(member => [member.staffCode, node()]));
   const timeNodes = new Map<string, number>();
+  const lunchDayNodes = new Map<string, number>();
   for (const [slotIndex, duty] of scheduled.entries()) {
     const slotNode = node();
     addEdge(source, slotNode, 1, 0);
@@ -207,7 +220,19 @@ export function autoScheduleDuties(
       if (timeNode === undefined) {
         timeNode = node();
         timeNodes.set(key, timeNode);
-        addEdge(timeNode, staffNodes.get(member.staffCode)!, 1, 0);
+        if (isLunchDuty(duty.time)) {
+          const lunchDayKey = `${member.staffCode}|${duty.day}`;
+          let lunchDayNode = lunchDayNodes.get(lunchDayKey);
+          if (lunchDayNode === undefined) {
+            lunchDayNode = node();
+            lunchDayNodes.set(lunchDayKey, lunchDayNode);
+            // Hard capacity: a person can cover at most one lunch period per day.
+            addEdge(lunchDayNode, staffNodes.get(member.staffCode)!, 1, 0);
+          }
+          addEdge(timeNode, lunchDayNode, 1, 0);
+        } else {
+          addEdge(timeNode, staffNodes.get(member.staffCode)!, 1, 0);
+        }
       }
       // One clash outweighs every possible secondary fairness difference.
       const clashCost = hasDutyTimetableClash(member, duty) ? 1_000_000 : 0;
@@ -250,7 +275,7 @@ export function autoScheduleDuties(
   for (const edges of graph) for (const edge of edges) {
     if (edge.slotIndex !== undefined && edge.staffCode && edge.capacity === 0) scheduled[edge.slotIndex].assignedStaffCode = edge.staffCode;
   }
-  if (flow < scheduled.length) warnings.push(`No fully compliant solution exists: ${scheduled.length - flow} duty slot(s) remain unassigned because hard staff caps and same-time constraints leave insufficient capacity.`);
+  if (flow < scheduled.length) warnings.push(`No fully compliant solution exists: ${scheduled.length - flow} duty slot(s) remain unassigned because hard staff caps, same-time constraints, and the one-lunch-per-person-per-day constraint leave insufficient capacity.`);
   return { duties: scheduled, summary: buildSummary(scheduled, staff, warnings) };
 }
 
