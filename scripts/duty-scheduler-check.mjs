@@ -56,6 +56,30 @@ const global = autoScheduleDuties([duty("m", "Monday"), duty("t", "Tuesday")], [
 assert.deepEqual(global.duties.map(item => item.assignedStaffCode), ["A", "B"], "global allocation should reach zero P2 clashes");
 assert.equal(global.summary.warnings.some(warning => warning.includes("preference breach")), false);
 
+const targetThree = staff("TARGET-THREE", { effectiveLoad: 20 });
+const targetTwo = staff("TARGET-TWO", { effectiveLoad: 1, calculatedDutyTarget: 2, dutyTarget: 2, targetReason: "high-effective-load" });
+const breakCompetition = autoScheduleDuties([
+  duty("preferred-break", "Monday"),
+  duty("lunch-1", "Monday", "Lunch A"),
+  duty("lunch-2", "Tuesday", "Lunch A"),
+  duty("lunch-3", "Wednesday", "Lunch A"),
+  duty("lunch-4", "Thursday", "Lunch A"),
+], [targetTwo, targetThree]);
+assert.equal(breakCompetition.duties[0].assignedStaffCode, "TARGET-THREE", "an eligible target-3 member receives a break before target-2 staff");
+assert.equal(breakCompetition.duties.filter(item => item.assignedStaffCode === "TARGET-THREE").length, 3, "the break preference preserves effective duty targets");
+
+const unavailableTargetThree = staff("UNAVAILABLE-THREE", { teachesP2ByDay: { ...periods(false), Monday: true } });
+const availableTargetTwo = staff("AVAILABLE-TWO", { calculatedDutyTarget: 2, dutyTarget: 2, targetReason: "high-effective-load" });
+const availabilityCompetition = autoScheduleDuties([
+  duty("availability-break", "Monday"),
+  duty("availability-lunch-1", "Tuesday", "Lunch A"),
+  duty("availability-lunch-2", "Wednesday", "Lunch A"),
+  duty("availability-lunch-3", "Thursday", "Lunch A"),
+  duty("availability-lunch-4", "Friday", "Lunch A"),
+], [unavailableTargetThree, availableTargetTwo]);
+assert.equal(availabilityCompetition.duties[0].assignedStaffCode, "AVAILABLE-TWO", "target-2 staff retain breaks when target-3 staff have no P2-free break slot");
+assert.equal(availabilityCompetition.summary.warnings.some(warning => warning.includes("preference breach")), false, "the break preference must not introduce a P2 clash");
+
 const lunchPair = [duty("lunch-a", "Monday", "Lunch A"), duty("lunch-b", "Monday", "Lunch B")];
 const oneLunchCandidate = autoScheduleDuties(lunchPair, [staff("ONLY")]);
 assert.equal(oneLunchCandidate.duties.filter(item => item.assignedStaffCode === "ONLY").length, 1, "one person cannot cover both lunches on the same day");

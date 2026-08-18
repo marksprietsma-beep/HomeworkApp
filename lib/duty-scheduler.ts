@@ -33,6 +33,7 @@ export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
   fourthDutyBeforeTargetsMetPenalty: 4200,
   leadershipExtraDutyPenalty: 220,
   p2OrP5PreferenceBreachPenalty: 320,
+  eligibleTargetThreeFirstBreakBonus: -5000,
 } as const;
 
 function isLunchDuty(time: DutyTime) { return time === "Lunch A" || time === "Lunch B"; }
@@ -209,6 +210,20 @@ export function autoScheduleDuties(
     graph[to].push({ to: from, rev: graph[from].length - 1, capacity: 0, cost: -cost });
   };
   const staffNodes = new Map(staff.map(member => [member.staffCode, node()]));
+  const breakSlotCount = scheduled.filter(duty => duty.time === "Breaktime").length;
+  const breakEligibleTargetStaff = new Set(staff
+    .filter(member => member.dutyTarget >= 3 && scheduled.some(duty => duty.time === "Breaktime" && !hasDutyTimetableClash(member, duty)))
+    .map(member => member.staffCode));
+  const breakNodes = new Map<string, number>();
+  for (const member of staff) {
+    if (!breakEligibleTargetStaff.has(member.staffCode)) continue;
+    const breakNode = node();
+    breakNodes.set(member.staffCode, breakNode);
+    // Reward only the first break. Because this sits inside the min-cost flow, the
+    // preference is solved across the whole schedule rather than slot-by-slot.
+    addEdge(breakNode, staffNodes.get(member.staffCode)!, 1, DUTY_SCHEDULER_SCORING_CONSTANTS.eligibleTargetThreeFirstBreakBonus);
+    if (breakSlotCount > 1) addEdge(breakNode, staffNodes.get(member.staffCode)!, breakSlotCount - 1, 0);
+  }
   const timeNodes = new Map<string, number>();
   const lunchDayNodes = new Map<string, number>();
   for (const [slotIndex, duty] of scheduled.entries()) {
@@ -231,7 +246,7 @@ export function autoScheduleDuties(
           }
           addEdge(timeNode, lunchDayNode, 1, 0);
         } else {
-          addEdge(timeNode, staffNodes.get(member.staffCode)!, 1, 0);
+          addEdge(timeNode, breakNodes.get(member.staffCode) ?? staffNodes.get(member.staffCode)!, 1, 0);
         }
       }
       // One clash outweighs every possible secondary fairness difference.
