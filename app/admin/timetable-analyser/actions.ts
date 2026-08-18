@@ -9,6 +9,13 @@ function withLeadershipDefaults(analysis: TimetableAnalysis): TimetableAnalysis 
   return { ...analysis, staff: analysis.staff.map(staff => ({ ...staff, isLeadership: staff.isLeadership ?? false })) };
 }
 
+function retainManualStaff(analysis: TimetableAnalysis, savedAnalysis?: TimetableAnalysis): TimetableAnalysis {
+  const codes = new Set(analysis.staff.map(staff => staff.staffCode.trim().toLowerCase()));
+  const manual = (savedAnalysis?.staff ?? []).filter(staff => staff.isManual && !codes.has(staff.staffCode.trim().toLowerCase()));
+  const staff = [...analysis.staff, ...manual].sort((a, b) => a.staffName.localeCompare(b.staffName));
+  return { ...analysis, staff, totals: { ...analysis.totals, staffDetected: staff.length } };
+}
+
 function toSavedTimetableImport(row: { id: number; name: string; sourceFilename: string; isActive: boolean; rawAnalysisJson: unknown; createdAt: Date; updatedAt: Date }): SavedTimetableImport {
   return { id: row.id, name: row.name, sourceFilename: row.sourceFilename, isActive: row.isActive, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), analysis: withLeadershipDefaults(row.rawAnalysisJson as TimetableAnalysis) };
 }
@@ -19,6 +26,7 @@ export async function analyseTimetableUpload(formData: FormData) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const analysis = withLeadershipDefaults(await analyseTimetableWorkbook(buffer, file.name));
+    if (!analysis.staff.length || !analysis.parsedLessons.some(lesson => lesson.isTeachingLesson)) return { ok: false as const, error: "Workbook opened, but no timetable data was detected. Check whether the timetable sheet names or workbook layout match the supported format." };
     return { ok: true as const, analysis, sourceFilename: file.name };
   } catch (error) {
     return { ok: false as const, error: error instanceof Error ? error.message : "The timetable workbook could not be analysed." };
@@ -37,8 +45,12 @@ export async function saveTimetableImport(input: { id?: number; name: string; so
 
   try {
     const saved = await prisma.$transaction(async tx => {
+      const previous = input.id
+        ? await tx.timetableImport.findUnique({ where: { id: input.id } })
+        : await tx.timetableImport.findFirst({ where: { isActive: true }, orderBy: { updatedAt: "desc" } });
+      const analysis = retainManualStaff(withLeadershipDefaults(input.analysis), previous?.rawAnalysisJson as TimetableAnalysis | undefined);
       if (input.isActive) await tx.timetableImport.updateMany({ where: { isActive: true, ...(input.id ? { id: { not: input.id } } : {}) }, data: { isActive: false } });
-      const data = { name, sourceFilename: input.sourceFilename || "Unknown workbook", isActive: input.isActive, rawAnalysisJson: withLeadershipDefaults(input.analysis) };
+      const data = { name, sourceFilename: input.sourceFilename || "Unknown workbook", isActive: input.isActive, rawAnalysisJson: analysis };
       return input.id
         ? tx.timetableImport.update({ where: { id: input.id }, data })
         : tx.timetableImport.create({ data });
