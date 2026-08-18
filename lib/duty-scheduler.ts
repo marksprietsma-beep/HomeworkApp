@@ -7,8 +7,8 @@ export type DutySchoolDay = (typeof DUTY_SCHOOL_DAYS)[number];
 export type DutyDefinitionRow = { id: string; description: string; time: DutyTime };
 export type DutyAssignmentSlot = DutyDefinitionRow & { slotId: string; day: DutySchoolDay; assignedStaffCode: string };
 export type DutyRow = DutyAssignmentSlot;
-export type DutyTargetReason = "normal-load" | "high-effective-load" | "p5-every-day" | "leadership-moderate-high-load";
-export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean>; teachesP5EveryDay: boolean; dutyTarget: number; targetReason: DutyTargetReason };
+export type DutyTargetReason = "normal-load" | "high-effective-load" | "p5-every-day" | "leadership";
+export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP4ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean>; teachesP5EveryDay: boolean; dutyTarget: number; targetReason: DutyTargetReason };
 export type DutyCountDistribution = { "0": number; "1": number; "2": number; "3": number; "4+": number };
 export type DutyScheduleSummary = { totalDuties: number; staffConsidered: number; twoDutyMinimumApplies: boolean; dutyCountDistribution: DutyCountDistribution; staffBelowTwoDuties: DutySchedulerStaff[]; staffWithNoBreakDuty: DutySchedulerStaff[]; staffWithNoLunchDuty: DutySchedulerStaff[]; leadershipStaffWithExtraDuties: DutySchedulerStaff[]; staffOverTarget: DutySchedulerStaff[]; staffUnderTarget: DutySchedulerStaff[]; controlledFourthDutyStaff: DutySchedulerStaff[]; protectedStaffOverTarget: DutySchedulerStaff[]; targetBreachReasons: string[]; warnings: string[] };
 export type DutyScheduleResult = { duties: DutyAssignmentSlot[]; summary: DutyScheduleSummary };
@@ -38,9 +38,15 @@ export const DUTY_SCHEDULER_SCORING_CONSTANTS = {
 function isLunchDuty(time: DutyTime) { return time === "Lunch A" || time === "Lunch B"; }
 function staffLabel(staff: StaffSummary) { return `${staff.staffName} (${staff.staffCode})`; }
 function emptyCountMap() { return Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, 0])) as Record<DutySchoolDay, number>; }
-function teachesPeriodOnDay(entries: ParsedLessonEntry[], staffCode: string, day: DutySchoolDay, period: "P2" | "P5") { return entries.some(entry => entry.staffCode === staffCode && entry.day === day && entry.period === period && entry.isTeachingLesson); }
-function preferencePeriod(time: DutyTime) { return time === "Breaktime" ? "P2" : "P5"; }
-function hasPreferredFreePeriod(staff: DutySchedulerStaff, duty: DutyAssignmentSlot) { return duty.time === "Breaktime" ? !staff.teachesP2ByDay[duty.day] : !staff.teachesP5ByDay[duty.day]; }
+function teachesPeriodOnDay(entries: ParsedLessonEntry[], staffCode: string, day: DutySchoolDay, period: "P2" | "P4" | "P5") { return entries.some(entry => entry.staffCode === staffCode && entry.day === day && entry.period === period && entry.isTeachingLesson); }
+function preferencePeriod(time: DutyTime) { return time === "Breaktime" ? "P2" : "P4 and P5"; }
+/** The single source of truth used by allocation, review warnings and exports. */
+export function hasDutyTimetableClash(staff: DutySchedulerStaff, duty: Pick<DutyAssignmentSlot, "day" | "time">) {
+  return duty.time === "Breaktime"
+    ? staff.teachesP2ByDay[duty.day]
+    : staff.teachesP4ByDay[duty.day] && staff.teachesP5ByDay[duty.day];
+}
+function hasPreferredFreePeriod(staff: DutySchedulerStaff, duty: DutyAssignmentSlot) { return !hasDutyTimetableClash(staff, duty); }
 function sameTimeKey(duty: Pick<DutyAssignmentSlot, "day" | "time">) { return `${duty.day} ${duty.time}`; }
 function teachesP5EveryDay(teachesP5ByDay: Record<DutySchoolDay, boolean>) { return DUTY_SCHOOL_DAYS.every(day => teachesP5ByDay[day]); }
 
@@ -65,9 +71,9 @@ function isSuitableFourthDutyCandidate(staff: DutySchedulerStaff, state: Assignm
 }
 
 export function getStaffDutyTarget(staff: Pick<DutySchedulerStaff, "effectiveLoad" | "isLeadership" | "teachesP5EveryDay">): { dutyTarget: number; targetReason: DutyTargetReason } {
+  if (staff.isLeadership) return { dutyTarget: 2, targetReason: "leadership" };
   if (staff.effectiveLoad >= 22) return { dutyTarget: 2, targetReason: "high-effective-load" };
   if (staff.teachesP5EveryDay) return { dutyTarget: 2, targetReason: "p5-every-day" };
-  if (staff.isLeadership && staff.effectiveLoad >= 18) return { dutyTarget: 2, targetReason: "leadership-moderate-high-load" };
   return { dutyTarget: 3, targetReason: "normal-load" };
 }
 
@@ -86,9 +92,10 @@ export function getDutySchedulerStaff(analysis: TimetableAnalysis, manualLoadAdj
       const manualLoadAdjustment = manualLoadAdjustments[staff.staffCode] ?? 0;
       const effectiveLoad = staff.teachingLessonCount + manualLoadAdjustment;
       const teachesP2ByDay = Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P2")])) as Record<DutySchoolDay, boolean>;
+      const teachesP4ByDay = Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P4")])) as Record<DutySchoolDay, boolean>;
       const teachesP5ByDay = Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P5")])) as Record<DutySchoolDay, boolean>;
       const target = getStaffDutyTarget({ effectiveLoad, isLeadership: staff.isLeadership, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay) });
-      return { ...staff, manualLoadAdjustment, effectiveLoad, teachesP2ByDay, teachesP5ByDay, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay), ...target };
+      return { ...staff, manualLoadAdjustment, effectiveLoad, teachesP2ByDay, teachesP4ByDay, teachesP5ByDay, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay), ...target };
     });
 }
 
@@ -100,34 +107,6 @@ export function countStaffTeachingPeriodByDay(staff: DutySchedulerStaff[], perio
 
 function initialState(staff: DutySchedulerStaff[]) {
   return new Map(staff.map(member => [member.staffCode, { total: 0, breakCount: 0, lunchCount: 0 } satisfies AssignmentState]));
-}
-
-function scoreCandidate(staff: DutySchedulerStaff, duty: DutyAssignmentSlot, state: AssignmentState, slotsAllowDutyMinimum: boolean, slotsAllowTypeMinimum: boolean, staffStillBelowTwoDuties: number, feasibleStaffBelowTarget: number, feasibleSuitableFourthDutyStaff: number) {
-  const isLunch = isLunchDuty(duty.time);
-  const hasMinimumForType = isLunch ? state.lunchCount > 0 : state.breakCount > 0;
-  const hasBothMinimums = state.breakCount > 0 && state.lunchCount > 0;
-  let score = 0;
-
-  // Priority order after hard constraints: first move everyone to two total duties,
-  // then prefer third duties before fourth duties. Workload only breaks ties inside
-  // the same duty-count band.
-  if (slotsAllowDutyMinimum && state.total < 2) score += DUTY_SCHEDULER_SCORING_CONSTANTS.belowTwoDutyMinimumBonus * (2 - state.total);
-  if (slotsAllowDutyMinimum && state.total >= 3 && staffStillBelowTwoDuties > 0) score += DUTY_SCHEDULER_SCORING_CONSTANTS.thirdDutyBeforeFourthPenalty * 2;
-  if (state.total >= 3) score += isSuitableFourthDutyCandidate(staff, state, duty) ? DUTY_SCHEDULER_SCORING_CONSTANTS.suitableFourthDutyPenalty : DUTY_SCHEDULER_SCORING_CONSTANTS.thirdDutyBeforeFourthPenalty;
-  if (state.total < staff.dutyTarget) score += DUTY_SCHEDULER_SCORING_CONSTANTS.belowDutyTargetBonus * (staff.dutyTarget - state.total);
-  if (state.total >= staff.dutyTarget) score += DUTY_SCHEDULER_SCORING_CONSTANTS.atOrAboveDutyTargetPenalty * (state.total - staff.dutyTarget + 1);
-  if (state.total >= staff.dutyTarget && isProtectedTargetTwoStaff(staff)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedTargetBreachPenalty * (state.total - staff.dutyTarget + 1);
-  if (state.total >= 3 && feasibleStaffBelowTarget > 0 && !isSuitableFourthDutyCandidate(staff, state, duty)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.fourthDutyBeforeTargetsMetPenalty;
-  if (state.total >= 3 && isProtectedTargetTwoStaff(staff)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedFourthDutyPenalty;
-  if (staff.dutyTarget === 2 && state.total >= 2 && feasibleSuitableFourthDutyStaff > 0) score += DUTY_SCHEDULER_SCORING_CONSTANTS.protectedTargetBreachPenalty;
-  score += state.total * DUTY_SCHEDULER_SCORING_CONSTANTS.existingDutyPenalty;
-  score += staff.effectiveLoad * DUTY_SCHEDULER_SCORING_CONSTANTS.teachingLessonLoadPenalty;
-  if (staff.isTutor) score += DUTY_SCHEDULER_SCORING_CONSTANTS.tutorPenalty;
-  if (hasMinimumForType) score += slotsAllowTypeMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.repeatDutyTypePenaltyWhenMinimumSlotsDoNotAllow;
-  if (!hasMinimumForType) score += slotsAllowTypeMinimum ? DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsAllow : DUTY_SCHEDULER_SCORING_CONSTANTS.missingDutyTypeBonusWhenMinimumSlotsDoNotAllow;
-  if (staff.isLeadership && hasBothMinimums) score += DUTY_SCHEDULER_SCORING_CONSTANTS.leadershipExtraDutyPenalty;
-  if (!hasPreferredFreePeriod(staff, duty)) score += DUTY_SCHEDULER_SCORING_CONSTANTS.p2OrP5PreferenceBreachPenalty;
-  return score;
 }
 
 function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[], warnings: string[]): DutyScheduleSummary {
@@ -193,33 +172,79 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
   return { totalDuties: duties.length, staffConsidered: staff.length, twoDutyMinimumApplies, dutyCountDistribution, staffBelowTwoDuties, staffWithNoBreakDuty, staffWithNoLunchDuty, leadershipStaffWithExtraDuties, staffOverTarget, staffUnderTarget, controlledFourthDutyStaff, protectedStaffOverTarget, targetBreachReasons, warnings: [...new Set(warnings)] };
 }
 
-export function autoScheduleDuties(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[]): DutyScheduleResult {
+type FlowEdge = { to: number; rev: number; capacity: number; cost: number; slotIndex?: number; staffCode?: string };
+
+/** Min-cost max-flow makes timetable clashes a schedule-wide objective, rather than
+ * allowing duty-definition order to decide which staff absorb them. */
+export function autoScheduleDuties(
+  duties: DutyAssignmentSlot[],
+  staff: DutySchedulerStaff[],
+  options: { leadershipDutyCap?: number; staffDutyCaps?: Record<string, number> } = {},
+): DutyScheduleResult {
   const warnings: string[] = [];
   if (!staff.length) return { duties: duties.map(duty => ({ ...duty, assignedStaffCode: "" })), summary: buildSummary(duties, staff, ["No eligible staff were found in the active saved timetable."]) };
   const scheduled = duties.map(duty => ({ ...duty, assignedStaffCode: "" }));
-  const counts = initialState(staff);
-  const breakSlotsAllowMinimum = scheduled.filter(duty => duty.time === "Breaktime").length >= staff.length;
-  const lunchSlotsAllowMinimum = scheduled.filter(duty => isLunchDuty(duty.time)).length >= staff.length;
-
-  for (const duty of scheduled) {
-    const slotsAllowTypeMinimum = duty.time === "Breaktime" ? breakSlotsAllowMinimum : lunchSlotsAllowMinimum;
-    const slotsAllowDutyMinimum = scheduled.length >= staff.length * 2;
-    const staffStillBelowTwoDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < 2).length;
-    const alreadyAssignedAtSameTime = new Set(scheduled.filter(slot => slot.slotId !== duty.slotId && slot.day === duty.day && slot.time === duty.time && slot.assignedStaffCode).map(slot => slot.assignedStaffCode));
-    const feasibleStaffBelowTarget = staff.filter(member => !alreadyAssignedAtSameTime.has(member.staffCode) && (counts.get(member.staffCode)?.total ?? 0) < member.dutyTarget).length;
-    const feasibleSuitableFourthDutyStaff = staff.filter(member => !alreadyAssignedAtSameTime.has(member.staffCode) && isSuitableFourthDutyCandidate(member, counts.get(member.staffCode)!, duty)).length;
-    const ranked = staff
-      .filter(member => !alreadyAssignedAtSameTime.has(member.staffCode))
-      .map(member => ({ member, score: scoreCandidate(member, duty, counts.get(member.staffCode)!, slotsAllowDutyMinimum, slotsAllowTypeMinimum, staffStillBelowTwoDuties, feasibleStaffBelowTarget, feasibleSuitableFourthDutyStaff) }))
-      .sort((a, b) => a.score - b.score || a.member.effectiveLoad - b.member.effectiveLoad || a.member.staffName.localeCompare(b.member.staffName));
-    const selected = ranked[0]?.member;
-    if (!selected) { warnings.push(`Could not assign ${duty.day} ${duty.time} duty "${duty.description || duty.time}" because every eligible staff member was already assigned to another duty at that same time.`); continue; }
-    duty.assignedStaffCode = selected.staffCode;
-    const state = counts.get(selected.staffCode)!;
-    state.total += 1;
-    if (duty.time === "Breaktime") state.breakCount += 1; else state.lunchCount += 1;
-    if (!hasPreferredFreePeriod(selected, duty)) warnings.push(`${staffLabel(selected)} was assigned ${duty.day} ${duty.time} despite teaching ${duty.day} ${preferencePeriod(duty.time)} because the scheduler could not find a better weighted option.`);
+  const graph: FlowEdge[][] = [];
+  const node = () => (graph.push([]), graph.length - 1);
+  const source = node();
+  const sink = node();
+  const addEdge = (from: number, to: number, capacity: number, cost: number, metadata: Partial<FlowEdge> = {}) => {
+    graph[from].push({ to, rev: graph[to].length, capacity, cost, ...metadata });
+    graph[to].push({ to: from, rev: graph[from].length - 1, capacity: 0, cost: -cost });
+  };
+  const staffNodes = new Map(staff.map(member => [member.staffCode, node()]));
+  const timeNodes = new Map<string, number>();
+  for (const [slotIndex, duty] of scheduled.entries()) {
+    const slotNode = node();
+    addEdge(source, slotNode, 1, 0);
+    for (const member of staff) {
+      const key = `${member.staffCode}|${sameTimeKey(duty)}`;
+      let timeNode = timeNodes.get(key);
+      if (timeNode === undefined) {
+        timeNode = node();
+        timeNodes.set(key, timeNode);
+        addEdge(timeNode, staffNodes.get(member.staffCode)!, 1, 0);
+      }
+      // One clash outweighs every possible secondary fairness difference.
+      const clashCost = hasDutyTimetableClash(member, duty) ? 1_000_000 : 0;
+      addEdge(slotNode, timeNode, 1, clashCost, { slotIndex, staffCode: member.staffCode });
+    }
   }
+  for (const member of staff) {
+    const configuredCap = options.staffDutyCaps?.[member.staffCode];
+    const cap = configuredCap ?? (member.isLeadership ? options.leadershipDutyCap ?? 2 : scheduled.length);
+    for (let dutyNumber = 1; dutyNumber <= cap; dutyNumber += 1) {
+      const targetPenalty = dutyNumber <= member.dutyTarget ? 0 : 10_000 * (dutyNumber - member.dutyTarget);
+      addEdge(staffNodes.get(member.staffCode)!, sink, 1, targetPenalty + dutyNumber * 100 + member.effectiveLoad);
+    }
+  }
+  let flow = 0;
+  while (flow < scheduled.length) {
+    const distance = graph.map(() => Number.POSITIVE_INFINITY);
+    const previousNode = graph.map(() => -1);
+    const previousEdge = graph.map(() => -1);
+    const queued = graph.map(() => false);
+    const queue = [source]; distance[source] = 0; queued[source] = true;
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const from = queue[cursor]; queued[from] = false;
+      graph[from].forEach((edge, edgeIndex) => {
+        if (edge.capacity && distance[edge.to] > distance[from] + edge.cost) {
+          distance[edge.to] = distance[from] + edge.cost; previousNode[edge.to] = from; previousEdge[edge.to] = edgeIndex;
+          if (!queued[edge.to]) { queue.push(edge.to); queued[edge.to] = true; }
+        }
+      });
+    }
+    if (previousNode[sink] < 0) break;
+    for (let current = sink; current !== source; current = previousNode[current]) {
+      const edge = graph[previousNode[current]][previousEdge[current]];
+      edge.capacity -= 1; graph[current][edge.rev].capacity += 1;
+    }
+    flow += 1;
+  }
+  for (const edges of graph) for (const edge of edges) {
+    if (edge.slotIndex !== undefined && edge.staffCode && edge.capacity === 0) scheduled[edge.slotIndex].assignedStaffCode = edge.staffCode;
+  }
+  if (flow < scheduled.length) warnings.push(`No fully compliant solution exists: ${scheduled.length - flow} duty slot(s) remain unassigned because hard staff caps and same-time constraints leave insufficient capacity.`);
   return { duties: scheduled, summary: buildSummary(scheduled, staff, warnings) };
 }
 
