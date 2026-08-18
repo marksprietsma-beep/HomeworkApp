@@ -8,7 +8,7 @@ export type DutyDefinitionRow = { id: string; description: string; time: DutyTim
 export type DutyAssignmentSlot = DutyDefinitionRow & { slotId: string; day: DutySchoolDay; assignedStaffCode: string };
 export type DutyRow = DutyAssignmentSlot;
 export type DutyTargetReason = "normal-load" | "high-effective-load" | "p5-every-day" | "leadership";
-export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP4ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean>; teachesP5EveryDay: boolean; dutyTarget: number; targetReason: DutyTargetReason };
+export type DutySchedulerStaff = StaffSummary & { manualLoadAdjustment: number; effectiveLoad: number; teachesP2ByDay: Record<DutySchoolDay, boolean>; teachesP4ByDay: Record<DutySchoolDay, boolean>; teachesP5ByDay: Record<DutySchoolDay, boolean>; teachesP5EveryDay: boolean; calculatedDutyTarget: number; dutyTargetOverride: number | null; dutyTarget: number; targetReason: DutyTargetReason };
 export type DutyCountDistribution = { "0": number; "1": number; "2": number; "3": number; "4+": number };
 export type DutyScheduleSummary = { totalDuties: number; staffConsidered: number; twoDutyMinimumApplies: boolean; dutyCountDistribution: DutyCountDistribution; staffBelowTwoDuties: DutySchedulerStaff[]; staffWithNoBreakDuty: DutySchedulerStaff[]; staffWithNoLunchDuty: DutySchedulerStaff[]; leadershipStaffWithExtraDuties: DutySchedulerStaff[]; staffOverTarget: DutySchedulerStaff[]; staffUnderTarget: DutySchedulerStaff[]; controlledFourthDutyStaff: DutySchedulerStaff[]; protectedStaffOverTarget: DutySchedulerStaff[]; targetBreachReasons: string[]; warnings: string[] };
 export type DutyScheduleResult = { duties: DutyAssignmentSlot[]; summary: DutyScheduleSummary };
@@ -85,7 +85,7 @@ export function expandDutyDefinitions(definitions: DutyDefinitionRow[], existing
   }));
 }
 
-export function getDutySchedulerStaff(analysis: TimetableAnalysis, manualLoadAdjustments: Record<string, number> = {}): DutySchedulerStaff[] {
+export function getDutySchedulerStaff(analysis: TimetableAnalysis, manualLoadAdjustments: Record<string, number> = {}, dutyTargetOverrides: Record<string, number> = {}): DutySchedulerStaff[] {
   return [...analysis.staff]
     .sort((a, b) => a.staffName.localeCompare(b.staffName, undefined, { numeric: true, sensitivity: "base" }))
     .map(staff => {
@@ -95,7 +95,9 @@ export function getDutySchedulerStaff(analysis: TimetableAnalysis, manualLoadAdj
       const teachesP4ByDay = Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P4")])) as Record<DutySchoolDay, boolean>;
       const teachesP5ByDay = Object.fromEntries(DUTY_SCHOOL_DAYS.map(day => [day, teachesPeriodOnDay(analysis.parsedLessons, staff.staffCode, day, "P5")])) as Record<DutySchoolDay, boolean>;
       const target = getStaffDutyTarget({ effectiveLoad, isLeadership: staff.isLeadership, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay) });
-      return { ...staff, manualLoadAdjustment, effectiveLoad, teachesP2ByDay, teachesP4ByDay, teachesP5ByDay, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay), ...target };
+      const savedOverride = dutyTargetOverrides[staff.staffCode];
+      const dutyTargetOverride = Number.isInteger(savedOverride) && savedOverride >= 0 ? savedOverride : null;
+      return { ...staff, manualLoadAdjustment, effectiveLoad, teachesP2ByDay, teachesP4ByDay, teachesP5ByDay, teachesP5EveryDay: teachesP5EveryDay(teachesP5ByDay), calculatedDutyTarget: target.dutyTarget, dutyTargetOverride, dutyTarget: dutyTargetOverride ?? target.dutyTarget, targetReason: target.targetReason };
     });
 }
 
@@ -131,10 +133,10 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
     const total = counts.get(member.staffCode)?.total ?? 0;
     dutyCountDistribution[total >= 4 ? "4+" : String(total) as "0" | "1" | "2" | "3"] += 1;
   }
-  const staffBelowTwoDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < 2);
+  const staffBelowTwoDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < Math.min(2, member.dutyTarget));
   const staffWithFourOrMoreDuties = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) >= 4);
   const controlledFourthDutyStaff = staffWithFourOrMoreDuties.filter(member => isSuitableFourthDutyCandidate(member, counts.get(member.staffCode)!));
-  const leadershipStaffWithExtraDuties = staff.filter(member => member.isLeadership && (counts.get(member.staffCode)?.total ?? 0) > 2);
+  const leadershipStaffWithExtraDuties = staff.filter(member => member.isLeadership && (counts.get(member.staffCode)?.total ?? 0) > member.dutyTarget);
   const staffOverTarget = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) > member.dutyTarget);
   const staffUnderTarget = staff.filter(member => (counts.get(member.staffCode)?.total ?? 0) < member.dutyTarget);
   const protectedStaffOverTarget = staffOverTarget.filter(isProtectedTargetTwoStaff);
@@ -163,7 +165,9 @@ function buildSummary(duties: DutyAssignmentSlot[], staff: DutySchedulerStaff[],
   if (staff.length && duties.filter(d => isLunchDuty(d.time)).length < staff.length) warnings.push("There are fewer Lunch duty slots than eligible staff, so not every staff member can receive a Lunch duty.");
   if (staffWithNoBreakDuty.length) warnings.push(`${staffWithNoBreakDuty.length} staff member(s) currently have no Breaktime duty.`);
   if (staffWithNoLunchDuty.length) warnings.push(`${staffWithNoLunchDuty.length} staff member(s) currently have no Lunch duty.`);
-  if (leadershipStaffWithExtraDuties.length) warnings.push(`${leadershipStaffWithExtraDuties.length} leadership staff member(s) have more than the two minimum expected duties.`);
+  const effectiveTargetTotal = staff.reduce((total, member) => total + member.dutyTarget, 0);
+  if (effectiveTargetTotal !== duties.length) warnings.push(`Effective duty targets total ${effectiveTargetTotal}, but ${duties.length} duty slots are available (${Math.abs(effectiveTargetTotal - duties.length)} ${effectiveTargetTotal < duties.length ? "more slot(s) than targets" : "more target duty/duties than slots"}).`);
+  if (leadershipStaffWithExtraDuties.length) warnings.push(`${leadershipStaffWithExtraDuties.length} leadership staff member(s) are over their effective duty target.`);
   if (controlledFourthDutyStaff.length) warnings.push(`${controlledFourthDutyStaff.length} suitable target-3 staff member(s) received controlled 4th duties to protect high-load/P5-heavy target-2 staff: ${controlledFourthDutyStaff.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget}`).join(", ")}.`);
   if (staffOverTarget.length) warnings.push(`${staffOverTarget.length} staff member(s) are over their duty target: ${staffOverTarget.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget} (${member.targetReason})`).join(", ")}.`);
   if (protectedStaffOverTarget.length) warnings.push(`${protectedStaffOverTarget.length} protected target-2 staff member(s) are over target and should be reviewed before relying on this schedule: ${protectedStaffOverTarget.map(member => `${staffLabel(member)} ${counts.get(member.staffCode)?.total ?? 0}/${member.dutyTarget} (${member.targetReason})`).join(", ")}.`);
@@ -212,7 +216,9 @@ export function autoScheduleDuties(
   }
   for (const member of staff) {
     const configuredCap = options.staffDutyCaps?.[member.staffCode];
-    const cap = configuredCap ?? (member.isLeadership ? options.leadershipDutyCap ?? 2 : scheduled.length);
+    // A manual target is authoritative: the legacy leadership cap may constrain the
+    // calculated default, but must never prevent an explicitly raised target.
+    const cap = configuredCap ?? (member.isLeadership ? Math.max(options.leadershipDutyCap ?? 2, member.dutyTarget) : scheduled.length);
     for (let dutyNumber = 1; dutyNumber <= cap; dutyNumber += 1) {
       const targetPenalty = dutyNumber <= member.dutyTarget ? 0 : 10_000 * (dutyNumber - member.dutyTarget);
       addEdge(staffNodes.get(member.staffCode)!, sink, 1, targetPenalty + dutyNumber * 100 + member.effectiveLoad);

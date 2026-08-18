@@ -6,18 +6,24 @@ const source = fs.readFileSync(new URL("../lib/duty-scheduler.ts", import.meta.u
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const commonJsModule = { exports: {} };
 Function("exports", "module", compiled)(commonJsModule.exports, commonJsModule);
-const { autoScheduleDuties, getStaffDutyTarget, hasDutyTimetableClash } = commonJsModule.exports;
+const { autoScheduleDuties, getDutySchedulerStaff, getStaffDutyTarget, hasDutyTimetableClash } = commonJsModule.exports;
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const periods = value => Object.fromEntries(days.map(day => [day, value]));
 const staff = (staffCode, overrides = {}) => ({
   staffCode, staffName: staffCode, isLeadership: false, isTutor: false,
   effectiveLoad: 10, teachingLessonCount: 10, manualLoadAdjustment: 0,
   teachesP2ByDay: periods(false), teachesP4ByDay: periods(false), teachesP5ByDay: periods(false),
-  teachesP5EveryDay: false, dutyTarget: 3, targetReason: "normal-load", ...overrides,
+  teachesP5EveryDay: false, calculatedDutyTarget: 3, dutyTargetOverride: null, dutyTarget: 3, targetReason: "normal-load", ...overrides,
 });
 const duty = (slotId, day, time = "Breaktime") => ({ id: slotId, slotId, day, time, description: slotId, assignedStaffCode: "" });
 
 assert.deepEqual(getStaffDutyTarget({ effectiveLoad: 10, isLeadership: true, teachesP5EveryDay: false }), { dutyTarget: 2, targetReason: "leadership" });
+
+const analysis = { staff: [{ staffCode: "CALC", staffName: "Calculated", teachingLessonCount: 10, isLeadership: false, isTutor: false, tutorGroups: [], subjects: [], yearGroups: [], classGroups: [] }], parsedLessons: [] };
+assert.equal(getDutySchedulerStaff(analysis)[0].dutyTarget, 3, "the calculated target is used without an override");
+assert.deepEqual(getDutySchedulerStaff(analysis, {}, { CALC: 2 })[0], { ...getDutySchedulerStaff(analysis)[0], dutyTargetOverride: 2, dutyTarget: 2 }, "decreased overrides replace the calculated target");
+assert.equal(getDutySchedulerStaff(analysis, {}, { CALC: 4 })[0].dutyTarget, 4, "increased overrides have no universal maximum");
+assert.equal(getDutySchedulerStaff(analysis, {}, { CALC: -1 })[0].dutyTarget, 3, "invalid negative overrides reset to the calculated target");
 
 const lunchStaff = staff("L", { teachesP5ByDay: periods(true) });
 assert.equal(hasDutyTimetableClash(lunchStaff, duty("l1", "Monday", "Lunch A")), false, "P5 occupied and P4 free is acceptable");
@@ -30,6 +36,19 @@ const leader = staff("LEAD", { isLeadership: true, dutyTarget: 2, targetReason: 
 const capped = autoScheduleDuties([duty("a", "Monday"), duty("b", "Tuesday"), duty("c", "Wednesday")], [leader]);
 assert.equal(capped.duties.filter(item => item.assignedStaffCode === "LEAD").length, 2);
 assert.match(capped.summary.warnings.join("\n"), /No fully compliant solution exists/);
+
+const overriddenLeader = staff("LEAD-OVERRIDE", { isLeadership: true, calculatedDutyTarget: 2, dutyTargetOverride: 3, dutyTarget: 3, targetReason: "leadership" });
+const overrideResult = autoScheduleDuties([duty("o1", "Monday"), duty("o2", "Tuesday"), duty("o3", "Wednesday")], [overriddenLeader]);
+assert.equal(overrideResult.duties.filter(item => item.assignedStaffCode === overriddenLeader.staffCode).length, 3, "a manual leadership target must take precedence over the default cap");
+assert.equal(overrideResult.summary.staffUnderTarget.length, 0);
+
+const zeroTarget = staff("ZERO", { dutyTargetOverride: 0, dutyTarget: 0 });
+const zeroSummary = autoScheduleDuties([], [zeroTarget]).summary;
+assert.equal(zeroSummary.staffBelowTwoDuties.length, 0, "a zero target must not create a minimum-duty warning");
+assert.equal(zeroSummary.staffUnderTarget.length, 0);
+
+const mismatchedTargets = autoScheduleDuties([duty("only", "Monday")], [staff("TARGET-THREE")]);
+assert.match(mismatchedTargets.summary.warnings.join("\n"), /Effective duty targets total 3, but 1 duty slots are available/);
 
 const a = staff("A", { teachesP2ByDay: { ...periods(false), Tuesday: true } });
 const b = staff("B", { teachesP2ByDay: { ...periods(false), Monday: true } });
