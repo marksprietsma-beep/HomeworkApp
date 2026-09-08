@@ -3,7 +3,7 @@
 import { HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 
 export async function updateAssignmentPublishStatus(
@@ -20,7 +20,7 @@ export async function updateAssignmentPublishStatus(
     throw new Error("Assignments can only be changed to draft or published.");
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
 
   if (!selectedUser || selectedUser.role === UserRole.STUDENT) {
     throw new Error("Switch to an admin or the assigned teacher to change assignment status.");
@@ -68,7 +68,7 @@ export async function duplicateAssignmentForClass(
     throw new Error("Choose an existing assignment to duplicate.");
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
 
   if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
     throw new Error("Switch to the class teacher user to duplicate this assignment.");

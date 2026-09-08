@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClarionLogo } from "../../components/clarion-logo";
 import { AccountStatus, UserRole } from "@prisma/client";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 import { CreateAdminClassForm, EditableClassRow } from "./class-management-forms";
@@ -9,7 +9,7 @@ import { CreateAdminClassForm, EditableClassRow } from "./class-management-forms
 export const dynamic = "force-dynamic";
 
 export default async function AdminClassesPage() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   const canManage = canManageClasses(selectedUser);
   if (!canManage) return <main className="mx-auto min-h-screen max-w-4xl px-6 py-16"><Link href="/" className="text-sm font-semibold text-amber-700 hover:text-amber-800">← Back to dashboard</Link><section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-8 text-left shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Admin only</p><h1 className="mt-3 text-3xl font-bold text-slate-950">Class management is unavailable</h1><p className="mt-3 text-sm leading-6 text-slate-700">Switch the temporary local development user to an ADMIN account to create or manage classes. Current user: {selectedUser ? `${selectedUser.displayName} (${selectedUser.role})` : "none selected"}.</p></section></main>;
 

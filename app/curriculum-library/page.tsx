@@ -2,7 +2,7 @@ import { CurriculumLibraryVisibility, HomeworkAssignmentStatus } from "@prisma/c
 import Link from "next/link";
 import { assignLibraryItemToClass, archiveLibraryItem, duplicateLibraryItem, updateLibraryItemMetadata } from "./actions";
 import { canManageLibraryItem, getAssignableClassesForUser, getCurriculumLibraryData, isAssignmentTemplate, parseCurriculumLibraryFilters } from "../../lib/curriculum-library";
-import { getSelectedLocalDevelopmentUser } from "../../lib/local-dev-user";
+import { getCurrentUserState } from "../../lib/auth";
 import { getShareableTeamsForUser } from "../../lib/department-teams";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ function formatDate(date: Date) {
 export default async function CurriculumLibraryPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const filters = parseCurriculumLibraryFilters(resolvedSearchParams);
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   const [data, classes, teams] = await Promise.all([
     getCurriculumLibraryData(filters, selectedUser),
     getAssignableClassesForUser(selectedUser),

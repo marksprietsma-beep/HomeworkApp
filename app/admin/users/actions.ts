@@ -2,7 +2,7 @@
 
 import { AccountStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../lib/auth";
 import { hashPassword } from "../../../lib/passwords";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
@@ -50,7 +50,7 @@ function parseStatus(value: string) {
 }
 
 async function assertAdminUser() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   if (!canManageUsers(selectedUser)) {
     throw new Error("User management is only available to ADMIN users.");
   }
@@ -138,7 +138,7 @@ export async function createManagedUser(
     if (existing) throw new Error("A user with this email/login identifier already exists.");
 
     await prisma.user.create({
-      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: hashPassword(temporaryPassword), isDevelopmentUser: false },
+      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: await hashPassword(temporaryPassword), isDevelopmentUser: false },
     });
 
     revalidateUserManagement();

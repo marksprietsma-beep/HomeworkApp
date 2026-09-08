@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ClarionLogo } from "../../components/clarion-logo";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../lib/auth";
 import { isAdmin } from "../../../lib/permissions";
 import { TimetableAnalyserForm } from "./timetable-analyser-form";
 import { getActiveTimetableImport } from "./actions";
@@ -8,7 +8,7 @@ import { getActiveTimetableImport } from "./actions";
 export const dynamic = "force-dynamic";
 
 export default async function AdminTimetableAnalyserPage() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   const canAnalyse = isAdmin(selectedUser);
 
   if (!canAnalyse) {

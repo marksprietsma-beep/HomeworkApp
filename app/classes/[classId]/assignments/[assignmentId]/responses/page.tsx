@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../../../../lib/auth";
 import { getFeedbackImportPageData } from "../../../../../../lib/feedback-import";
 import { buildFullFeedbackPrompt } from "../../../../../../lib/feedback-helper-prompt";
 import { assignmentResponseExportHasBilingualContent, getAssignmentResponseExportData } from "../../../../../../lib/response-export";
@@ -48,7 +48,7 @@ export default async function ResponseOverviewPage({
     notFound();
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   const [{ overview, found }, exportResult, importData] = await Promise.all([
     getResponseOverviewData(parsedClassId, parsedAssignmentId, selectedUser),
     getAssignmentResponseExportData(parsedClassId, parsedAssignmentId, selectedUser),
