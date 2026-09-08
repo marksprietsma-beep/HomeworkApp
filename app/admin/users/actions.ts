@@ -138,7 +138,7 @@ export async function createManagedUser(
     if (existing) throw new Error("A user with this email/login identifier already exists.");
 
     await prisma.user.create({
-      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: await hashPassword(temporaryPassword), isDevelopmentUser: false },
+      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, isDevelopmentUser: false },
     });
 
     revalidateUserManagement();

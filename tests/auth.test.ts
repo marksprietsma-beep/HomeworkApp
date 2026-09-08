@@ -4,13 +4,15 @@ import { scrypt as scryptCallback } from "node:crypto";
 import test from "node:test";
 import { AccountStatus, UserRole, type User } from "@prisma/client";
 import { authenticateCredentials, getDummyPasswordHash } from "../lib/credential-auth";
-import { requireAuthenticatedUserValue, requireRoleValue, selectIdentitySource } from "../lib/auth-guards";
+import { requireAuthenticatedUserValue, requirePasswordChangeCompleteValue, requireRoleValue, selectIdentitySource } from "../lib/auth-guards";
 import { hashPassword, SCRYPT_PARAMETERS, verifyPassword } from "../lib/passwords";
+import { validatePermanentPassword } from "../lib/password-change-policy";
 
 const scrypt = promisify(scryptCallback);
 const baseUser: User = {
   id: 1, email: "teacher@example.test", displayName: "Teacher", role: UserRole.TEACHER,
   passwordHash: null, accountStatus: AccountStatus.ACTIVE, yearGroup: null,
+  mustChangePassword: false,
   isDevelopmentUser: false, createdAt: new Date(), updatedAt: new Date(),
 };
 
@@ -50,6 +52,17 @@ test("disabled accounts cannot authenticate", async () => {
   assert.equal(await authenticateCredentials(user.email, "password123", { user: { async findUnique() { return user; } } }), null);
 });
 
+test("flagged accounts may authenticate with their temporary password", async () => {
+  const user = { ...baseUser, passwordHash: await hashPassword("temporary123"), mustChangePassword: true };
+  assert.equal(await authenticateCredentials(user.email, "temporary123", { user: { async findUnique() { return user; } } }), user);
+});
+
+test("permanent password policy rejects short and mismatched passwords", () => {
+  assert.match(validatePermanentPassword("short", "short") ?? "", /at least 8/);
+  assert.match(validatePermanentPassword("permanent123", "different123") ?? "", /does not match/);
+  assert.equal(validatePermanentPassword("permanent123", "permanent123"), null);
+});
+
 test("unauthenticated guard rejects", () => {
   assert.throws(() => requireAuthenticatedUserValue(null), /Authentication required/);
 });
@@ -57,6 +70,14 @@ test("unauthenticated guard rejects", () => {
 test("role guard permits and denies correctly", () => {
   assert.equal(requireRoleValue(baseUser, [UserRole.TEACHER]), baseUser);
   assert.throws(() => requireRoleValue(baseUser, [UserRole.ADMIN]), /permission/);
+});
+
+test("central password-change guard blocks flagged production identities", () => {
+  assert.throws(
+    () => requirePasswordChangeCompleteValue({ ...baseUser, mustChangePassword: true }),
+    /password change is required/i,
+  );
+  assert.equal(requirePasswordChangeCompleteValue(baseUser), baseUser);
 });
 
 test("production identity never falls back to development identity", () => {

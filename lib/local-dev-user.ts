@@ -9,6 +9,7 @@ export type LocalDevUser = {
   displayName: string;
   email: string;
   role: UserRole;
+  mustChangePassword?: boolean;
 };
 
 export async function getLocalDevelopmentUsers(): Promise<LocalDevUser[]> {
