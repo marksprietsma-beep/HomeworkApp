@@ -44,7 +44,7 @@ export async function updateAssignmentDetails(
     const { selectedUser } = await getCurrentUserState();
 
     if (!canActAsClassTeacher(selectedUser)) {
-      throw new Error("Switch to the class teacher user to edit this assignment.");
+      throw new Error("You must be signed in as the class teacher or an ADMIN account to edit this assignment.");
     }
 
     const assignment = await prisma.homeworkAssignment.findFirst({

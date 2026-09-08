@@ -16,7 +16,7 @@ export default async function AdminTeamsPage() {
         <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-8">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Admin only</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-950">Department teams are admin-managed</h1>
-          <p className="mt-3 text-sm text-slate-700">Switch to an ADMIN account to create teams and manage teacher membership.</p>
+          <p className="mt-3 text-sm text-slate-700">You must be signed in as an ADMIN account to create teams and manage teacher membership.</p>
         </section>
       </main>
     );

@@ -130,11 +130,11 @@ export default async function ResponseDetailPage({ params }: ResponseDetailPageP
             Teacher detail unavailable
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-            Switch to the class teacher to view this response
+            Sign in as the class teacher to view this response
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            This read-only page uses the temporary local development user switcher.
-            Student users cannot inspect participant submissions.
+            You must be signed in as the class teacher or an ADMIN account to inspect
+            participant submissions.
           </p>
         </section>
       </main>

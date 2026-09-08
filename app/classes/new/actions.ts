@@ -35,7 +35,7 @@ export async function createClassForSelectedTeacher(
     const { selectedUser } = await getCurrentUserState();
 
     if (!canActAsClassTeacher(selectedUser)) {
-      throw new Error("Switch to a class teacher account to create classes.");
+      throw new Error("You must be signed in as a teacher or ADMIN account to create classes.");
     }
 
     const classItem = await prisma.class.create({

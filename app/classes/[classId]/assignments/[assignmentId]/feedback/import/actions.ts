@@ -86,7 +86,7 @@ export async function saveFeedbackImport(
   const { selectedUser } = await getCurrentUserState();
 
   if (!canActAsClassTeacher(selectedUser)) {
-    return { ok: false, message: "Switch to the seeded teacher user to import feedback." };
+    return { ok: false, message: "You must be signed in as the class teacher or an ADMIN account to import feedback." };
   }
 
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
@@ -286,7 +286,7 @@ export async function saveFeedbackImport(
 export async function releaseFeedbackForAssignment(classId: number, assignmentId: number) {
   const { selectedUser } = await getCurrentUserState();
   if (!canActAsClassTeacher(selectedUser)) {
-    return { ok: false, message: "Switch to the class teacher to release feedback." };
+    return { ok: false, message: "You must be signed in as the class teacher or an ADMIN account to release feedback." };
   }
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
   if (!pageData.found || !pageData.assignment || !pageData.canImport) {

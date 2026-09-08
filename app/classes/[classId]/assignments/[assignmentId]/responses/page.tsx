@@ -73,11 +73,11 @@ export default async function ResponseOverviewPage({
             Teacher overview unavailable
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-            Switch to the class teacher to view responses
+            Sign in as the class teacher to view responses
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            This read-only dashboard uses the temporary local development user
-            switcher. Student users cannot view class-wide response status.
+            You must be signed in as the class teacher or an ADMIN account to view
+            class-wide response status.
           </p>
         </section>
       </main>

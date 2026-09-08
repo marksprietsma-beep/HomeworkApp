@@ -24,7 +24,7 @@ export async function updateAssignmentPublishStatus(
   const { selectedUser } = await getCurrentUserState();
 
   if (!selectedUser || selectedUser.role === UserRole.STUDENT) {
-    throw new Error("Switch to an admin or the assigned teacher to change assignment status.");
+    throw new Error("You must be signed in as the assigned teacher or an ADMIN account to change assignment status.");
   }
 
   const assignment = await prisma.homeworkAssignment.findFirst({
@@ -72,7 +72,7 @@ export async function duplicateAssignmentForClass(
   const { selectedUser } = await getCurrentUserState();
 
   if (!canActAsClassTeacher(selectedUser)) {
-    throw new Error("Switch to the class teacher user to duplicate this assignment.");
+    throw new Error("You must be signed in as the class teacher or an ADMIN account to duplicate this assignment.");
   }
 
   const assignment = await prisma.homeworkAssignment.findFirst({
