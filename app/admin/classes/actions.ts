@@ -2,7 +2,7 @@
 
 import { AccountStatus, ClassStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 
@@ -23,7 +23,7 @@ function parseStatus(value: string) {
 }
 
 async function assertAdminCanManageClasses() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   if (!canManageClasses(selectedUser)) {
     throw new Error("Class management is only available to ADMIN users.");
   }

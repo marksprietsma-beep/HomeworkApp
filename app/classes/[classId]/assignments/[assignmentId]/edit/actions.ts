@@ -3,7 +3,7 @@
 import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../../../../lib/auth";
 import { prisma } from "../../../../../../lib/prisma";
 
 export type EditAssignmentFormState = {
@@ -40,7 +40,7 @@ export async function updateAssignmentDetails(
       throw new Error("Choose an existing assignment.");
     }
 
-    const { selectedUser } = await getSelectedLocalDevelopmentUser();
+    const { selectedUser } = await getCurrentUserState();
 
     if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
       throw new Error("Switch to the class teacher user to edit this assignment.");

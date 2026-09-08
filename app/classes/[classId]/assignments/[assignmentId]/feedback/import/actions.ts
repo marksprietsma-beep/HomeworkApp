@@ -5,7 +5,7 @@ import { FeedbackFollowUpActionType, FeedbackReleaseState, Prisma, UserRole } fr
 import { revalidatePath } from "next/cache";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
 import { getFeedbackImportPageData } from "../../../../../../../lib/feedback-import";
-import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { prisma } from "../../../../../../../lib/prisma";
 
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
@@ -82,7 +82,7 @@ export async function saveFeedbackImport(
 ): Promise<SaveFeedbackImportState> {
   const rawJson = String(formData.get("rawJson") ?? "");
   const confirmReplace = formData.get("confirmReplace") === "on";
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
 
   if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
     return { ok: false, message: "Switch to the seeded teacher user to import feedback." };
@@ -283,7 +283,7 @@ export async function saveFeedbackImport(
 
 
 export async function releaseFeedbackForAssignment(classId: number, assignmentId: number) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
     return { ok: false, message: "Switch to the class teacher to release feedback." };
   }

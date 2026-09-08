@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { switchLocalDevelopmentUser } from "./actions/local-dev-user";
-import {
-  canUseLocalDevelopmentSwitcher,
-  getSelectedLocalDevelopmentUser,
-} from "../lib/local-dev-user";
+import { canUseLocalDevelopmentSwitcher } from "../lib/local-dev-user";
+import { getCurrentUserState } from "../lib/auth";
+import { logoutAction } from "./login/actions";
 import {
   getLocalDashboardData,
   type LocalDashboardData,
@@ -25,7 +24,7 @@ import { CLARION_TAGLINE, ClarionLogo } from "./components/clarion-logo";
 export const dynamic = "force-dynamic";
 
 type LocalDevelopmentSwitcherProps = Awaited<
-  ReturnType<typeof getSelectedLocalDevelopmentUser>
+  ReturnType<typeof getCurrentUserState>
 >;
 
 function LocalDevelopmentSwitcher({
@@ -779,7 +778,7 @@ export default async function Home({
 
   if (canUseLocalDevelopmentSwitcher()) {
     try {
-      localDevelopmentUserState = await getSelectedLocalDevelopmentUser();
+      localDevelopmentUserState = await getCurrentUserState();
       if (localDevelopmentUserState.selectedUser) {
         dashboardData = await getLocalDashboardData(
           localDevelopmentUserState.selectedUser,
@@ -789,10 +788,21 @@ export default async function Home({
       localDevelopmentUserError =
         "Local development users could not be loaded. Confirm PostgreSQL is running, migrations are applied, and seed data exists.";
     }
+  } else {
+    localDevelopmentUserState = await getCurrentUserState();
+    if (!localDevelopmentUserState.selectedUser) redirect("/login");
+    dashboardData = await getLocalDashboardData(localDevelopmentUserState.selectedUser);
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16 text-center">
+      {!canUseLocalDevelopmentSwitcher() ? (
+        <form action={logoutAction} className="absolute right-6 top-6">
+          <button className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:text-slate-950">
+            Sign out
+          </button>
+        </form>
+      ) : null}
       <div className="mb-6 flex justify-center">
         <ClarionLogo
           className="inline-flex justify-center"

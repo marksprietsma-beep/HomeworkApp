@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClarionLogo } from "../../components/clarion-logo";
 import { AccountStatus, UserRole } from "@prisma/client";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getCurrentUserState } from "../../../lib/auth";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 import { CreateManagedUserForm, EditableUserRow } from "./user-management-forms";
@@ -31,7 +31,7 @@ function linkedDataLabel(counts: {
 }
 
 export default async function AdminUsersPage() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getCurrentUserState();
   const canManage = canManageUsers(selectedUser);
 
   if (!canManage) {
