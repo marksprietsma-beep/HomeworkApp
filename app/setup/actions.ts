@@ -2,7 +2,7 @@
 
 import { AccountStatus, Prisma, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { hashPassword } from "../../lib/passwords";
+import { hashPassword } from "../../lib/passwords.mjs";
 import { prisma } from "../../lib/prisma";
 
 export type FirstRunSetupState = { error: string | null };
@@ -48,7 +48,7 @@ export async function createInitialAdmin(
             email,
             role: UserRole.ADMIN,
             accountStatus: AccountStatus.ACTIVE,
-            passwordHash: hashPassword(password),
+            passwordHash: await hashPassword(password),
             isDevelopmentUser: false,
           },
         });

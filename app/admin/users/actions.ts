@@ -3,7 +3,7 @@
 import { AccountStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
-import { hashPassword } from "../../../lib/passwords";
+import { hashPassword } from "../../../lib/passwords.mjs";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 
@@ -138,7 +138,7 @@ export async function createManagedUser(
     if (existing) throw new Error("A user with this email/login identifier already exists.");
 
     await prisma.user.create({
-      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: hashPassword(temporaryPassword), isDevelopmentUser: false },
+      data: { displayName, email, role, accountStatus, yearGroup: role === UserRole.STUDENT ? yearGroup : null, passwordHash: await hashPassword(temporaryPassword), isDevelopmentUser: false },
     });
 
     revalidateUserManagement();
