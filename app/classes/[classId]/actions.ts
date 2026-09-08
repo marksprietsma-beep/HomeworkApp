@@ -491,7 +491,7 @@ export async function importStudentsToClassFromCsv(classId: number, _previousSta
           summary.existingStudentsEnrolled += 1;
         }
         if (row.status === "CREATE") {
-          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
+          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: await hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
           await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
           summary.createdUsers += 1;
         }
