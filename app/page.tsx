@@ -478,6 +478,12 @@ function DashboardShell({
             in one clean local-first workspace.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/students"
+              className="inline-flex rounded-full bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-950 shadow-sm transition hover:bg-cyan-200"
+            >
+              Manage students
+            </Link>
             {isAdmin(selectedUser) ? (
               <>
                 <Link
