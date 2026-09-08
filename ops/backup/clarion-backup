@@ -1,0 +1,75 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+umask 077
+
+readonly BACKUP_ROOT="${CLARION_BACKUP_ROOT:-/var/backups/clarion}"
+readonly UPLOADS_ROOT="${CLARION_UPLOADS_ROOT:-/var/lib/clarion/uploads}"
+readonly APP_ROOT="${CLARION_APP_ROOT:-/opt/clarion}"
+readonly DATABASE_NAME="${CLARION_DATABASE_NAME:-clarion}"
+readonly KEEP_COUNT="${CLARION_BACKUP_KEEP_COUNT:-14}"
+readonly PGPASSFILE="${PGPASSFILE:-/etc/clarion/backup.pgpass}"
+export PGHOST="${PGHOST:-127.0.0.1}" PGPORT="${PGPORT:-5432}" PGUSER="${PGUSER:-clarion}" PGPASSFILE
+
+[[ "$KEEP_COUNT" =~ ^[0-9]+$ ]] && (( KEEP_COUNT >= 14 )) || {
+  echo "Retention count must be an integer of at least 14" >&2
+  exit 1
+}
+[[ -d "$UPLOADS_ROOT" ]] || {
+  echo "Clarion uploads directory is missing: $UPLOADS_ROOT" >&2
+  exit 1
+}
+[[ -r "$PGPASSFILE" ]] || {
+  echo "PostgreSQL credential file is missing or unreadable" >&2
+  exit 1
+}
+
+install -d -m 0700 "$BACKUP_ROOT"
+exec 9>"$BACKUP_ROOT/.backup.lock"
+flock -n 9 || { echo "Another Clarion backup is already running" >&2; exit 1; }
+
+timestamp="$(date +%Y-%m-%dT%H%M%S%z)"
+name="clarion-$timestamp"
+staging="$(mktemp -d "$BACKUP_ROOT/.${name}.in-progress.XXXXXX")"
+final="$BACKUP_ROOT/$name"
+cleanup() { [[ -d "$staging" ]] && rm -rf --one-file-system -- "$staging"; }
+trap cleanup EXIT
+
+echo "Creating Clarion backup set $name"
+pg_dump --dbname="$DATABASE_NAME" --format=custom --file="$staging/database.dump"
+[[ -s "$staging/database.dump" ]] || { echo "Database dump is empty" >&2; exit 1; }
+pg_restore --list "$staging/database.dump" >/dev/null
+
+tar --create --gzip --file="$staging/uploads.tar.gz" --directory="$UPLOADS_ROOT" .
+[[ -s "$staging/uploads.tar.gz" ]] || { echo "Uploads archive is empty" >&2; exit 1; }
+tar --list --gzip --file="$staging/uploads.tar.gz" >/dev/null
+
+git_commit="unavailable"
+if [[ -d "$APP_ROOT/.git" ]]; then
+  git_commit="$(git -C "$APP_ROOT" rev-parse --verify HEAD 2>/dev/null || printf unavailable)"
+fi
+cat >"$staging/manifest.txt" <<EOF
+backup_timestamp=$timestamp
+hostname=$(hostname)
+database_name=$DATABASE_NAME
+postgresql_client_version=$(pg_dump --version)
+app_git_commit=$git_commit
+database_dump_bytes=$(stat --format=%s "$staging/database.dump")
+uploads_archive_bytes=$(stat --format=%s "$staging/uploads.tar.gz")
+EOF
+chmod 0600 "$staging"/*
+[[ ! -e "$final" ]] || { echo "Backup set already exists: $name" >&2; exit 1; }
+mv -- "$staging" "$final"
+trap - EXIT
+echo "Completed Clarion backup set $name"
+
+# Names are strictly validated before removal; cleanup happens only after publish.
+mapfile -t backups < <(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
+  -regextype posix-extended -regex '.*/clarion-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}[+-][0-9]{4}' \
+  -printf '%f\n' | LC_ALL=C sort -r)
+for (( index=KEEP_COUNT; index<${#backups[@]}; index++ )); do
+  candidate="${backups[$index]}"
+  [[ "$candidate" =~ ^clarion-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}[+-][0-9]{4}$ ]] || continue
+  echo "Removing expired Clarion backup set $candidate"
+  rm -rf --one-file-system -- "$BACKUP_ROOT/$candidate"
+done

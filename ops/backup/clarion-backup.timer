@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Clarion production backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+Unit=clarion-backup.service
+
+[Install]
+WantedBy=timers.target
