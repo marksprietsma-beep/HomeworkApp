@@ -78,8 +78,3 @@ export function parseStudentCsv(csvText: string): ParsedStudentCsvRow[] {
   }
   return rows;
 }
-
-export function generateTemporaryPassword(random: Buffer) {
-  const encoded = random.toString("base64url");
-  return `${encoded.slice(0, 6)}-${encoded.slice(6, 12)}-${encoded.slice(12, 18)}-${encoded.slice(18, 24)}`;
-}
