@@ -6,9 +6,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { hashPassword } from "../../../lib/passwords";
+import { generateTemporaryPassword, parseStudentCsv } from "../../../lib/student-csv-import";
 import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
-import { canActAsClassTeacher, canManageClasses } from "../../../lib/permissions";
+import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -216,17 +217,17 @@ async function requireManagedClass(classId: number) {
 
   const { selectedUser } = await getCurrentUserState();
 
-  if (!canManageClasses(selectedUser)) {
-    throw new Error("Roster enrolment management is only available to ADMIN users.");
-  }
-
   const classItem = await prisma.class.findUnique({
     where: { id: classId },
-    select: { id: true },
+    select: { id: true, teacherId: true },
   });
 
   if (!classItem) {
     throw new Error("Choose an existing class to manage.");
+  }
+
+  if (!canManageClassRoster(selectedUser, classItem.teacherId)) {
+    throw new Error("You do not have permission to manage this class roster.");
   }
 
   return classItem;
@@ -303,17 +304,12 @@ function revalidateClassDetail(classId: number) {
   revalidatePath("/admin/classes");
 }
 
-const SUPPORTED_YEAR_GROUPS = ["Y7", "Y8", "Y9", "Y10", "Y11", "Y12", "Y13"] as const;
-type SupportedYearGroup = (typeof SUPPORTED_YEAR_GROUPS)[number];
-
 export type StudentCsvImportRowStatus = "CREATE" | "ENROLL_EXISTING" | "ALREADY_ENROLLED" | "INVALID" | "CONFLICT";
 
 export type StudentCsvImportPreviewRow = {
   rowNumber: number;
   displayName: string;
   email: string;
-  yearGroup: string;
-  externalId: string;
   status: StudentCsvImportRowStatus;
   messages: string[];
 };
@@ -330,91 +326,8 @@ export type StudentCsvImportState = {
     invalidRows: number;
     conflicts: number;
   };
+  credentials?: { name: string; email: string; temporaryPassword: string }[];
 };
-
-type ParsedCsvRow = {
-  rowNumber: number;
-  displayName: string;
-  email: string;
-  yearGroup: string;
-  externalId: string;
-  messages: string[];
-};
-
-function parseCsvLine(line: string) {
-  const cells: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const nextChar = line[index + 1];
-
-    if (char === '"' && inQuotes && nextChar === '"') {
-      cell += '"';
-      index += 1;
-    } else if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
-      cells.push(cell.trim());
-      cell = "";
-    } else {
-      cell += char;
-    }
-  }
-
-  if (inQuotes) {
-    throw new Error("CSV contains an unclosed quoted value.");
-  }
-
-  cells.push(cell.trim());
-  return cells;
-}
-
-function headerIndex(headers: string[], names: string[]) {
-  return headers.findIndex((header) => names.includes(header));
-}
-
-function readCell(cells: string[], index: number) {
-  return index >= 0 ? (cells[index] ?? "").trim() : "";
-}
-
-function parseStudentCsv(csvText: string): ParsedCsvRow[] {
-  const lines = csvText.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length < 2) throw new Error("Paste a CSV header row and at least one student row.");
-
-  const headers = parseCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
-  const displayNameIndex = headerIndex(headers, ["displayname", "name", "studentname"]);
-  const firstNameIndex = headerIndex(headers, ["firstname", "first_name", "forename"]);
-  const lastNameIndex = headerIndex(headers, ["lastname", "last_name", "surname"]);
-  const emailIndex = headerIndex(headers, ["email", "username", "login", "loginidentifier"]);
-  const yearGroupIndex = headerIndex(headers, ["yeargroup", "year_group", "year", "yearname"]);
-  const externalIdIndex = headerIndex(headers, ["studentid", "student_id", "externalid", "external_id"]);
-
-  if (displayNameIndex === -1 && (firstNameIndex === -1 || lastNameIndex === -1)) {
-    throw new Error("CSV must include displayName, or both firstName and lastName columns.");
-  }
-  if (emailIndex === -1) {
-    throw new Error("CSV must include email, username, or login column.");
-  }
-
-  return lines.slice(1).map((line, index) => {
-    const cells = parseCsvLine(line);
-    const displayName = readCell(cells, displayNameIndex) || [readCell(cells, firstNameIndex), readCell(cells, lastNameIndex)].filter(Boolean).join(" ");
-    const email = readCell(cells, emailIndex).toLowerCase();
-    const yearGroup = readCell(cells, yearGroupIndex).toUpperCase();
-    const externalId = readCell(cells, externalIdIndex);
-    const messages: string[] = [];
-
-    if (!displayName) messages.push("Missing display name.");
-    if (!email) messages.push("Missing email/login identifier.");
-    if (email && !email.includes("@")) messages.push("Email/login identifier must be email-style for now.");
-    if (!yearGroup) messages.push("Missing yearGroup.");
-    else if (!SUPPORTED_YEAR_GROUPS.includes(yearGroup as SupportedYearGroup)) messages.push(`Invalid yearGroup ${yearGroup}; use Y7, Y8, Y9, Y10, Y11, Y12, or Y13.`);
-
-    return { rowNumber: index + 2, displayName, email, yearGroup, externalId, messages };
-  });
-}
 
 async function buildStudentCsvPreview(classId: number, csvText: string): Promise<StudentCsvImportPreviewRow[]> {
   await requireManagedClass(classId);
@@ -480,26 +393,28 @@ export async function importStudentsToClassFromCsv(classId: number, _previousSta
       throw new Error(`CSV import blocked: fix ${blockingRows.length} row${blockingRows.length === 1 ? "" : "s"} with validation errors or conflicts before saving.`);
     }
 
+    const credentials: NonNullable<StudentCsvImportState["credentials"]> = [];
     await prisma.$transaction(async (tx) => {
       for (const row of rows) {
         if (row.status === "ALREADY_ENROLLED") { summary.alreadyEnrolled += 1; continue; }
         if (row.status === "ENROLL_EXISTING") {
-          const user = await tx.user.findUnique({ where: { email: row.email }, select: { id: true } });
-          if (!user) throw new Error(`Existing student ${row.email} could not be found during import.`);
-          await tx.user.update({ where: { id: user.id }, data: { yearGroup: row.yearGroup } });
-          await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
+          const user = await tx.user.findUnique({ where: { email: row.email }, select: { id: true, role: true, accountStatus: true } });
+          if (!user || user.role !== UserRole.STUDENT || user.accountStatus !== AccountStatus.ACTIVE) throw new Error(`Student account ${row.email} changed during import; nothing was saved.`);
+          await tx.classEnrollment.upsert({ where: { classId_studentId: { classId, studentId: user.id } }, create: { classId, studentId: user.id }, update: {} });
           summary.existingStudentsEnrolled += 1;
         }
         if (row.status === "CREATE") {
-          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: await hashPassword(randomBytes(24).toString("base64url")), mustChangePassword: true, isDevelopmentUser: false }, select: { id: true } });
+          const temporaryPassword = generateTemporaryPassword(randomBytes(18));
+          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: null, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, isDevelopmentUser: false }, select: { id: true } });
           await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
+          credentials.push({ name: row.displayName, email: row.email, temporaryPassword });
           summary.createdUsers += 1;
         }
       }
     });
 
     revalidateClassDetail(classId);
-    return { error: null, success: "CSV import saved.", csvText, rows: await buildStudentCsvPreview(classId, csvText), summary };
+    return { error: null, success: "CSV import saved. Download the credentials now; they cannot be shown again.", csvText, rows, summary, credentials };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not import CSV.", success: null, csvText, rows: [], summary: null };
   }

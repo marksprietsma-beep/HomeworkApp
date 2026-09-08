@@ -13,7 +13,7 @@ import {
   statusFilterOptions,
 } from "../../../lib/assignment-list-filters";
 import { updateAssignmentPublishStatus } from "./assignments/[assignmentId]/actions";
-import { canManageClasses, canTeachClass } from "../../../lib/permissions";
+import { canManageClasses, canManageClassRoster, canTeachClass } from "../../../lib/permissions";
 import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -109,7 +109,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
 
   const filteredAssignments = filterAndSortAssignments(classDetail.assignments, filters);
-  const canManageRoster = canManageClasses(selectedUser);
+  const canManageRoster = canManageClassRoster(selectedUser, classDetail.teacher.id);
   const canPublishAssignments =
     canManageClasses(selectedUser) || canTeachClass(selectedUser, classDetail.teacher.id);
   const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
@@ -267,7 +267,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           </p>
           <h2 className="mt-2 text-2xl font-bold text-slate-950">Students</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Admins can add existing active student users to this class or remove them from the
+            Admins and the assigned teacher can add active student users to this class or remove them from the
             roster without deleting their account, submissions, or feedback.
           </p>
 
@@ -306,10 +306,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             </form>
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-              Manual enrolment is available to ADMIN users only. Switch the
-              temporary local development user to an ADMIN account to add or
-              remove students. Teachers can still view their class roster and
-              assignments.
+              You must be an admin or this class&apos;s assigned teacher to manage its roster.
             </div>
           )}
 
