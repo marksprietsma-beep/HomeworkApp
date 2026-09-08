@@ -49,6 +49,7 @@ export async function createInitialAdmin(
             role: UserRole.ADMIN,
             accountStatus: AccountStatus.ACTIVE,
             passwordHash: await hashPassword(password),
+            mustChangePassword: false,
             isDevelopmentUser: false,
           },
         });

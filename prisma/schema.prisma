@@ -87,6 +87,7 @@ model User {
   displayName            String
   role                   UserRole
   passwordHash           String?
+  mustChangePassword     Boolean                         @default(false)
   accountStatus          AccountStatus                   @default(ACTIVE)
   yearGroup              String?
   isDevelopmentUser      Boolean                         @default(true)

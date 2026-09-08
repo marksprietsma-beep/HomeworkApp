@@ -1,5 +1,12 @@
 import type { UserRole } from "@prisma/client";
 
+export const FORCED_PASSWORD_CHANGE_ERROR = "A password change is required before continuing.";
+
+export function requirePasswordChangeCompleteValue<T extends { mustChangePassword?: boolean }>(user: T): T {
+  if (user.mustChangePassword) throw new Error(FORCED_PASSWORD_CHANGE_ERROR);
+  return user;
+}
+
 export function requireAuthenticatedUserValue<T>(user: T | null): T {
   if (!user) throw new Error("Authentication required.");
   return user;

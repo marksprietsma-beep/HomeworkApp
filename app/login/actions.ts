@@ -11,7 +11,7 @@ export async function loginAction(_state: LoginState, formData: FormData): Promi
     String(formData.get("password") ?? ""),
   );
   if (!user) return { error: "Invalid email or password." };
-  redirect("/");
+  redirect(user.mustChangePassword ? "/change-password" : "/");
 }
 
 export async function logoutAction() {
