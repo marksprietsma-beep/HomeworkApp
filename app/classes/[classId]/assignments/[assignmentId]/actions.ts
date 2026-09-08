@@ -4,6 +4,7 @@ import { HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../lib/auth";
+import { canActAsClassTeacher } from "../../../../../lib/permissions";
 import { prisma } from "../../../../../lib/prisma";
 
 export async function updateAssignmentPublishStatus(
@@ -70,7 +71,7 @@ export async function duplicateAssignmentForClass(
 
   const { selectedUser } = await getCurrentUserState();
 
-  if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
+  if (!canActAsClassTeacher(selectedUser)) {
     throw new Error("Switch to the class teacher user to duplicate this assignment.");
   }
 

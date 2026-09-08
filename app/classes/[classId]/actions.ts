@@ -8,7 +8,7 @@ import { prisma } from "../../../lib/prisma";
 import { hashPassword } from "../../../lib/passwords";
 import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
-import { canManageClasses } from "../../../lib/permissions";
+import { canActAsClassTeacher, canManageClasses } from "../../../lib/permissions";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -166,8 +166,8 @@ export async function createAssignmentForClass(
 
     const { selectedUser } = await getCurrentUserState();
 
-    if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-      throw new Error("Switch to the seeded teacher user to create assignments.");
+    if (!canActAsClassTeacher(selectedUser)) {
+      throw new Error("Switch to a class teacher account to create assignments.");
     }
 
     const classItem = await prisma.class.findFirst({

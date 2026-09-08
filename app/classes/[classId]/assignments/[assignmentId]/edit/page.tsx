@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType } from "@prisma/client";
 import { getCurrentUserState } from "../../../../../../lib/auth";
 import { prisma } from "../../../../../../lib/prisma";
 import { EditAssignmentForm } from "./edit-assignment-form";
+import { canTeachClass } from "../../../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
     notFound();
   }
 
-  const canEdit = selectedUser?.role === UserRole.TEACHER && selectedUser.id === assignment.class.teacher.id;
+  const canEdit = canTeachClass(selectedUser, assignment.class.teacher.id);
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">

@@ -1,9 +1,10 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../lib/auth";
+import { canActAsClassTeacher } from "../../../../../../lib/permissions";
 import { prisma } from "../../../../../../lib/prisma";
 
 export type EditAssignmentFormState = {
@@ -42,7 +43,7 @@ export async function updateAssignmentDetails(
 
     const { selectedUser } = await getCurrentUserState();
 
-    if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
+    if (!canActAsClassTeacher(selectedUser)) {
       throw new Error("Switch to the class teacher user to edit this assignment.");
     }
 
