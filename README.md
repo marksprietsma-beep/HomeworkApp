@@ -203,6 +203,8 @@ Feedback import JSON fixtures live under [`docs/fixtures/feedback-import`](docs/
 
 ## Checks
 
+Production operators should use the [production backup and restore runbook](docs/production-backup-restore.md) to install the daily PostgreSQL/media backup timer and perform isolated restore verification.
+
 Run linting:
 
 ```bash

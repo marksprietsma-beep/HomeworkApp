@@ -1,0 +1,15 @@
+[Unit]
+Description=Create and validate a Clarion production backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/clarion-backup
+Environment=PGPASSFILE=/etc/clarion/backup.pgpass
+UMask=0077
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/clarion /var/lib/clarion/uploads /etc/clarion/backup.pgpass
+ReadWritePaths=/var/backups/clarion
