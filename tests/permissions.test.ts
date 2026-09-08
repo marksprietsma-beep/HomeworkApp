@@ -3,6 +3,7 @@ import test from "node:test";
 import { AccountStatus, UserRole } from "@prisma/client";
 import {
   canManageClasses,
+  canManageClassRoster,
   canManageUsers,
   canTeachClass,
   isEligibleClassTeacher,
@@ -17,6 +18,13 @@ test("only active staff accounts are eligible for class assignment", () => {
   assert.equal(isEligibleClassTeacher({ role: UserRole.STUDENT, accountStatus: active }), false);
   assert.equal(isEligibleClassTeacher({ role: UserRole.TEACHER, accountStatus: disabled }), false);
   assert.equal(isEligibleClassTeacher({ role: UserRole.ADMIN, accountStatus: disabled }), false);
+});
+
+test("class roster management allows admins or only the assigned teacher", () => {
+  assert.equal(canManageClassRoster({ id: 1, role: UserRole.ADMIN }, 99), true);
+  assert.equal(canManageClassRoster({ id: 2, role: UserRole.TEACHER }, 2), true);
+  assert.equal(canManageClassRoster({ id: 2, role: UserRole.TEACHER }, 3), false);
+  assert.equal(canManageClassRoster({ id: 3, role: UserRole.STUDENT }, 3), false);
 });
 
 test("class teaching requires explicit ownership for teachers and admins", () => {

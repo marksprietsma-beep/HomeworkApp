@@ -32,6 +32,13 @@ export function canManageClasses(user: RoleBearingUser | null | undefined) {
   return isAdmin(user);
 }
 
+export function canManageClassRoster(
+  user: (RoleBearingUser & { id: number }) | null | undefined,
+  teacherId: number,
+) {
+  return Boolean(user && (isAdmin(user) || (isTeacher(user) && user.id === teacherId)));
+}
+
 export function canActAsClassTeacher<T extends RoleBearingUser>(
   user: T | null | undefined,
 ): user is T {
