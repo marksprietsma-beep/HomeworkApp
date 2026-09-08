@@ -46,7 +46,7 @@ export function CreateAdminClassForm({ teachers }: { teachers: TeacherOption[] }
       </div>
       <label className="text-sm font-semibold text-slate-700">Assigned teacher<TeacherSelect teachers={teachers} /></label>
       <label className="text-sm font-semibold text-slate-700">Description / notes<textarea name="description" rows={4} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm" placeholder="Optional setup notes" /></label>
-      {teachers.length === 0 ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Create or reactivate a TEACHER account before creating classes.</p> : null}
+      {teachers.length === 0 ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Create or reactivate a TEACHER or ADMIN account before creating classes.</p> : null}
       <FormMessage state={state} />
       <button type="submit" disabled={isPending || teachers.length === 0} className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 md:justify-self-start">{isPending ? "Creating…" : "Create class"}</button>
     </form>

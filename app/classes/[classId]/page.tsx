@@ -13,8 +13,8 @@ import {
   statusFilterOptions,
 } from "../../../lib/assignment-list-filters";
 import { updateAssignmentPublishStatus } from "./assignments/[assignmentId]/actions";
+import { canManageClasses, canTeachClass } from "../../../lib/permissions";
 import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
-import { canManageClasses } from "../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -111,8 +111,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   const filteredAssignments = filterAndSortAssignments(classDetail.assignments, filters);
   const canManageRoster = canManageClasses(selectedUser);
   const canPublishAssignments =
-    selectedUser?.role === "ADMIN" ||
-    (selectedUser?.role === "TEACHER" && selectedUser.id === classDetail.teacher.id);
+    canManageClasses(selectedUser) || canTeachClass(selectedUser, classDetail.teacher.id);
   const addStudentAction = addStudentToClassRoster.bind(null, classDetail.id);
   const removeStudentAction = removeStudentFromClassRoster.bind(null, classDetail.id);
 

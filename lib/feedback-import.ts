@@ -1,4 +1,5 @@
 import type { UserRole } from "@prisma/client";
+import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
 
 export type FeedbackImportPageData = Awaited<ReturnType<typeof getFeedbackImportPageData>>;
@@ -45,7 +46,7 @@ export async function getFeedbackImportPageData(
 
   if (!assignment) return { found: false as const, canImport: false, assignment: null, context: null, existingImports: [] };
 
-  const canImport = viewer?.role === "TEACHER" && viewer.id === assignment.class.teacherId;
+  const canImport = canTeachClass(viewer, assignment.class.teacherId);
   if (!canImport) return { found: true as const, canImport, assignment, context: null, existingImports: assignment.feedbackImports };
 
   const submissionsByStudentId = new Map(assignment.submissions.map((submission) => [submission.studentId, submission]));

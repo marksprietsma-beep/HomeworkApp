@@ -16,7 +16,7 @@ import {
   statusFilterOptions,
   type AssignmentListFilters,
 } from "../lib/assignment-list-filters";
-import { isAdmin, isStudent, isTeacher } from "../lib/permissions";
+import { canActAsClassTeacher, isAdmin, isStudent, isTeacher } from "../lib/permissions";
 import { hasInitialAdminUser } from "../lib/first-run-setup";
 import { getBilingualTextParts } from "../lib/i18n-content";
 import { CLARION_TAGLINE, ClarionLogo } from "./components/clarion-logo";
@@ -520,7 +520,7 @@ function DashboardShell({
                 Curriculum library
               </Link>
             ) : null}
-            {isTeacher(selectedUser) ? (
+            {canActAsClassTeacher(selectedUser) ? (
               <Link
                 href="/classes/new"
                 className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"

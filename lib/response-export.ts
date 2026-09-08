@@ -1,5 +1,6 @@
 import type { UserRole } from "@prisma/client";
 import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
+import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
 
 export const RESPONSE_EXPORT_FORMAT = "homework-assignment-responses-v2";
@@ -125,7 +126,7 @@ export async function getAssignmentResponseExportData(
     return { exportData: null, markdown: null, canView: false, found: false };
   }
 
-  const canView = viewer?.role === "TEACHER" && viewer.id === assignment.class.teacherId;
+  const canView = canTeachClass(viewer, assignment.class.teacherId);
 
   if (!canView) {
     return { exportData: null, markdown: null, canView, found: true };

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getCurrentUserState } from "../../../lib/auth";
 import { CreateClassForm } from "./create-class-form";
+import { canActAsClassTeacher } from "../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewClassPage() {
   const { selectedUser } = await getCurrentUserState();
-  const canCreateClass = selectedUser?.role === "TEACHER";
+  const canCreateClass = canActAsClassTeacher(selectedUser);
 
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-6 py-12">
@@ -43,8 +44,8 @@ export default async function NewClassPage() {
           <CreateClassForm />
         ) : (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-            Class creation is available to teacher users only. Return to the
-            dashboard and switch the temporary local view to the seeded teacher.
+            Class creation is available to class teacher accounts only. Return to the
+            dashboard and switch the temporary local view to a teacher or administrator.
           </div>
         )}
       </section>

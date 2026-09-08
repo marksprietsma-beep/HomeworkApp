@@ -10,6 +10,7 @@ import { getCurrentUserState } from "../../../../../lib/auth";
 import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
 import { saveAssignmentToLibrary } from "../../../../curriculum-library/actions";
 import { getShareableTeamsForUser } from "../../../../../lib/department-teams";
+import { canManageClasses, canTeachClass } from "../../../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -143,8 +144,7 @@ export default async function HomeworkDetailPage({
   }
 
   const canManagePublishStatus =
-    selectedUser?.role === "ADMIN" ||
-    (selectedUser?.role === "TEACHER" && selectedUser.id === homework.class.teacher.id);
+    canManageClasses(selectedUser) || canTeachClass(selectedUser, homework.class.teacher.id);
   const canEditAssignment = canManagePublishStatus;
   const canDuplicateAssignment = canManagePublishStatus;
   const canViewResponseOverview = canManagePublishStatus;

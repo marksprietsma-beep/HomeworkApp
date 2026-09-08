@@ -1,4 +1,5 @@
 import type { UserRole } from "@prisma/client";
+import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
 
 export type ResponseOverviewData = {
@@ -130,7 +131,7 @@ export async function getResponseOverviewData(
     return { overview: null, canView: false, found: false };
   }
 
-  const canView = viewer?.role === "TEACHER" && viewer.id === assignment.class.teacherId;
+  const canView = canTeachClass(viewer, assignment.class.teacherId);
 
   if (!canView) {
     return { overview: null, canView, found: true };

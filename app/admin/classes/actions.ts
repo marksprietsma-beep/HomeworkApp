@@ -1,9 +1,9 @@
 "use server";
 
-import { AccountStatus, ClassStatus, UserRole } from "@prisma/client";
+import { ClassStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserState } from "../../../lib/auth";
-import { canManageClasses } from "../../../lib/permissions";
+import { canManageClasses, isEligibleClassTeacher } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 
 export type AdminClassFormState = { error: string | null; success: string | null };
@@ -34,12 +34,12 @@ async function assertActiveTeacher(teacherId: number) {
   if (!Number.isInteger(teacherId) || teacherId <= 0) {
     throw new Error("Choose an active teacher for this class.");
   }
-  const teacher = await prisma.user.findFirst({
-    where: { id: teacherId, role: UserRole.TEACHER, accountStatus: AccountStatus.ACTIVE },
-    select: { id: true, displayName: true },
+  const teacher = await prisma.user.findUnique({
+    where: { id: teacherId },
+    select: { id: true, displayName: true, role: true, accountStatus: true },
   });
-  if (!teacher) {
-    throw new Error("Choose an existing active TEACHER as class teacher.");
+  if (!isEligibleClassTeacher(teacher)) {
+    throw new Error("Choose an existing active TEACHER or ADMIN as class teacher.");
   }
   return teacher;
 }

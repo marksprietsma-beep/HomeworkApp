@@ -1,9 +1,9 @@
 "use server";
 
-import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { getCurrentUserState } from "../../../lib/auth";
+import { canActAsClassTeacher } from "../../../lib/permissions";
 
 export type CreateClassFormState = {
   error: string | null;
@@ -34,8 +34,8 @@ export async function createClassForSelectedTeacher(
 
     const { selectedUser } = await getCurrentUserState();
 
-    if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
-      throw new Error("Switch to the seeded teacher user to create classes.");
+    if (!canActAsClassTeacher(selectedUser)) {
+      throw new Error("Switch to a class teacher account to create classes.");
     }
 
     const classItem = await prisma.class.create({
