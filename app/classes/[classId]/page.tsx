@@ -310,7 +310,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
             </div>
           )}
 
-          {canManageRoster ? <StudentCsvImportForm classId={classDetail.id} /> : null}
+          {canManageRoster ? <div id="student-import"><StudentCsvImportForm classId={classDetail.id} /></div> : null}
 
           {classDetail.enrolledUsers.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
