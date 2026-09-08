@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { archiveLibraryItem, assignLibraryItemToClass, duplicateLibraryItem, updateLibraryItemMetadata } from "../actions";
 import { canManageLibraryItem, getAssignableClassesForUser, getCurriculumLibraryItemDetail, isAssignmentTemplate } from "../../../lib/curriculum-library";
 import { getShareableTeamsForUser } from "../../../lib/department-teams";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ function formatDate(date: Date) {
 }
 
 export default async function CurriculumLibraryItemPage({ params, searchParams }: Props) {
-  const [{ itemId }, resolvedSearchParams, { selectedUser }] = await Promise.all([params, searchParams, getSelectedLocalDevelopmentUser()]);
+  const [{ itemId }, resolvedSearchParams, { selectedUser }] = await Promise.all([params, searchParams, getAuthenticationState()]);
   const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const [item, classes, teams] = await Promise.all([

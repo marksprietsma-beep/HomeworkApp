@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ClarionLogo } from "../../components/clarion-logo";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 import { isAdmin } from "../../../lib/permissions";
 import { getActiveTimetableImport } from "../timetable-analyser/actions";
 import { getDutySchedules } from "./actions";
@@ -9,7 +9,7 @@ import { DutySchedulerForm } from "./duty-scheduler-form";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDutySchedulerPage() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const canSchedule = isAdmin(selectedUser);
 
   if (!canSchedule) {

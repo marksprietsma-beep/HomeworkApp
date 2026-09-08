@@ -99,7 +99,19 @@ model User {
   feedbackEntries        ParticipantFeedback[]           @relation("ParticipantFeedbackStudent")
   curriculumLibraryItems CurriculumHomeworkLibraryItem[] @relation("CurriculumLibraryItemCreator")
   departmentMemberships DepartmentTeamMembership[]
+  sessions               Session[]
   curriculumLibraryItemVersions CurriculumHomeworkLibraryItemVersion[] @relation("CurriculumLibraryVersionEditor")
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Class {

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAssignmentDueStatus } from "../../../../lib/assignment-due-status";
-import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../lib/auth";
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../lib/i18n-content";
 import { getParticipantWorkData } from "../../../../lib/participant-work";
 import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./actions";
@@ -143,7 +143,7 @@ export default async function ParticipantWorkPage({
     notFound();
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
 
   if (!selectedUser) {
     redirect("/");

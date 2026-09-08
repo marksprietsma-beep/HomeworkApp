@@ -3,14 +3,14 @@
 import { HomeworkAssignmentStatus, SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getSelectedLocalDevelopmentUser } from "../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
 
 export async function saveParticipantSubmission(
   assignmentId: number,
   formData: FormData,
 ) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
 
   if (!selectedUser || selectedUser.role !== "STUDENT") {
     throw new Error("Select a local development participant before saving.");
@@ -93,7 +93,7 @@ export async function completeFeedbackFollowUpAction(
   actionId: number,
   formData: FormData,
 ) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
 
   if (!selectedUser || selectedUser.role !== "STUDENT") {
     throw new Error("Select a local development participant before saving feedback actions.");

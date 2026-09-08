@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { getAssignmentDueStatus } from "../../../../../lib/assignment-due-status";
 import { getHomeworkDetailData } from "../../../../../lib/homework-detail";
 import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../../../../../lib/i18n-content";
-import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../../lib/auth";
 import { duplicateAssignmentForClass, updateAssignmentPublishStatus } from "./actions";
 import { saveAssignmentToLibrary } from "../../../../curriculum-library/actions";
 import { getShareableTeamsForUser } from "../../../../../lib/department-teams";
@@ -131,7 +131,7 @@ export default async function HomeworkDetailPage({
   }
 
   const [{ selectedUser }, homework] = await Promise.all([
-    getSelectedLocalDevelopmentUser(),
+    getAuthenticationState(),
     getHomeworkDetailData(
       parsedClassId,
       parsedAssignmentId,

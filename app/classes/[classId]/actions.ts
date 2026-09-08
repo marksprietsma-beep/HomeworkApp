@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { hashPassword } from "../../../lib/passwords";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { canManageClasses } from "../../../lib/permissions";
 
@@ -164,7 +164,7 @@ export async function createAssignmentForClass(
       throw new Error("Enter an assignment title.");
     }
 
-    const { selectedUser } = await getSelectedLocalDevelopmentUser();
+    const { selectedUser } = await getAuthenticationState();
 
     if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
       throw new Error("Switch to the seeded teacher user to create assignments.");
@@ -214,7 +214,7 @@ async function requireManagedClass(classId: number) {
     throw new Error("Choose an existing class.");
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
 
   if (!canManageClasses(selectedUser)) {
     throw new Error("Roster enrolment management is only available to ADMIN users.");
@@ -491,7 +491,7 @@ export async function importStudentsToClassFromCsv(classId: number, _previousSta
           summary.existingStudentsEnrolled += 1;
         }
         if (row.status === "CREATE") {
-          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
+          const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: row.yearGroup, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: await hashPassword(randomBytes(24).toString("base64url")), isDevelopmentUser: false }, select: { id: true } });
           await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
           summary.createdUsers += 1;
         }

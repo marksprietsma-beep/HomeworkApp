@@ -3,7 +3,7 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 
 export type CreateClassFormState = {
   error: string | null;
@@ -32,7 +32,7 @@ export async function createClassForSelectedTeacher(
       throw new Error("Enter a subject.");
     }
 
-    const { selectedUser } = await getSelectedLocalDevelopmentUser();
+    const { selectedUser } = await getAuthenticationState();
 
     if (!selectedUser || selectedUser.role !== UserRole.TEACHER) {
       throw new Error("Switch to the seeded teacher user to create classes.");

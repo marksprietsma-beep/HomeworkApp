@@ -2,7 +2,7 @@ import { HomeworkAssignmentStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClassDetailData } from "../../../lib/class-detail";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 import { AssignmentCreateForm } from "./assignment-create-form";
 import { StudentCsvImportForm } from "./student-import-form";
 import {
@@ -100,7 +100,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   }
 
   const [{ selectedUser }, classDetail] = await Promise.all([
-    getSelectedLocalDevelopmentUser(),
+    getAuthenticationState(),
     getClassDetailData(parsedClassId),
   ]);
 

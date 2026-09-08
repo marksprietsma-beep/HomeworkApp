@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { switchLocalDevelopmentUser } from "./actions/local-dev-user";
+import { logout } from "./login/actions";
 import {
   canUseLocalDevelopmentSwitcher,
-  getSelectedLocalDevelopmentUser,
-} from "../lib/local-dev-user";
+  getAuthenticationState,
+} from "../lib/auth";
 import {
   getLocalDashboardData,
   type LocalDashboardData,
@@ -25,7 +26,7 @@ import { CLARION_TAGLINE, ClarionLogo } from "./components/clarion-logo";
 export const dynamic = "force-dynamic";
 
 type LocalDevelopmentSwitcherProps = Awaited<
-  ReturnType<typeof getSelectedLocalDevelopmentUser>
+  ReturnType<typeof getAuthenticationState>
 >;
 
 function LocalDevelopmentSwitcher({
@@ -777,18 +778,18 @@ export default async function Home({
     redirect("/setup");
   }
 
-  if (canUseLocalDevelopmentSwitcher()) {
-    try {
-      localDevelopmentUserState = await getSelectedLocalDevelopmentUser();
-      if (localDevelopmentUserState.selectedUser) {
-        dashboardData = await getLocalDashboardData(
-          localDevelopmentUserState.selectedUser,
-        );
-      }
-    } catch {
+  try {
+    localDevelopmentUserState = await getAuthenticationState();
+    if (!localDevelopmentUserState.selectedUser && !canUseLocalDevelopmentSwitcher()) {
+      redirect("/login");
+    }
+    if (localDevelopmentUserState.selectedUser) {
+      dashboardData = await getLocalDashboardData(localDevelopmentUserState.selectedUser);
+    }
+  } catch (error) {
+    if (!canUseLocalDevelopmentSwitcher()) throw error;
       localDevelopmentUserError =
         "Local development users could not be loaded. Confirm PostgreSQL is running, migrations are applied, and seed data exists.";
-    }
   }
 
   return (
@@ -802,6 +803,9 @@ export default async function Home({
       <p className="mb-4 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-sm font-medium text-teal-800">
         Local-first learning workspace
       </p>
+      {!canUseLocalDevelopmentSwitcher() && localDevelopmentUserState.selectedUser ? (
+        <form action={logout} className="mb-4"><button className="text-sm font-semibold text-slate-600 underline">Sign out</button></form>
+      ) : null}
       <h1 className="text-4xl font-bold tracking-tight text-slate-950 sm:text-6xl">
         Clarion
       </h1>

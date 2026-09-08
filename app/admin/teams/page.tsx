@@ -1,6 +1,6 @@
 import { UserRole } from "@prisma/client";
 import Link from "next/link";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 import { addDepartmentTeamMember, createDepartmentTeam, removeDepartmentTeamMember, updateDepartmentTeam } from "./actions";
@@ -8,7 +8,7 @@ import { addDepartmentTeamMember, createDepartmentTeam, removeDepartmentTeamMemb
 export const dynamic = "force-dynamic";
 
 export default async function AdminTeamsPage() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   if (!canManageUsers(selectedUser)) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-16">

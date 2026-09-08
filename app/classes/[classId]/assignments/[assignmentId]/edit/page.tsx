@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, UserRole } from "@prisma/client";
-import { getSelectedLocalDevelopmentUser } from "../../../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../../../lib/auth";
 import { prisma } from "../../../../../../lib/prisma";
 import { EditAssignmentForm } from "./edit-assignment-form";
 
@@ -24,7 +24,7 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
   }
 
   const [{ selectedUser }, assignment] = await Promise.all([
-    getSelectedLocalDevelopmentUser(),
+    getAuthenticationState(),
     prisma.homeworkAssignment.findFirst({
       where: { id: parsedAssignmentId, classId: parsedClassId },
       include: {

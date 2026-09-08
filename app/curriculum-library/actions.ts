@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { buildAssignmentTemplate, buildLibraryVersionSnapshot, canManageLibraryItem, getLibraryVisibilityWhere, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
 import { canUserShareToTeam, parsePositiveId } from "../../lib/department-teams";
-import { getSelectedLocalDevelopmentUser } from "../../lib/local-dev-user";
+import { getAuthenticationState } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 function requireTeacherOrAdmin(user: { id: number; role: UserRole } | null) {
@@ -14,7 +14,7 @@ function requireTeacherOrAdmin(user: { id: number; role: UserRole } | null) {
 }
 
 export async function saveAssignmentToLibrary(classId: number, assignmentId: number, formData: FormData) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const user = requireTeacherOrAdmin(selectedUser);
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: { id: assignmentId, classId, ...(user.role === UserRole.ADMIN ? {} : { class: { teacherId: user.id } }) },
@@ -50,7 +50,7 @@ export async function saveAssignmentToLibrary(classId: number, assignmentId: num
 }
 
 export async function assignLibraryItemToClass(libraryItemId: number, formData: FormData) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const user = requireTeacherOrAdmin(selectedUser);
   const classIds = parseClassIds(formData.getAll("classIds"));
   if (classIds.length === 0) throw new Error("Choose at least one target class.");
@@ -104,7 +104,7 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
 
 
 export async function updateLibraryItemMetadata(libraryItemId: number, formData: FormData) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const user = requireTeacherOrAdmin(selectedUser);
   const item = await prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId } });
   if (!item || !canManageLibraryItem(user, item)) throw new Error("Only the creator or an admin can edit this library item.");
@@ -131,7 +131,7 @@ export async function updateLibraryItemMetadata(libraryItemId: number, formData:
 }
 
 export async function archiveLibraryItem(libraryItemId: number) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const user = requireTeacherOrAdmin(selectedUser);
   const item = await prisma.curriculumHomeworkLibraryItem.findUnique({ where: { id: libraryItemId } });
   if (!item || !canManageLibraryItem(user, item)) throw new Error("Only the creator or an admin can archive this library item.");
@@ -143,7 +143,7 @@ export async function archiveLibraryItem(libraryItemId: number) {
 
 
 export async function duplicateLibraryItem(libraryItemId: number) {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const user = requireTeacherOrAdmin(selectedUser);
   const item = await prisma.curriculumHomeworkLibraryItem.findFirst({ where: { id: libraryItemId, ...getLibraryVisibilityWhere(user) } });
   if (!item) throw new Error("Choose an existing library item you can view.");

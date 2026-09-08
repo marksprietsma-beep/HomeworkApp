@@ -2,13 +2,13 @@
 
 import { DepartmentTeamRole, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { getSelectedLocalDevelopmentUser } from "../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../lib/auth";
 import { canManageUsers } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
 
 function read(formData: FormData, key: string) { return String(formData.get(key) ?? "").trim(); }
 async function assertAdmin() {
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   if (!canManageUsers(selectedUser)) throw new Error("Department/team management is admin-only.");
 }
 function id(value: FormDataEntryValue | null, label: string) { const n = Number(String(value ?? "")); if (!Number.isInteger(n) || n <= 0) throw new Error(`Choose a valid ${label}.`); return n; }

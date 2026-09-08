@@ -3,7 +3,7 @@
 import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
-import { getSelectedLocalDevelopmentUser } from "../../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
 
@@ -89,7 +89,7 @@ export async function importAssignmentForClass(
     return { ok: false, message: "Fix the assignment JSON before saving." };
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
 
   if (!selectedUser) {
     return { ok: false, message: "Select an admin or assigned teacher before importing assignments." };

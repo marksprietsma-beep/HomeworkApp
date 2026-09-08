@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSelectedLocalDevelopmentUser } from "../../../../../../../lib/local-dev-user";
+import { getAuthenticationState } from "../../../../../../../lib/auth";
 import { getResponseDetailData } from "../../../../../../../lib/response-detail";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +84,7 @@ export default async function ResponseDetailPage({ params }: ResponseDetailPageP
     notFound();
   }
 
-  const { selectedUser } = await getSelectedLocalDevelopmentUser();
+  const { selectedUser } = await getAuthenticationState();
   const { response, found } = await getResponseDetailData(
     parsedClassId,
     parsedAssignmentId,
