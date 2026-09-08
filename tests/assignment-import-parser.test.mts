@@ -38,6 +38,18 @@ test("repairs unescaped quoted text without changing content or ids", () => {
   }
 });
 
+test("repairs the production quote failure when prose continues after the quoted term", () => {
+  const expected = 'Change the Location to "Lab 2" and explain why this room is appropriate.';
+  const raw = assignment(expected).replace('\\"Lab 2\\"', '"Lab 2"');
+  const result = parseAssignmentImportJson(raw);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.repaired, true);
+    assert.equal(result.assignment.questions[0].id, "q6");
+    assert.equal(result.assignment.questions[0].prompt, expected);
+  }
+});
+
 test("repairs equivalent unescaped quotes in Chinese i18n text", () => {
   const raw = assignment();
   const object = JSON.parse(raw);
@@ -46,6 +58,21 @@ test("repairs equivalent unescaped quotes in Chinese i18n text", () => {
   const result = parseAssignmentImportJson(malformed);
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.assignment.questions[0].textI18n?.zh, object.assignment.questions[0].textI18n.zh);
+});
+
+test("repairs the production quote failure in English and Chinese translations", () => {
+  const object = JSON.parse(assignment());
+  object.assignment.questions[0].textI18n = {
+    en: 'Change the Location to "Lab 2" before saving the record.',
+    zh: '保存记录前，将位置更改为 "Lab 2"。',
+  };
+  const malformed = JSON.stringify(object).replaceAll('\\"Lab 2\\"', '"Lab 2"');
+  const result = parseAssignmentImportJson(malformed);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.assignment.questions[0].id, "q6");
+    assert.deepEqual(result.assignment.questions[0].textI18n, object.assignment.questions[0].textI18n);
+  }
 });
 
 test("repairs fences and trailing commas", () => {
