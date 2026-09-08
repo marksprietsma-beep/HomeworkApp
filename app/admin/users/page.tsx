@@ -41,7 +41,7 @@ export default async function AdminUsersPage() {
         <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-8 text-left shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Admin only</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-950">User management is unavailable</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-700">Switch the temporary local development user to an ADMIN account to create or manage accounts. Current user: {selectedUser ? `${selectedUser.displayName} (${selectedUser.role})` : "none selected"}.</p>
+          <p className="mt-3 text-sm leading-6 text-slate-700">You must be signed in as an ADMIN account to create or manage accounts. Current user: {selectedUser ? `${selectedUser.displayName} (${selectedUser.role})` : "none selected"}.</p>
         </section>
       </main>
     );
@@ -102,7 +102,7 @@ export default async function AdminUsersPage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Active accounts</p>
               <h2 className="mt-2 text-2xl font-bold text-slate-950">Active users</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">These accounts remain available for normal class, enrolment, import, and local user-switching workflows.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">These accounts remain available for normal class, enrolment, and import workflows.</p>
             </div>
             <p className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">{activeUsers.length} active</p>
           </div>

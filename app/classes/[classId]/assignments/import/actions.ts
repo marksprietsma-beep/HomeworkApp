@@ -96,7 +96,7 @@ export async function importAssignmentForClass(
   }
 
   if (selectedUser.role === UserRole.STUDENT) {
-    return { ok: false, message: "Students cannot import assignments. Switch to an admin or assigned teacher." };
+    return { ok: false, message: "You must be signed in as the assigned teacher or an ADMIN account to import assignments." };
   }
 
   const classItem = await prisma.class.findFirst({

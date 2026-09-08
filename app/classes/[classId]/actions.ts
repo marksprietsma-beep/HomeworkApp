@@ -168,7 +168,7 @@ export async function createAssignmentForClass(
     const { selectedUser } = await getCurrentUserState();
 
     if (!canActAsClassTeacher(selectedUser)) {
-      throw new Error("Switch to a class teacher account to create assignments.");
+      throw new Error("You must be signed in as the class teacher or an ADMIN account to create assignments.");
     }
 
     const classItem = await prisma.class.findFirst({

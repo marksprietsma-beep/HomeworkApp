@@ -32,10 +32,10 @@ export default async function NewClassPage() {
 
         <div className="mt-6 rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-            Current local user
+            Current signed-in user
           </p>
           <p className="mt-2 text-lg font-semibold">
-            {selectedUser?.displayName ?? "No local user selected"}
+            {selectedUser?.displayName ?? "No user signed in"}
           </p>
           <p className="text-sm text-amber-200">{selectedUser?.role ?? "UNKNOWN"}</p>
         </div>
@@ -45,7 +45,7 @@ export default async function NewClassPage() {
         ) : (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
             Class creation is available to class teacher accounts only. Return to the
-            dashboard and switch the temporary local view to a teacher or administrator.
+            dashboard and sign in with a teacher or administrator account.
           </div>
         )}
       </section>

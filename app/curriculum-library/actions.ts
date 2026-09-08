@@ -9,7 +9,7 @@ import { getCurrentUserState } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 
 function requireTeacherOrAdmin(user: { id: number; role: UserRole } | null) {
-  if (!user || user.role === UserRole.STUDENT) throw new Error("Switch to an admin or teacher to use the curriculum library.");
+  if (!user || user.role === UserRole.STUDENT) throw new Error("You must be signed in as a teacher or ADMIN account to use the curriculum library.");
   return user;
 }
 

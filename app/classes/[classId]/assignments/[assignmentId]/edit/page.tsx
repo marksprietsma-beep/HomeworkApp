@@ -94,8 +94,8 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
           />
         ) : (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
-            <p className="font-semibold text-slate-950">Editing is unavailable for the current local user.</p>
-            <p className="mt-2">Switch to {assignment.class.teacher.displayName} ({assignment.class.teacher.email}) in the temporary local role switcher to edit this assignment.</p>
+            <p className="font-semibold text-slate-950">Editing is unavailable for the current signed-in user.</p>
+            <p className="mt-2">You must be signed in as {assignment.class.teacher.displayName} ({assignment.class.teacher.email}) or an ADMIN account to edit this assignment.</p>
           </div>
         )}
       </section>
