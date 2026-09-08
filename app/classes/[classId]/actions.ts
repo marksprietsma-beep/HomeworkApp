@@ -1,12 +1,12 @@
 "use server";
 
 import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
 import { hashPassword } from "../../../lib/passwords";
-import { generateTemporaryPassword, parseStudentCsv } from "../../../lib/student-csv-import";
+import { parseStudentCsv } from "../../../lib/student-csv-import";
+import { generateTemporaryPassword } from "../../../lib/temporary-password";
 import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
@@ -404,7 +404,7 @@ export async function importStudentsToClassFromCsv(classId: number, _previousSta
           summary.existingStudentsEnrolled += 1;
         }
         if (row.status === "CREATE") {
-          const temporaryPassword = generateTemporaryPassword(randomBytes(18));
+          const temporaryPassword = generateTemporaryPassword();
           const user = await tx.user.create({ data: { displayName: row.displayName, email: row.email, yearGroup: null, role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE, passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, isDevelopmentUser: false }, select: { id: true } });
           await tx.classEnrollment.create({ data: { classId, studentId: user.id } });
           credentials.push({ name: row.displayName, email: row.email, temporaryPassword });

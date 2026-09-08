@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateTemporaryPassword, parseStudentCsv } from "../lib/student-csv-import";
+import { parseStudentCsv } from "../lib/student-csv-import";
 
 test("student CSV requires the three named headers but permits case, whitespace, and extras", () => {
   const rows = parseStudentCsv(" first name ,LAST NAME, Email Address,Ignored\n Ada , Lovelace , ADA@School.test,x");
@@ -14,8 +14,4 @@ test("student CSV validates blanks, email shape, and every duplicate occurrence"
   assert.match(rows[0].messages[0], /Duplicate/);
   assert.match(rows[1].messages[0], /Duplicate/);
   assert.deepEqual(rows[2].messages, ["First Name is blank.", "Email Address is not a valid email address."]);
-});
-
-test("temporary passwords are human-shareable and derived from supplied random bytes", () => {
-  assert.equal(generateTemporaryPassword(Buffer.alloc(18, 1)), "AQEBAQ-EBAQEB-AQEBAQ-EBAQEB");
 });
