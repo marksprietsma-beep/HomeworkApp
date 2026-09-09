@@ -1,10 +1,11 @@
 "use server";
 
-import { SubmissionStatus } from "@prisma/client";
+import { Prisma, SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { validateStructuredAnswer, structuredFields } from "../../../../lib/structured-response";
 import { studentAssignmentAccessWhere, studentFeedbackActionAccessWhere } from "../../../../lib/access-control";
 
 export async function saveParticipantSubmission(
@@ -24,6 +25,8 @@ export async function saveParticipantSubmission(
       questions: {
         select: {
           id: true,
+          responseMode: true,
+          responseSchema: true,
         },
       },
     },
@@ -32,6 +35,8 @@ export async function saveParticipantSubmission(
   if (!assignment) {
     throw new Error("Assignment is not published for the selected participant.");
   }
+
+  const saveAsDraft = formData.get("submissionIntent") === "DRAFT";
 
   await prisma.$transaction(async (tx) => {
     const submission = await tx.submission.upsert({
@@ -42,21 +47,24 @@ export async function saveParticipantSubmission(
         },
       },
       update: {
-        status: SubmissionStatus.SUBMITTED,
-        submittedAt: new Date(),
+        status: saveAsDraft ? SubmissionStatus.DRAFT : SubmissionStatus.SUBMITTED,
+        submittedAt: saveAsDraft ? null : new Date(),
       },
       create: {
         assignmentId,
         studentId: selectedUser.id,
-        status: SubmissionStatus.SUBMITTED,
-        submittedAt: new Date(),
+        status: saveAsDraft ? SubmissionStatus.DRAFT : SubmissionStatus.SUBMITTED,
+        submittedAt: saveAsDraft ? null : new Date(),
       },
       select: { id: true },
     });
 
     for (const question of assignment.questions) {
       const rawAnswer = formData.get(`question-${question.id}`);
-      const answerText = typeof rawAnswer === "string" ? rawAnswer : "";
+      const answerText = question.responseMode === "STRUCTURED" ? "" : typeof rawAnswer === "string" ? rawAnswer : "";
+      const answerData = question.responseMode === "STRUCTURED"
+        ? validateStructuredAnswer(question.responseSchema, { schemaVersion: 1, values: Object.fromEntries(structuredFields(question.responseSchema).map((field) => [field.id, String(formData.get(`structured-${question.id}-${field.id}`) ?? "")])) })
+        : null;
 
       await tx.submissionAnswer.upsert({
         where: {
@@ -65,11 +73,12 @@ export async function saveParticipantSubmission(
             questionId: question.id,
           },
         },
-        update: { answerText },
+        update: { answerText, answerData: answerData as Prisma.InputJsonValue ?? Prisma.JsonNull },
         create: {
           submissionId: submission.id,
           questionId: question.id,
           answerText,
+          answerData: answerData as Prisma.InputJsonValue ?? undefined,
         },
       });
     }

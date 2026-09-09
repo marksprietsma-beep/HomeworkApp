@@ -4,7 +4,7 @@ import process from "node:process";
 import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
 const repoRoot = process.cwd();
-const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json", "docs/fixtures/assignment-import/valid/bilingual-vocabulary.json", "docs/fixtures/assignment-import/valid/pseudocode-loops.json"];
+const validFixtures = ["docs/fixtures/assignment-import/valid/fractions-check.json", "docs/fixtures/assignment-import/valid/bilingual-vocabulary.json", "docs/fixtures/assignment-import/valid/pseudocode-loops.json", "docs/fixtures/assignment-import/valid/manufacturing-account-v2.json", "docs/fixtures/assignment-import/valid/t-account-v2.json"];
 const invalidFixtures = [
   {
     path: "docs/fixtures/assignment-import/invalid/contract-violations.json",
@@ -90,7 +90,7 @@ async function checkInvalidFixture(fixture) {
 
 async function checkHelperPromptDoesNotAdvertiseUnsupportedTypes() {
   const formSource = await readText("app/classes/[classId]/assignments/import/import-assignment-form.tsx");
-  const promptMatch = formSource.match(/const assignmentChatGptPrompt = `([\s\S]*?)`;/);
+  const promptMatch = formSource.match(/const assignmentChatGptPrompt = (?:String\.raw)?`([\s\S]*?)`;/);
 
   if (!promptMatch) {
     fail("assignment import helper prompt could not be found");
@@ -115,7 +115,7 @@ async function checkHelperPromptDoesNotAdvertiseUnsupportedTypes() {
 async function checkDocumentationSync() {
   const markdown = await readText(docsPath);
   const blocks = extractDocumentedFixtureBlocks(markdown);
-  const expectedPaths = new Set([...validFixtures, ...invalidFixtures.map((fixture) => fixture.path)]);
+  const expectedPaths = new Set([...validFixtures.filter((fixture) => !fixture.endsWith("-v2.json")), ...invalidFixtures.map((fixture) => fixture.path)]);
 
   for (const expectedPath of expectedPaths) {
     if (!blocks.some((block) => block.fixturePath === expectedPath)) {

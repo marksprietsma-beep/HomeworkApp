@@ -32,6 +32,8 @@ export type HomeworkDetailData = {
     prompt: string;
     promptI18n: unknown;
     questionType: string;
+    responseMode: string;
+    responseSchema: unknown;
     points: number | null;
     options: unknown;
     imagePath: string | null;
@@ -108,6 +110,8 @@ export async function getHomeworkDetailData(
           prompt: true,
           promptI18n: true,
           questionType: true,
+          responseMode: true,
+          responseSchema: true,
           points: true,
           options: true,
           imagePath: true,

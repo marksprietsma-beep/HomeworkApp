@@ -139,6 +139,7 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
                   <select name="questionResponseMode" defaultValue={question.responseMode} disabled={selectedType === HomeworkQuestionType.MULTIPLE_CHOICE} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
                     <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
                     <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
+                    <option value={HomeworkQuestionResponseMode.STRUCTURED}>Structured (managed by JSON import)</option>
                   </select>
                   {selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
                   {question.responseMode === HomeworkQuestionResponseMode.PSEUDOCODE && selectedType !== HomeworkQuestionType.MULTIPLE_CHOICE ? (

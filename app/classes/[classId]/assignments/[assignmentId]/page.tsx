@@ -1,3 +1,4 @@
+import { StructuredResponseRenderer } from "../../../../components/structured-response-renderer";
 import { CurriculumLibraryVisibility, HomeworkAssignmentStatus } from "@prisma/client";
 import type { ReactNode } from "react";
 import Image from "next/image";
@@ -508,6 +509,7 @@ export default async function HomeworkDetailPage({
                       {question.points ? `${question.points} pts` : "No points"}
                     </p>
                   </div>
+                  {question.responseMode === "STRUCTURED" ? <div className="mt-4"><StructuredResponseRenderer questionId={question.id} schema={question.responseSchema} readOnly /></div> : null}
                   {question.questionType === "MULTIPLE_CHOICE" &&
                   getMultipleChoiceChoices(question.options).length > 0 ? (
                     <ul className="mt-4 grid gap-2">

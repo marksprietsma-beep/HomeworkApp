@@ -1,0 +1,26 @@
+{
+  "formatVersion": "assignment-import-v2",
+  "assignment": {
+    "title": "Manufacturing Accounts Practice",
+    "instructions": "Complete the Manufacturing Account.",
+    "status": "DRAFT",
+    "questions": [{
+      "id": "manufacturing_account", "order": 1, "type": "OPEN_TEXT", "responseMode": "STRUCTURED",
+      "prompt": "Prepare the Manufacturing Account for the year ended 30 April 2025.", "points": 16,
+      "responseSchema": {
+        "schemaVersion": 1, "kind": "table", "instructions": "Enter all amounts in pounds.",
+        "columns": [{"id":"label","label":""},{"id":"working","label":"£","align":"right","width":"narrow"},{"id":"total","label":"£","align":"right","width":"narrow"}],
+        "rows": [
+          {"id":"opening_raw_materials","label":"Opening inventory of raw materials","style":"normal","cells":{"working":{"editable":true,"inputType":"currency"}}},
+          {"id":"purchases","label":"Purchases","style":"normal","cells":{"working":{"editable":true,"inputType":"currency"}}},
+          {"id":"closing_raw_materials","label":"Closing inventory of raw materials","style":"normal","cells":{"working":{"editable":true,"inputType":"currency"}}},
+          {"id":"cost_raw_materials","label":"Cost of raw materials consumed","style":"subtotal","cells":{"total":{"editable":true,"inputType":"currency"}}},
+          {"id":"factory_overheads","label":"Factory overheads","style":"section_header","cells":{}},
+          {"id":"manufacturing_wages","label":"Manufacturing wages","style":"normal","cells":{"working":{"editable":true,"inputType":"currency"}}},
+          {"id":"prime_cost","label":"Prime cost","style":"subtotal","cells":{"total":{"editable":true,"inputType":"currency"}}},
+          {"id":"cost_production","label":"Cost of production","style":"total","cells":{"total":{"editable":true,"inputType":"currency"}}}
+        ]
+      }
+    }]
+  }
+}

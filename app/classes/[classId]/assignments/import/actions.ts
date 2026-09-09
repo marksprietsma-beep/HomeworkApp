@@ -23,13 +23,14 @@ type AssignmentImportGlossaryItem = {
 type AssignmentImportQuestion = {
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
-  responseMode?: "TEXT" | "PSEUDOCODE";
+  responseMode?: "TEXT" | "PSEUDOCODE" | "STRUCTURED";
   pseudocodeDialect?: "CAMBRIDGE_9618_2026" | null;
   prompt: string;
   textI18n?: I18nText;
   points: number | null;
   options: { id: string; text: string; textI18n?: I18nText }[];
   image: { path: string; caption: string; altText: string } | null;
+  responseSchema?: unknown;
 };
 
 type AssignmentImportAssignment = {
@@ -128,7 +129,8 @@ export async function importAssignmentForClass(
       prompt: question.prompt,
       promptI18n: question.textI18n ?? undefined,
       questionType: question.type as HomeworkQuestionType,
-      responseMode: question.type === "OPEN_TEXT" && question.responseMode === "PSEUDOCODE" ? HomeworkQuestionResponseMode.PSEUDOCODE : HomeworkQuestionResponseMode.TEXT,
+      responseMode: question.type === "OPEN_TEXT" && question.responseMode === "PSEUDOCODE" ? HomeworkQuestionResponseMode.PSEUDOCODE : question.type === "OPEN_TEXT" && question.responseMode === "STRUCTURED" ? HomeworkQuestionResponseMode.STRUCTURED : HomeworkQuestionResponseMode.TEXT,
+      responseSchema: question.responseMode === "STRUCTURED" ? question.responseSchema as object : undefined,
       pseudocodeDialect: question.type === "OPEN_TEXT" && question.responseMode === "PSEUDOCODE" ? PseudocodeDialect.CAMBRIDGE_9618_2026 : undefined,
       points: question.points,
       options:

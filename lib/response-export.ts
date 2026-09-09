@@ -2,6 +2,7 @@ import type { UserRole } from "@prisma/client";
 import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
 import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
+import { structuredFields } from "./structured-response";
 
 export const RESPONSE_EXPORT_FORMAT = "homework-assignment-responses-v2";
 
@@ -31,6 +32,8 @@ export type AssignmentResponseExport = {
     questionType: string;
     responseMode: string;
     pseudocodeDialect: string | null;
+    responseSchema: unknown;
+    structuredFields: { id: string; label: string; inputType: string }[];
     points: number | null;
     options?: unknown;
     image: {
@@ -49,6 +52,7 @@ export type AssignmentResponseExport = {
       savedAt: string;
       submittedAt: string | null;
       responsesByQuestionId: Record<string, string>;
+      structuredResponsesByQuestionId: Record<string, unknown>;
     } | null;
   }[];
   totals: {
@@ -100,6 +104,7 @@ export async function getAssignmentResponseExportData(
           questionType: true,
           responseMode: true,
           pseudocodeDialect: true,
+          responseSchema: true,
           points: true,
           imagePath: true,
           imageCaption: true,
@@ -115,7 +120,7 @@ export async function getAssignmentResponseExportData(
           submittedAt: true,
           updatedAt: true,
           answers: {
-            select: { questionId: true, answerText: true },
+            select: { questionId: true, answerText: true, answerData: true },
           },
         },
       },
@@ -161,6 +166,8 @@ export async function getAssignmentResponseExportData(
       questionType: question.questionType,
       responseMode: question.responseMode,
       pseudocodeDialect: question.pseudocodeDialect,
+      responseSchema: question.responseSchema,
+      structuredFields: structuredFields(question.responseSchema),
       points: question.points,
       image: {
         path: question.imagePath,
@@ -181,6 +188,7 @@ export async function getAssignmentResponseExportData(
               status: submission.status,
               savedAt: submission.updatedAt.toISOString(),
               submittedAt: submission.submittedAt?.toISOString() ?? null,
+              structuredResponsesByQuestionId: Object.fromEntries(submission.answers.filter((answer) => answer.questionId !== null && answer.answerData !== null).map((answer) => [String(answer.questionId), answer.answerData])),
               responsesByQuestionId: Object.fromEntries(
                 submission.answers
                   .filter((answer) => answer.questionId !== null)
@@ -337,9 +345,12 @@ function buildAssignmentResponseMarkdown(exportData: AssignmentResponseExport) {
 
     for (const question of exportData.questions) {
       const answer = participant.submission.responsesByQuestionId[String(question.id)] ?? "";
+      const structuredAnswer = participant.submission.structuredResponsesByQuestionId[String(question.id)];
       const isPseudocode = question.responseMode === "PSEUDOCODE";
       lines.push(`**Question ${question.order} (${question.id})${isPseudocode ? " — pseudocode answer" : ""}**`, "", question.prompt, "");
-      if (isPseudocode) {
+      if (question.responseMode === "STRUCTURED") {
+        lines.push("Structured fields (semantic IDs and labels):", "", "```json", JSON.stringify({ fields: question.structuredFields, answerData: structuredAnswer ?? { schemaVersion: 1, values: {} } }, null, 2), "```", "");
+      } else if (isPseudocode) {
         lines.push("Student pseudocode answer (preserve indentation and line breaks):", "", fenceCodeBlock(answer), "");
       } else {
         lines.push(answer || "No answer saved.", "");
