@@ -142,6 +142,9 @@ const requiredPromptText = [
   "pseudocodeNotes",
   "syntaxGuidance",
   "formattingGuidance",
+  "structuredResponsesByQuestionId",
+  "questions[].structuredFields",
+  "blank responsesByQuestionId string is intentional",
 ];
 for (const expectedText of requiredPromptText) {
   if (!sharedFeedbackHelper.includes(expectedText)) {

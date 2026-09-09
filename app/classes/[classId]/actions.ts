@@ -9,6 +9,7 @@ import { parseStudentCsv } from "../../../lib/student-csv-import";
 import { generateTemporaryPassword } from "../../../lib/temporary-password";
 import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
+import { assertManualCreateResponseMode } from "../../../lib/question-response-mode";
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
 
 export type CreateAssignmentFormState = {
@@ -78,6 +79,7 @@ async function parseQuestions(formData: FormData): Promise<ParsedQuestion[]> {
       )
         ? (requestedResponseMode as HomeworkQuestionResponseMode)
         : HomeworkQuestionResponseMode.TEXT;
+      assertManualCreateResponseMode(responseMode);
       const requestedDialect = valueAt(pseudocodeDialects, index);
       const pseudocodeDialect = Object.values(PseudocodeDialect).includes(requestedDialect as PseudocodeDialect)
         ? (requestedDialect as PseudocodeDialect)

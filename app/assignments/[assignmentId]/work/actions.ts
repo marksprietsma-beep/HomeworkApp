@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { submissionStateAfterSave } from "../../../../lib/question-response-mode";
 import { validateStructuredAnswer, structuredFields } from "../../../../lib/structured-response";
 import { studentAssignmentAccessWhere, studentFeedbackActionAccessWhere } from "../../../../lib/access-control";
 
@@ -22,6 +23,7 @@ export async function saveParticipantSubmission(
     where: studentAssignmentAccessWhere(assignmentId, selectedUser),
     select: {
       id: true,
+      submissions: { where: { studentId: selectedUser.id }, take: 1, select: { status: true, submittedAt: true } },
       questions: {
         select: {
           id: true,
@@ -37,6 +39,7 @@ export async function saveParticipantSubmission(
   }
 
   const saveAsDraft = formData.get("submissionIntent") === "DRAFT";
+  const nextState = submissionStateAfterSave(assignment.submissions[0] ?? null, saveAsDraft, new Date());
 
   await prisma.$transaction(async (tx) => {
     const submission = await tx.submission.upsert({
@@ -47,14 +50,14 @@ export async function saveParticipantSubmission(
         },
       },
       update: {
-        status: saveAsDraft ? SubmissionStatus.DRAFT : SubmissionStatus.SUBMITTED,
-        submittedAt: saveAsDraft ? null : new Date(),
+        status: nextState.status as SubmissionStatus,
+        submittedAt: nextState.submittedAt,
       },
       create: {
         assignmentId,
         studentId: selectedUser.id,
-        status: saveAsDraft ? SubmissionStatus.DRAFT : SubmissionStatus.SUBMITTED,
-        submittedAt: saveAsDraft ? null : new Date(),
+        status: nextState.status as SubmissionStatus,
+        submittedAt: nextState.submittedAt,
       },
       select: { id: true },
     });
@@ -86,7 +89,7 @@ export async function saveParticipantSubmission(
 
   revalidatePath("/");
   revalidatePath(`/assignments/${assignmentId}/work`);
-  redirect(`/assignments/${assignmentId}/work?saved=1`);
+  redirect(`/assignments/${assignmentId}/work?${saveAsDraft ? "draftSaved=1" : "submitted=1"}`);
 }
 
 

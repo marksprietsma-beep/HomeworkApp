@@ -21,6 +21,15 @@ test("v2 reports duplicate semantic IDs and unknown schema fields by path", () =
   }
 });
 
+for (const kind of ["table", "t_account"] as const) test(`v2 rejects ${kind} schemas above 300 editable fields`, () => {
+  const responseSchema = kind === "table"
+    ? { schemaVersion: 1, kind, columns: [{ id: "label", label: "" }, { id: "working", label: "Working" }, { id: "value", label: "Value" }], rows: Array.from({ length: 151 }, (_, index) => ({ id: `row_${index}`, label: `Row ${index}`, cells: { working: { editable: true }, value: { editable: true } } })) }
+    : { schemaVersion: 1, kind, title: "Ledger", entries: Array.from({ length: 151 }, (_, index) => ({ id: `entry_${index}`, side: index % 2 ? "credit" : "debit", label: `Entry ${index}`, detail: { editable: true }, amount: { editable: true } })) };
+  const result = parseAssignmentImportJson(JSON.stringify({ formatVersion: "assignment-import-v2", assignment: { title: "Too large", instructions: "Complete it", status: "DRAFT", questions: [{ id: "q1", order: 1, type: "OPEN_TEXT", responseMode: "STRUCTURED", prompt: "Complete it", responseSchema }] } }));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.errors.some((error: { code: string; message: string }) => error.code === "too_many_fields" && error.message.includes("too many editable fields")));
+});
+
 function assignment(prompt = "Move Location to Lab 2") {
   return JSON.stringify({
     formatVersion: "assignment-import-v1",

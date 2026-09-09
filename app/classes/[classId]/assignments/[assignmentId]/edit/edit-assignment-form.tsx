@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
+import { StructuredResponseRenderer } from "../../../../../components/structured-response-renderer";
 import { updateAssignmentDetails, type EditAssignmentFormState } from "./actions";
 
 type EditableQuestion = {
@@ -10,6 +11,7 @@ type EditableQuestion = {
   prompt: string;
   questionType: HomeworkQuestionType;
   responseMode: HomeworkQuestionResponseMode;
+  responseSchema: unknown;
   points: number | null;
   options: unknown;
   imagePath: string | null;
@@ -127,21 +129,21 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
                 </label>
                 <label className="text-sm font-semibold text-slate-700">
                   Type
-                  <select name="questionType" value={selectedType} disabled={assignment.hasResponses} onChange={(event) => setQuestionTypes((current) => ({ ...current, [question.id]: event.target.value as HomeworkQuestionType }))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
+                  <select name="questionType" value={selectedType} disabled={assignment.hasResponses || question.responseMode === HomeworkQuestionResponseMode.STRUCTURED} onChange={(event) => setQuestionTypes((current) => ({ ...current, [question.id]: event.target.value as HomeworkQuestionType }))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
                     {Object.values(HomeworkQuestionType).map((type) => (
                       <option key={type} value={type}>{questionTypeLabels[type]}</option>
                     ))}
                   </select>
-                  {assignment.hasResponses ? <input type="hidden" name="questionType" value={question.questionType} /> : null}
+                  {assignment.hasResponses || question.responseMode === HomeworkQuestionResponseMode.STRUCTURED ? <input type="hidden" name="questionType" value={question.questionType} /> : null}
                 </label>
                 <label className="text-sm font-semibold text-slate-700">
                   Response mode
-                  <select name="questionResponseMode" defaultValue={question.responseMode} disabled={selectedType === HomeworkQuestionType.MULTIPLE_CHOICE} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
-                    <option value={HomeworkQuestionResponseMode.TEXT}>Text</option>
-                    <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option>
-                    <option value={HomeworkQuestionResponseMode.STRUCTURED}>Structured (managed by JSON import)</option>
+                  <select name="questionResponseMode" defaultValue={question.responseMode} disabled={question.responseMode === HomeworkQuestionResponseMode.STRUCTURED || assignment.hasResponses || selectedType === HomeworkQuestionType.MULTIPLE_CHOICE} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
+                    {question.responseMode === HomeworkQuestionResponseMode.STRUCTURED ? <option value={HomeworkQuestionResponseMode.STRUCTURED}>Structured (managed by JSON import)</option> : null}
+                    {question.responseMode !== HomeworkQuestionResponseMode.STRUCTURED ? <option value={HomeworkQuestionResponseMode.TEXT}>Text</option> : null}
+                    {question.responseMode !== HomeworkQuestionResponseMode.STRUCTURED ? <option value={HomeworkQuestionResponseMode.PSEUDOCODE}>Pseudocode</option> : null}
                   </select>
-                  {selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={HomeworkQuestionResponseMode.TEXT} /> : null}
+                  {question.responseMode === HomeworkQuestionResponseMode.STRUCTURED || assignment.hasResponses || selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? <input type="hidden" name="questionResponseMode" value={question.responseMode === HomeworkQuestionResponseMode.STRUCTURED ? HomeworkQuestionResponseMode.STRUCTURED : selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? HomeworkQuestionResponseMode.TEXT : question.responseMode} /> : null}
                   {question.responseMode === HomeworkQuestionResponseMode.PSEUDOCODE && selectedType !== HomeworkQuestionType.MULTIPLE_CHOICE ? (
                     <input type="hidden" name="questionPseudocodeDialect" value={PseudocodeDialect.CAMBRIDGE_9618_2026} />
                   ) : (
@@ -153,6 +155,8 @@ export function EditAssignmentForm({ assignment }: EditAssignmentFormProps) {
                   <input name="questionPoints" type="number" min="1" step="1" defaultValue={question.points ?? ""} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200" />
                 </label>
               </div>
+
+              {question.responseMode === HomeworkQuestionResponseMode.STRUCTURED ? <div className="mt-4"><p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Imported structure (read only)</p><StructuredResponseRenderer questionId={question.id} schema={question.responseSchema} readOnly /></div> : null}
 
               {selectedType === HomeworkQuestionType.MULTIPLE_CHOICE ? (
                 <label className="mt-4 block text-sm font-semibold text-slate-700">
