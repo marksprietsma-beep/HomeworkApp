@@ -1,10 +1,11 @@
 "use server";
 
-import { HomeworkAssignmentStatus, SubmissionStatus } from "@prisma/client";
+import { SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { studentAssignmentAccessWhere, studentFeedbackActionAccessWhere } from "../../../../lib/access-control";
 
 export async function saveParticipantSubmission(
   assignmentId: number,
@@ -17,15 +18,7 @@ export async function saveParticipantSubmission(
   }
 
   const assignment = await prisma.homeworkAssignment.findFirst({
-    where: {
-      id: assignmentId,
-      status: HomeworkAssignmentStatus.PUBLISHED,
-      class: {
-        enrollments: {
-          some: { studentId: selectedUser.id },
-        },
-      },
-    },
+    where: studentAssignmentAccessWhere(assignmentId, selectedUser),
     select: {
       id: true,
       questions: {
@@ -100,13 +93,7 @@ export async function completeFeedbackFollowUpAction(
   }
 
   const action = await prisma.feedbackFollowUpAction.findFirst({
-    where: {
-      id: actionId,
-      participantFeedback: {
-        assignmentId,
-        studentId: selectedUser.id,
-      },
-    },
+    where: studentFeedbackActionAccessWhere(actionId, assignmentId, selectedUser),
     select: {
       id: true,
       type: true,

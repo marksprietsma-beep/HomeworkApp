@@ -15,3 +15,13 @@ test("student CSV validates blanks, email shape, and every duplicate occurrence"
   assert.match(rows[1].messages[0], /Duplicate/);
   assert.deepEqual(rows[2].messages, ["First Name is blank.", "Email Address is not a valid email address."]);
 });
+
+test("malformed or duplicate input marks the complete preview as unsafe to import", () => {
+  const rows = parseStudentCsv("First Name,Last Name,Email Address\nAda,Lovelace,same@school.test\nAlan,Turing,SAME@school.test\nGrace,,bad-email");
+  assert.equal(rows.every((row) => row.messages.length > 0), true);
+  assert.equal(rows.filter((row) => row.messages.some((message) => /Duplicate/.test(message))).length, 2);
+  assert.throws(
+    () => parseStudentCsv('First Name,Last Name,Email Address\n"Ada,Lovelace,ada@school.test'),
+    /unclosed quoted value/,
+  );
+});
