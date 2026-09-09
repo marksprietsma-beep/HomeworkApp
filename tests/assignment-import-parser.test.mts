@@ -50,6 +50,18 @@ test("repairs the production quote failure when prose continues after the quoted
   }
 });
 
+test("repairs the exact production quote failure when quoted text is followed by a comma", () => {
+  const expected = 'Location to "Lab 2", Reading to 18.5 and Active to TRUE.';
+  const raw = assignment(expected).replace('\\"Lab 2\\"', '"Lab 2"');
+  const result = parseAssignmentImportJson(raw);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.repaired, true);
+    assert.equal(result.assignment.questions[0].id, "q6");
+    assert.equal(result.assignment.questions[0].prompt, expected);
+  }
+});
+
 test("repairs equivalent unescaped quotes in Chinese i18n text", () => {
   const raw = assignment();
   const object = JSON.parse(raw);
