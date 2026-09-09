@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { assertManualCreateResponseMode, assertSafeResponseModeEdit, submissionStateAfterSave } from "../lib/question-response-mode";
-import { structuredExportRepresentation, structuredFields, tableCellContent, validateStructuredAnswer } from "../lib/structured-response";
-// @ts-ignore The test runner copies the production ESM parser alongside compiled tests.
+import { safeStructuredAnswerValues, safeStructuredSchema, structuredExportRepresentation, structuredFields, tableCellContent, validateStructuredAnswer } from "../lib/structured-response";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore The test compiler does not pair the declaration with this explicit .mjs import.
 import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
 const schema = {
@@ -42,6 +43,19 @@ test("explicit first-column cells win over labels and malformed schemas fail saf
   assert.deepEqual(tableCellContent(schema, "prime_cost", "label"), { available: true, cell: null, fallbackLabel: "Prime cost" });
   assert.deepEqual(structuredFields({ schemaVersion: 1, kind: "table", columns: {}, rows: null }), []);
   assert.deepEqual(tableCellContent({ schemaVersion: 1, kind: "t_account", entries: "bad" }, "x", "y"), { available: false });
+});
+
+test("nested corrupt cells and presentation enums make stored schemas unavailable", () => {
+  const objectValue = { ...schema, rows: [{ id: "r1", label: "Row 1", cells: { total: { value: { oops: "not a string" } } } }] };
+  assert.equal(safeStructuredSchema(objectValue), null);
+  assert.equal(safeStructuredSchema({ schemaVersion: 1, kind: "t_account", title: "Bank", entries: [{ id: "rent", label: "Rent", side: "credit", amount: { editable: "yes" } }] }), null);
+  assert.equal(safeStructuredSchema({ ...schema, columns: [{ id: "label", label: "", align: "diagonal" }], rows: [] }), null);
+  assert.equal(safeStructuredSchema({ ...schema, rows: [{ id: "r1", label: "Row", style: "flashing" }] }), null);
+});
+
+test("corrupt stored answer values are excluded before read-only rendering", () => {
+  assert.deepEqual(safeStructuredAnswerValues({ schemaVersion: 1, values: { "prime_cost.total": "196000", unsafe: { oops: true }, alsoUnsafe: 42 } }), { "prime_cost.total": "196000" });
+  assert.deepEqual(safeStructuredAnswerValues({ schemaVersion: 1, values: [] }), {});
 });
 
 test("Manufacturing Account fixture preserves semantic IDs through parse, answer validation, and export", async () => {

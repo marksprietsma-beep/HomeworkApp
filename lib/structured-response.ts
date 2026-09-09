@@ -17,15 +17,32 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isCell(value: unknown): value is Cell {
+  if (!isObject(value)) return false;
+  return (value.editable === undefined || typeof value.editable === "boolean")
+    && (value.blank === undefined || typeof value.blank === "boolean")
+    && (value.value === undefined || typeof value.value === "string")
+    && (value.inputType === undefined || value.inputType === "text" || value.inputType === "number" || value.inputType === "currency");
+}
+
 export function safeStructuredSchema(schema: unknown): StructuredResponseSchema | null {
   if (!isObject(schema) || schema.schemaVersion !== 1 || (schema.kind !== "table" && schema.kind !== "t_account")) return null;
   if (schema.instructions !== undefined && typeof schema.instructions !== "string") return null;
   if (schema.kind === "table") {
     if (!Array.isArray(schema.columns) || !Array.isArray(schema.rows)) return null;
-    if (!schema.columns.every((column) => isObject(column) && typeof column.id === "string" && typeof column.label === "string")) return null;
-    if (!schema.rows.every((row) => isObject(row) && typeof row.id === "string" && typeof row.label === "string" && (row.cells === undefined || isObject(row.cells)) && Object.values(row.cells ?? {}).every(isObject))) return null;
-  } else if (typeof schema.title !== "string" || !Array.isArray(schema.entries) || !schema.entries.every((entry) => isObject(entry) && typeof entry.id === "string" && typeof entry.label === "string" && (entry.side === "debit" || entry.side === "credit") && (entry.detail === undefined || isObject(entry.detail)) && (entry.amount === undefined || isObject(entry.amount)))) return null;
+    if (!schema.columns.every((column) => isObject(column) && typeof column.id === "string" && typeof column.label === "string"
+      && (column.align === undefined || column.align === "left" || column.align === "center" || column.align === "right")
+      && (column.width === undefined || column.width === "label" || column.width === "narrow" || column.width === "normal" || column.width === "wide"))) return null;
+    if (!schema.rows.every((row) => isObject(row) && typeof row.id === "string" && typeof row.label === "string"
+      && (row.style === undefined || row.style === "normal" || row.style === "section_header" || row.style === "subtotal" || row.style === "total" || row.style === "spacer")
+      && (row.cells === undefined || (isObject(row.cells) && Object.values(row.cells).every(isCell))))) return null;
+  } else if (typeof schema.title !== "string" || !Array.isArray(schema.entries) || !schema.entries.every((entry) => isObject(entry) && typeof entry.id === "string" && typeof entry.label === "string" && (entry.side === "debit" || entry.side === "credit") && (entry.detail === undefined || isCell(entry.detail)) && (entry.amount === undefined || isCell(entry.amount)))) return null;
   return schema as unknown as StructuredResponseSchema;
+}
+
+export function safeStructuredAnswerValues(answerData: unknown): Record<string, string> {
+  if (!isObject(answerData) || answerData.schemaVersion !== 1 || !isObject(answerData.values)) return {};
+  return Object.fromEntries(Object.entries(answerData.values).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
 export function structuredFields(schema: unknown): StructuredField[] {

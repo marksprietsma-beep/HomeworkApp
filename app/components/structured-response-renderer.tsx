@@ -1,4 +1,4 @@
-import { safeStructuredSchema, type StructuredAnswerData } from "../../lib/structured-response";
+import { safeStructuredAnswerValues, safeStructuredSchema } from "../../lib/structured-response";
 
 type Props = { questionId: number; schema: unknown; answerData?: unknown; readOnly?: boolean };
 type Cell = { editable?: boolean; inputType?: "text" | "number" | "currency"; value?: string; blank?: boolean };
@@ -17,8 +17,7 @@ function Field({ questionId, id, label, cell, value, readOnly, align }: { questi
 export function StructuredResponseRenderer({ questionId, schema, answerData, readOnly = false }: Props) {
   const definition = safeStructuredSchema(schema);
   if (!definition) return <p className="text-sm text-red-700">This structured response is unavailable.</p>;
-  const values = answerData && typeof answerData === "object" && !Array.isArray(answerData) && "values" in answerData && typeof answerData.values === "object" && answerData.values !== null && !Array.isArray(answerData.values)
-    ? (answerData as StructuredAnswerData).values : {};
+  const values = safeStructuredAnswerValues(answerData);
   const instructions = definition.instructions ? <p className="mb-3 text-sm text-slate-600">{definition.instructions}</p> : null;
 
   if (definition.kind === "table") return <div>{instructions}<div className="overflow-x-auto rounded-xl border border-slate-300"><table className="w-full min-w-[36rem] border-collapse"><caption className="sr-only">Structured response table</caption><thead><tr>{definition.columns.map((column) => <th key={column.id} scope="col" className={`border-b border-slate-300 bg-slate-100 px-3 py-2 ${alignmentClass(column.align)} ${widthClass(column.width)}`}>{column.label}</th>)}</tr></thead><tbody>{definition.rows.map((row) => <tr key={row.id} className={row.style === "total" ? "border-y-4 border-double border-slate-700 font-bold" : row.style === "subtotal" ? "border-t-2 border-slate-600 font-semibold" : row.style === "section_header" ? "bg-slate-100 font-semibold" : row.style === "spacer" ? "h-6" : "border-t border-slate-200"}>{definition.columns.map((column, index) => {
