@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { enrollStudentByEmail, initialStudentRosterActionState, removeStudentEnrollment } from "./actions";
+import { enrollStudentByEmail, initialPasswordResetActionState, initialStudentRosterActionState, removeStudentEnrollment, resetStudentPassword } from "./actions";
 
 function Result({ state }: { state: typeof initialStudentRosterActionState }) {
   if (!state.error && !state.success) return null;
@@ -34,5 +34,35 @@ export function RemoveEnrollmentForm({ classId, studentId, className }: { classI
       <button disabled={pending} aria-label={`Remove from ${className}`} className="text-xs font-semibold text-red-700 underline decoration-red-200 underline-offset-4 hover:text-red-900 disabled:text-slate-400">{pending ? "Removing…" : "Remove"}</button>
       <Result state={state} />
     </form>
+  );
+}
+
+export function ResetStudentPasswordForm({ studentId, studentName }: { studentId: number; studentName: string }) {
+  const [state, action, pending] = useActionState(resetStudentPassword, initialPasswordResetActionState);
+  return (
+    <div className="mt-4 border-t border-slate-200 pt-4">
+      <form
+        action={action}
+        onSubmit={(event) => {
+          if (!window.confirm(`Reset ${studentName}'s password? Their current sessions will end immediately.`)) event.preventDefault();
+        }}
+        className="flex flex-wrap items-center gap-3"
+      >
+        <input type="hidden" name="studentId" value={studentId} />
+        <input type="hidden" name="confirmation" value="RESET_PASSWORD" />
+        <button disabled={pending} className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-50 disabled:text-slate-400">
+          {pending ? "Resetting…" : "Reset password"}
+        </button>
+        <span className="text-xs text-slate-500">Ends existing sessions and requires a password change.</span>
+      </form>
+      {state.error ? <p role="alert" className="mt-3 text-sm font-medium text-red-700">{state.error}</p> : null}
+      {state.temporaryPassword ? (
+        <div role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-bold">Copy this temporary password now. It will not be shown again.</p>
+          <code className="mt-2 block break-all rounded-lg bg-white px-3 py-2 text-base font-bold ring-1 ring-amber-200">{state.temporaryPassword}</code>
+          <p className="mt-2">Give it securely to {state.studentName}. It is not stored as plaintext.</p>
+        </div>
+      ) : null}
+    </div>
   );
 }

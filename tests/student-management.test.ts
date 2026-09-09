@@ -5,6 +5,7 @@ import {
   canAccessStudentManagement,
   existingAccountEnrollmentError,
   manageableClassesWhere,
+  resettableStudentWhere,
   studentDirectoryWhere,
 } from "../lib/student-management";
 
@@ -18,6 +19,22 @@ test("admin student directory includes every student and searchable account fiel
     { yearGroup: { contains: "Ada" } },
   ]);
   assert.deepEqual(manageableClassesWhere({ id: 1, role: UserRole.ADMIN }), {});
+});
+
+test("password reset targets are server-scoped to students managed by the viewer", () => {
+  assert.deepEqual(resettableStudentWhere({ id: 1, role: UserRole.ADMIN }, 9), {
+    id: 9,
+    role: UserRole.STUDENT,
+  });
+  assert.deepEqual(resettableStudentWhere({ id: 42, role: UserRole.TEACHER }, 9), {
+    id: 9,
+    role: UserRole.STUDENT,
+    classEnrollments: { some: { class: { teacherId: 42 } } },
+  });
+  assert.deepEqual(resettableStudentWhere({ id: 9, role: UserRole.STUDENT }, 9), {
+    id: -1,
+    role: UserRole.STUDENT,
+  });
 });
 
 test("teacher student searches and class choices are scoped by teacher id on the server", () => {
