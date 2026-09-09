@@ -59,6 +59,16 @@ To stop the database and delete the local PostgreSQL volume, run:
 docker compose down -v
 ```
 
+## Tests and access-control checks
+
+Run the project regression suite with:
+
+```bash
+npm test
+```
+
+The suite includes focused production-authentication and authorization checks for unauthenticated access, role boundaries, forced password changes, disabled login, student data ownership, password-reset scoping, and all-or-nothing CSV validation. Run `npm run lint` as the companion static check.
+
 ## Prisma commands
 
 Generate the Prisma client after installing dependencies or changing the schema:

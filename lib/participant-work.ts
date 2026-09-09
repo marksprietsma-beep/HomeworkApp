@@ -1,6 +1,6 @@
-import { HomeworkAssignmentStatus } from "@prisma/client";
 import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
 import { prisma } from "./prisma";
+import { studentAssignmentAccessWhere } from "./access-control";
 
 export type ParticipantWorkData = {
   id: number;
@@ -99,15 +99,7 @@ export async function getParticipantWorkData(
   studentId: number,
 ): Promise<ParticipantWorkData | null> {
   const assignment = await prisma.homeworkAssignment.findFirst({
-    where: {
-      id: assignmentId,
-      status: HomeworkAssignmentStatus.PUBLISHED,
-      class: {
-        enrollments: {
-          some: { studentId },
-        },
-      },
-    },
+    where: studentAssignmentAccessWhere(assignmentId, { id: studentId, role: "STUDENT" }),
     include: {
       class: {
         select: {

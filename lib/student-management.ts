@@ -61,3 +61,28 @@ export function existingAccountEnrollmentError(account: {
   }
   return null;
 }
+
+type PasswordResetTransaction = {
+  user: {
+    update(args: {
+      where: { id: number };
+      data: { passwordHash: string; mustChangePassword: true };
+    }): Promise<unknown>;
+  };
+  session: {
+    deleteMany(args: { where: { userId: number } }): Promise<unknown>;
+  };
+};
+
+/** Applies both reset guarantees inside the caller's database transaction. */
+export async function applyStudentPasswordReset(
+  tx: PasswordResetTransaction,
+  studentId: number,
+  passwordHash: string,
+) {
+  await tx.user.update({
+    where: { id: studentId },
+    data: { passwordHash, mustChangePassword: true },
+  });
+  await tx.session.deleteMany({ where: { userId: studentId } });
+}

@@ -6,7 +6,7 @@ import { getCurrentUserState } from "../../lib/auth";
 import { hashPassword } from "../../lib/passwords";
 import { prisma } from "../../lib/prisma";
 import { canManageClassRoster } from "../../lib/permissions";
-import { canAccessStudentManagement, existingAccountEnrollmentError, resettableStudentWhere } from "../../lib/student-management";
+import { applyStudentPasswordReset, canAccessStudentManagement, existingAccountEnrollmentError, resettableStudentWhere } from "../../lib/student-management";
 import { generateTemporaryPassword } from "../../lib/temporary-password";
 
 export type StudentRosterActionState = { error: string | null; success: string | null };
@@ -112,11 +112,7 @@ export async function resetStudentPassword(
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: student.id },
-        data: { passwordHash, mustChangePassword: true },
-      });
-      await tx.session.deleteMany({ where: { userId: student.id } });
+      await applyStudentPasswordReset(tx, student.id, passwordHash);
     });
 
     revalidatePath("/students");
