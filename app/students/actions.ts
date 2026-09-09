@@ -3,12 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@prisma/client";
 import { getCurrentUserState } from "../../lib/auth";
+import { hashPassword } from "../../lib/passwords";
 import { prisma } from "../../lib/prisma";
 import { canManageClassRoster } from "../../lib/permissions";
-import { canAccessStudentManagement, existingAccountEnrollmentError } from "../../lib/student-management";
+import { canAccessStudentManagement, existingAccountEnrollmentError, resettableStudentWhere } from "../../lib/student-management";
+import { generateTemporaryPassword } from "../../lib/temporary-password";
 
 export type StudentRosterActionState = { error: string | null; success: string | null };
 export const initialStudentRosterActionState: StudentRosterActionState = { error: null, success: null };
+
+export type PasswordResetActionState = {
+  error: string | null;
+  temporaryPassword: string | null;
+  studentName: string | null;
+};
+export const initialPasswordResetActionState: PasswordResetActionState = {
+  error: null,
+  temporaryPassword: null,
+  studentName: null,
+};
 
 async function requireManagedClass(classId: number) {
   const { selectedUser } = await getCurrentUserState();
@@ -72,5 +85,47 @@ export async function removeStudentEnrollment(
     return { error: null, success: `${student.displayName} was removed from ${classItem.name}.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not remove this enrolment.", success: null };
+  }
+}
+
+export async function resetStudentPassword(
+  _state: PasswordResetActionState,
+  formData: FormData,
+): Promise<PasswordResetActionState> {
+  try {
+    const { selectedUser } = await getCurrentUserState();
+    if (!selectedUser || !canAccessStudentManagement(selectedUser)) {
+      throw new Error("Staff access is required.");
+    }
+    if (formData.get("confirmation") !== "RESET_PASSWORD") {
+      throw new Error("Confirm the password reset before continuing.");
+    }
+
+    const studentId = Number(formData.get("studentId"));
+    if (!Number.isInteger(studentId) || studentId < 1) throw new Error("Choose a student account.");
+    const student = await prisma.user.findFirst({
+      where: resettableStudentWhere(selectedUser, studentId),
+      select: { id: true, displayName: true },
+    });
+    if (!student) throw new Error("You do not have permission to reset that student account.");
+
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: student.id },
+        data: { passwordHash, mustChangePassword: true },
+      });
+      await tx.session.deleteMany({ where: { userId: student.id } });
+    });
+
+    revalidatePath("/students");
+    return { error: null, temporaryPassword, studentName: student.displayName };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not reset this password.",
+      temporaryPassword: null,
+      studentName: null,
+    };
   }
 }

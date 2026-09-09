@@ -33,6 +33,22 @@ export function manageableClassesWhere(viewer: StudentManagementViewer): Prisma.
   return viewer.role === UserRole.ADMIN ? {} : { teacherId: viewer.id };
 }
 
+/** Limits password resets to student accounts inside the staff member's management scope. */
+export function resettableStudentWhere(
+  viewer: StudentManagementViewer,
+  studentId: number,
+): Prisma.UserWhereInput {
+  return {
+    id: studentId,
+    role: UserRole.STUDENT,
+    ...(viewer.role === UserRole.TEACHER
+      ? { classEnrollments: { some: { class: { teacherId: viewer.id } } } }
+      : viewer.role === UserRole.ADMIN
+        ? {}
+        : { id: -1 }),
+  };
+}
+
 export function existingAccountEnrollmentError(account: {
   role: UserRoleValue;
   accountStatus: AccountStatus;
