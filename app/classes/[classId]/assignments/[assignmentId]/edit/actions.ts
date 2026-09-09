@@ -4,6 +4,7 @@ import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestio
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../lib/auth";
+import { assertSafeResponseModeEdit, type ResponseMode } from "../../../../../../lib/question-response-mode";
 import { canActAsClassTeacher } from "../../../../../../lib/permissions";
 import { prisma } from "../../../../../../lib/prisma";
 
@@ -58,7 +59,7 @@ export async function updateAssignmentDetails(
         submissions: { select: { id: true }, take: 1 },
         questions: {
           orderBy: { order: "asc" },
-          select: { id: true, questionType: true, responseMode: true },
+          select: { id: true, questionType: true, responseMode: true, responseSchema: true },
         },
       },
     });
@@ -128,6 +129,7 @@ export async function updateAssignmentDetails(
         )
           ? (requestedResponseMode as HomeworkQuestionResponseMode)
           : existingQuestion.responseMode;
+        assertSafeResponseModeEdit(existingQuestion.responseMode as ResponseMode, responseMode as ResponseMode, hasResponses);
         const requestedDialect = valueAt(pseudocodeDialects, index);
         const pseudocodeDialect = Object.values(PseudocodeDialect).includes(requestedDialect as PseudocodeDialect)
           ? (requestedDialect as PseudocodeDialect)
@@ -148,6 +150,10 @@ export async function updateAssignmentDetails(
 
         if (points !== null && (!Number.isInteger(points) || points < 1)) {
           throw new Error("Question points must be positive whole numbers when provided.");
+        }
+
+        if (existingQuestion.responseMode === HomeworkQuestionResponseMode.STRUCTURED && questionType !== existingQuestion.questionType) {
+          throw new Error("Structured question type cannot be changed in the ordinary editor.");
         }
 
         if (hasResponses && questionType !== existingQuestion.questionType) {

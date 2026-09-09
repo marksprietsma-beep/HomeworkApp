@@ -4,7 +4,9 @@ Use this guide when a teacher asks an external/custom GPT to produce Clarion-com
 
 When importable output is requested, return raw valid JSON only: no Markdown fence, no commentary, no trailing commas.
 
-## Assignment import JSON (`assignment-import-v1`)
+## Assignment import JSON (`assignment-import-v1` and `assignment-import-v2`)
+
+Continue using `assignment-import-v1` for ordinary text, pseudocode and multiple-choice assignments. Use `assignment-import-v2` only when a question needs `responseMode: "STRUCTURED"` and a validated `responseSchema`. The strict v2 table/grid and T-account contract, semantic ID rules, answer-data shape, and complete fixtures are documented in [Assignment import JSON v2](assignment-import-json-v2.md). V2 does not add subject-specific question types: structured questions retain `type: "OPEN_TEXT"` and describe presentation separately.
 
 Top-level shape:
 

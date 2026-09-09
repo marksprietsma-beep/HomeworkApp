@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../../lib/auth";
+import { StructuredResponseRenderer } from "../../../../../../components/structured-response-renderer";
 import { getResponseDetailData } from "../../../../../../../lib/response-detail";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,8 @@ function getMultipleChoiceChoices(options: unknown) {
   return [];
 }
 
-function ResponseAnswer({ answerText, questionType, responseMode }: { answerText: string; questionType: string; responseMode: string }) {
+function ResponseAnswer({ questionId, answerText, answerData, responseSchema, questionType, responseMode }: { questionId: number; answerText: string; answerData: unknown; responseSchema: unknown; questionType: string; responseMode: string }) {
+  if (responseMode === "STRUCTURED") return <div className="mt-5"><StructuredResponseRenderer questionId={questionId} schema={responseSchema} answerData={answerData} readOnly /></div>;
   if (!answerText) {
     return (
       <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
@@ -248,7 +250,7 @@ export default async function ResponseDetailPage({ params }: ResponseDetailPageP
                   </div>
                 ) : null}
 
-                <ResponseAnswer answerText={question.answerText} questionType={question.questionType} responseMode={question.responseMode} />
+                <ResponseAnswer questionId={question.id} answerText={question.answerText} answerData={question.answerData} responseSchema={question.responseSchema} questionType={question.questionType} responseMode={question.responseMode} />
               </article>
             );
           })

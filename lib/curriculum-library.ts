@@ -87,7 +87,7 @@ export async function getAssignableClassesForUser(user: { id: number; role: User
 }
 
 export function buildAssignmentTemplate(assignment: {
-  title: string; titleI18n: unknown; description: string | null; descriptionI18n: unknown; keyVocabulary: unknown; dueAt: Date | null; questions: Array<{ order: number; prompt: string; promptI18n: unknown; questionType: string; points: number | null; options: unknown; imagePath: string | null; imageCaption: string | null; imageAltText: string | null }>;
+  title: string; titleI18n: unknown; description: string | null; descriptionI18n: unknown; keyVocabulary: unknown; dueAt: Date | null; questions: Array<{ order: number; prompt: string; promptI18n: unknown; questionType: string; responseMode: string; pseudocodeDialect: string | null; responseSchema: unknown; points: number | null; options: unknown; imagePath: string | null; imageCaption: string | null; imageAltText: string | null }>;
 }) {
   return {
     title: assignment.title,

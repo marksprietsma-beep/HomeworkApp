@@ -7,12 +7,13 @@ import { getBilingualTextParts, getLocalizedText, type LanguageMode } from "../.
 import { getParticipantWorkData } from "../../../../lib/participant-work";
 import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./actions";
 import { PseudocodeAnswerEditor } from "./pseudocode-answer-editor";
+import { StructuredResponseRenderer } from "../../../components/structured-response-renderer";
 
 export const dynamic = "force-dynamic";
 
 type ParticipantWorkPageProps = {
   params: Promise<{ assignmentId: string }>;
-  searchParams: Promise<{ feedbackAction?: string; saved?: string; lang?: string }>;
+  searchParams: Promise<{ feedbackAction?: string; draftSaved?: string; submitted?: string; lang?: string }>;
 };
 
 function formatDate(date: Date | null) {
@@ -135,7 +136,7 @@ export default async function ParticipantWorkPage({
   searchParams,
 }: ParticipantWorkPageProps) {
   const { assignmentId } = await params;
-  const { feedbackAction, saved, lang } = await searchParams;
+  const { feedbackAction, draftSaved, submitted, lang } = await searchParams;
   const languageMode: LanguageMode = lang === "zh" || lang === "bilingual" ? lang : "en";
   const parsedAssignmentId = Number(assignmentId);
 
@@ -239,13 +240,19 @@ export default async function ParticipantWorkPage({
           </div>
         </div>
 
-        {saved === "1" ? (
+        {draftSaved === "1" ? (
+          <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <p className="font-semibold">Draft saved</p>
+            <p className="mt-1">
+              Your draft was saved and will reload here when you return.
+            </p>
+          </div>
+        ) : null}
+
+        {submitted === "1" ? (
           <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
             <p className="font-semibold">Response submitted</p>
-            <p className="mt-1">
-              Your answers were saved for this assignment and will reload here if
-              you return later.
-            </p>
+            <p className="mt-1">Your submitted answers were saved successfully.</p>
           </div>
         ) : null}
 
@@ -267,7 +274,7 @@ export default async function ParticipantWorkPage({
               Current response: {work.submission.status}
             </p>
             <p className="mt-1">
-              Last submitted: {formatDate(work.submission.submittedAt)}
+              {work.submission.submittedAt ? `Last submitted: ${formatDate(work.submission.submittedAt)}` : `Draft last saved: ${formatDate(work.submission.updatedAt)}`}
             </p>
           </div>
         ) : null}
@@ -479,7 +486,9 @@ export default async function ParticipantWorkPage({
                 </div>
               ) : null}
 
-              {question.responseMode === "PSEUDOCODE" ? (
+              {question.responseMode === "STRUCTURED" ? (
+                <div className="mt-5"><StructuredResponseRenderer questionId={question.id} schema={question.responseSchema} answerData={question.answerData} /></div>
+              ) : question.responseMode === "PSEUDOCODE" ? (
                 <PseudocodeAnswerEditor
                   id={`question-${question.id}`}
                   name={`question-${question.id}`}
@@ -533,12 +542,10 @@ export default async function ParticipantWorkPage({
         })}
 
         <div className="sticky bottom-4 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
-          <button
-            type="submit"
-            className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
-          >
-            Save and submit response
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {work.submission?.status !== "SUBMITTED" ? <button type="submit" name="submissionIntent" value="DRAFT" className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 sm:w-auto">Save draft</button> : null}
+            <button type="submit" name="submissionIntent" value="SUBMITTED" className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto">Submit response</button>
+          </div>
         </div>
       </form>
     </main>

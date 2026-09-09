@@ -4,6 +4,32 @@ import test from "node:test";
 // @ts-expect-error TypeScript does not pair a sibling .d.ts with an explicit .mjs import.
 import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
 
+test("v2 accepts structured tables while v1 remains strict", () => {
+  const question = { id: "q1", order: 1, type: "OPEN_TEXT", responseMode: "STRUCTURED", prompt: "Complete it", responseSchema: { schemaVersion: 1, kind: "table", columns: [{ id: "label", label: "" }, { id: "total", label: "£" }], rows: [{ id: "total_row", label: "Total", cells: { total: { editable: true, inputType: "currency" } } }] } };
+  assert.equal(parseAssignmentImportJson(JSON.stringify({ formatVersion: "assignment-import-v2", assignment: { title: "Accounts", instructions: "Complete it", status: "DRAFT", questions: [question] } })).ok, true);
+  const v1 = parseAssignmentImportJson(JSON.stringify({ formatVersion: "assignment-import-v1", assignment: { title: "Accounts", instructions: "Complete it", status: "DRAFT", questions: [question] } }));
+  assert.equal(v1.ok, false);
+  if (!v1.ok) assert.ok(v1.errors.some((error: { path: string; code: string }) => error.path.endsWith("responseSchema")));
+});
+
+test("v2 reports duplicate semantic IDs and unknown schema fields by path", () => {
+  const result = parseAssignmentImportJson(JSON.stringify({ formatVersion: "assignment-import-v2", assignment: { title: "Accounts", instructions: "Complete it", status: "DRAFT", questions: [{ id: "q1", order: 1, type: "OPEN_TEXT", responseMode: "STRUCTURED", prompt: "Complete it", responseSchema: { schemaVersion: 1, kind: "table", script: "bad", columns: [{ id: "label", label: "" }, { id: "label", label: "£" }], rows: [{ id: "r", label: "R", cells: { label: { editable: true } } }] } }] } }));
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.errors.some((error: { path: string; code: string }) => error.path.endsWith(".script") && error.code === "unknown_field"));
+    assert.ok(result.errors.some((error: { path: string; code: string }) => error.path.endsWith("columns[1].id") && error.code === "duplicate"));
+  }
+});
+
+for (const kind of ["table", "t_account"] as const) test(`v2 rejects ${kind} schemas above 300 editable fields`, () => {
+  const responseSchema = kind === "table"
+    ? { schemaVersion: 1, kind, columns: [{ id: "label", label: "" }, { id: "working", label: "Working" }, { id: "value", label: "Value" }], rows: Array.from({ length: 151 }, (_, index) => ({ id: `row_${index}`, label: `Row ${index}`, cells: { working: { editable: true }, value: { editable: true } } })) }
+    : { schemaVersion: 1, kind, title: "Ledger", entries: Array.from({ length: 151 }, (_, index) => ({ id: `entry_${index}`, side: index % 2 ? "credit" : "debit", label: `Entry ${index}`, detail: { editable: true }, amount: { editable: true } })) };
+  const result = parseAssignmentImportJson(JSON.stringify({ formatVersion: "assignment-import-v2", assignment: { title: "Too large", instructions: "Complete it", status: "DRAFT", questions: [{ id: "q1", order: 1, type: "OPEN_TEXT", responseMode: "STRUCTURED", prompt: "Complete it", responseSchema }] } }));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.errors.some((error: { code: string; message: string }) => error.code === "too_many_fields" && error.message.includes("too many editable fields")));
+});
+
 function assignment(prompt = "Move Location to Lab 2") {
   return JSON.stringify({
     formatVersion: "assignment-import-v1",

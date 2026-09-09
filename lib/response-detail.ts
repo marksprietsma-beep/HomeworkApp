@@ -31,11 +31,13 @@ export type ResponseDetailData = {
     responseMode: string;
     pseudocodeDialect: string | null;
     options: unknown;
+    responseSchema: unknown;
     points: number | null;
     imagePath: string | null;
     imageCaption: string | null;
     imageAltText: string | null;
     answerText: string;
+    answerData: unknown;
   }[];
 };
 
@@ -86,7 +88,8 @@ export async function getResponseDetailData(
               prompt: true,
               questionType: true,
               responseMode: true,
-          pseudocodeDialect: true,
+              pseudocodeDialect: true,
+              responseSchema: true,
               options: true,
               points: true,
               imagePath: true,
@@ -100,6 +103,7 @@ export async function getResponseDetailData(
         select: {
           questionId: true,
           answerText: true,
+          answerData: true,
         },
       },
     },
@@ -118,7 +122,7 @@ export async function getResponseDetailData(
   const answersByQuestionId = new Map(
     submission.answers
       .filter((answer) => answer.questionId !== null)
-      .map((answer) => [answer.questionId, answer.answerText]),
+      .map((answer) => [answer.questionId, { answerText: answer.answerText, answerData: answer.answerData }]),
   );
 
   return {
@@ -137,7 +141,8 @@ export async function getResponseDetailData(
       },
       questions: submission.assignment.questions.map((question) => ({
         ...question,
-        answerText: answersByQuestionId.get(question.id) ?? "",
+        answerText: answersByQuestionId.get(question.id)?.answerText ?? "",
+        answerData: answersByQuestionId.get(question.id)?.answerData ?? null,
       })),
     },
     canView,

@@ -26,12 +26,14 @@ export type ParticipantWorkData = {
     questionType: string;
     responseMode: string;
     pseudocodeDialect: string | null;
+    responseSchema: unknown;
     points: number | null;
     options: unknown;
     imagePath: string | null;
     imageCaption: string | null;
     imageAltText: string | null;
     answerText: string;
+    answerData: unknown;
   }[];
   submission: {
     id: number;
@@ -122,6 +124,7 @@ export async function getParticipantWorkData(
           questionType: true,
           responseMode: true,
           pseudocodeDialect: true,
+          responseSchema: true,
           points: true,
           options: true,
           imagePath: true,
@@ -141,6 +144,7 @@ export async function getParticipantWorkData(
             select: {
               questionId: true,
               answerText: true,
+              answerData: true,
             },
           },
         },
@@ -226,7 +230,7 @@ export async function getParticipantWorkData(
   const answersByQuestionId = new Map(
     submission?.answers
       .filter((answer) => answer.questionId !== null)
-      .map((answer) => [answer.questionId, answer.answerText]) ?? [],
+      .map((answer) => [answer.questionId, { answerText: answer.answerText, answerData: answer.answerData }]) ?? [],
   );
   const totalPoints = assignment.questions.reduce<number | null>(
     (total, question) =>
@@ -246,7 +250,8 @@ export async function getParticipantWorkData(
     class: assignment.class,
     questions: assignment.questions.map((question) => ({
       ...question,
-      answerText: answersByQuestionId.get(question.id) ?? "",
+      answerText: answersByQuestionId.get(question.id)?.answerText ?? "",
+      answerData: answersByQuestionId.get(question.id)?.answerData ?? null,
     })),
     submission: submission
       ? {

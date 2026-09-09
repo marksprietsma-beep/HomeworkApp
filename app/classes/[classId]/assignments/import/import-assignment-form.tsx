@@ -4,6 +4,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
+import { StructuredResponseRenderer } from "../../../../components/structured-response-renderer";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
 import { importAssignmentForClass, type ImportAssignmentActionState } from "./actions";
 
@@ -24,12 +25,13 @@ type AssignmentImportQuestion = {
   id: string;
   order: number;
   type: "OPEN_TEXT" | "MULTIPLE_CHOICE";
-  responseMode?: "TEXT" | "PSEUDOCODE";
+  responseMode?: "TEXT" | "PSEUDOCODE" | "STRUCTURED";
   pseudocodeDialect?: "CAMBRIDGE_9618_2026" | null;
   prompt: string;
   points: number | null;
   options: { id: string; text: string }[];
   image: { path: string; caption: string; altText: string } | null;
+  responseSchema?: unknown;
 };
 
 type AssignmentImportAssignment = {
@@ -102,13 +104,16 @@ Teacher generation context to use:
 - Marks/points expectations: [fill in total marks or per-question guidance]
 - Bilingual assignment wanted? [yes/no; if yes, keep the required English fields and add optional i18n fields using only en and zh for title, instructions, question text, multiple-choice options, and key vocabulary/glossary. Use natural Simplified Chinese, not literal machine-style translation.]
 
-Use the Clarion assignment import JSON v1 structure:
-- Root object with formatVersion set to "assignment-import-v1" and an assignment object.
+Choose the format deliberately: use assignment-import-v1 for ordinary text, pseudocode, and multiple-choice homework. Use assignment-import-v2 only when at least one question needs a structured table/grid or T-account.
+
+Use the Clarion assignment import structure:
+- Root object with formatVersion set to "assignment-import-v1" for ordinary homework or "assignment-import-v2" for structured responses, and an assignment object.
 - Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
 - assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."
 - Do not put teacher generation context into assignment.instructions. If metadata genuinely belongs in the JSON, express it through title, questions, points, dueDate, status, or keyVocabulary instead of adding a long teacher-facing paragraph.
 - Questions must preserve stable string ids such as q1 exactly, use sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, optional textI18n, and optional positive integer points/marks.
 - Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions. Add optional responseMode: "PSEUDOCODE" and pseudocodeDialect: "CAMBRIDGE_9618_2026" only when students are expected to write, complete, trace, debug, or explain pseudocode/code-style answers. Do not add pseudocode metadata to ordinary prose questions.
+- For a structured question, keep type OPEN_TEXT, set responseMode to "STRUCTURED", and include responseSchema with schemaVersion 1. kind "table" uses columns [{id,label,optional align/width}] and rows [{id,label,optional style,cells keyed by column id}]. kind "t_account" uses title and entries [{id,side (debit or credit),label,optional detail,optional amount}]. Cells allow editable boolean, inputType text/number/currency, static value, or blank. Row styles are normal, section_header, subtotal, total, or spacer. All row/column/entry IDs must be stable, unique identifiers beginning with a letter; editable answer IDs are deterministically row.column or entry.detail/entry.amount. Use semantic metadata only: never emit HTML, CSS, JavaScript, formulas, or visual-coordinate-only IDs.
 - For Cambridge 9618 pseudocode questions, preserve indentation and line breaks. Use uppercase keywords, mixed-case identifiers starting with a letter, // comments, the ← assignment arrow, and structures such as DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
 - MULTIPLE_CHOICE questions must include options with stable ids and text, plus optional textI18n on each option. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
@@ -197,7 +202,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
           successMessage="Assignment prompt copied."
           failureMessage="Could not copy the assignment prompt. Use View/edit prompt to copy it manually."
           manualCopyLabel="View/edit prompt"
-          docsHref="/docs/assignment-import-json-v1.md"
+          docsHref="/docs/assignment-import-json-v2.md"
           docsLabel="Open assignment JSON documentation"
         />
         <textarea
@@ -407,6 +412,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                     <p className="mt-4 text-sm leading-6 text-slate-950">
                       {question.prompt}
                     </p>
+                    {question.responseMode === "STRUCTURED" ? <div className="mt-4"><StructuredResponseRenderer questionId={question.order} schema={question.responseSchema} readOnly /></div> : null}
                     {question.options.length > 0 ? (
                       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
                         {question.options.map((option) => (

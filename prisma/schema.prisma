@@ -43,6 +43,7 @@ enum HomeworkQuestionType {
 enum HomeworkQuestionResponseMode {
   TEXT
   PSEUDOCODE
+  STRUCTURED
 }
 
 enum PseudocodeDialect {
@@ -184,6 +185,7 @@ model HomeworkQuestion {
   imageCaption    String?
   imageAltText    String?
   points          Int?
+  responseSchema  Json?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   assignment      HomeworkAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
@@ -217,6 +219,7 @@ model SubmissionAnswer {
   submissionId Int
   questionId   Int?
   answerText   String
+  answerData   Json?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   submission   Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)

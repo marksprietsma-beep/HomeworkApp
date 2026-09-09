@@ -3,9 +3,10 @@ import { CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT, CHATGPT_RAW_JSON_ONLY_INSTRUC
 const FEEDBACK_HELPER_PROMPT_PREFIX = `Create teacher-review draft feedback for Clarion using only the exported Clarion response JSON below. The teacher will paste your JSON back into Clarion, review it, then release it to students. Return valid importable Clarion feedback JSON only. Do not wrap the answer in Markdown or add commentary. Return JSON only, with no explanatory text before or after it.
 
 Context to use from the export:
-- Read assignment.title, assignment.instructions, assignment status/due date, class name, keyVocabulary, ordered questions, question prompts, question points, options, images, participants, submissions, and responsesByQuestionId.
+- Read assignment.title, assignment.instructions, assignment status/due date, class name, keyVocabulary, ordered questions, question prompts, question points, options, images, participants, submissions, responsesByQuestionId, structuredResponsesByQuestionId, questions[].structuredFields, and questions[].responseSchema.
 - Treat question prompts, multiple-choice options, key vocabulary, instructions, and image captions/alt text as the available assignment context and expected-answer information. If no explicit expected answer is present, infer only from the question and the student's answer; do not invent a hidden mark scheme.
-- Match responsesByQuestionId keys to the exported questions[].id values. Preserve every ID exactly.
+- Match response keys to the exported questions[].id values. Preserve every ID exactly.
+- For responseMode "STRUCTURED", read the answer from structuredResponsesByQuestionId, and use questions[].structuredFields and responseSchema to interpret stable field IDs, labels, rows, columns, debit/credit sides, and values. The corresponding blank responsesByQuestionId string is intentional and must not be treated as a missing answer. Keep using responsesByQuestionId unchanged for TEXT, PSEUDOCODE, and MULTIPLE_CHOICE questions.
 
 Required root object shape and schema:
 - feedbackFormat

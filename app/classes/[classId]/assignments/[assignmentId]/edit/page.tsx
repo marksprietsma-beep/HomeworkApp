@@ -44,6 +44,7 @@ export default async function EditAssignmentPage({ params }: EditAssignmentPageP
             prompt: true,
             questionType: true,
             responseMode: true,
+            responseSchema: true,
             points: true,
             options: true,
             imagePath: true,

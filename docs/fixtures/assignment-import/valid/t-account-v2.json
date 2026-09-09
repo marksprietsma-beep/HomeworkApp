@@ -1,0 +1,7 @@
+{
+  "formatVersion": "assignment-import-v2",
+  "assignment": {
+    "title": "Ledger practice", "instructions": "Complete the account.", "status": "DRAFT",
+    "questions": [{"id":"bank_account","order":1,"type":"OPEN_TEXT","responseMode":"STRUCTURED","prompt":"Complete the Bank T-account.","responseSchema":{"schemaVersion":1,"kind":"t_account","title":"Bank","entries":[{"id":"capital","side":"debit","label":"Capital","amount":{"editable":true,"inputType":"currency"}},{"id":"rent","side":"credit","label":"Rent","detail":{"editable":true,"inputType":"text"},"amount":{"editable":true,"inputType":"currency"}}]}}]
+  }
+}

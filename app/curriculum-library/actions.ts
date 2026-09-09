@@ -1,6 +1,6 @@
 "use server";
 
-import { CurriculumLibraryVisibility, HomeworkQuestionType, Prisma, UserRole } from "@prisma/client";
+import { CurriculumLibraryVisibility, HomeworkQuestionResponseMode, HomeworkQuestionType, Prisma, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { buildAssignmentTemplate, buildLibraryVersionSnapshot, canManageLibraryItem, getLibraryVisibilityWhere, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
@@ -18,7 +18,7 @@ export async function saveAssignmentToLibrary(classId: number, assignmentId: num
   const user = requireTeacherOrAdmin(selectedUser);
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: { id: assignmentId, classId, ...(user.role === UserRole.ADMIN ? {} : { class: { teacherId: user.id } }) },
-    include: { class: { select: { subject: true } }, questions: { orderBy: { order: "asc" }, select: { order: true, prompt: true, promptI18n: true, questionType: true, points: true, options: true, imagePath: true, imageCaption: true, imageAltText: true } } },
+    include: { class: { select: { subject: true } }, questions: { orderBy: { order: "asc" }, select: { order: true, prompt: true, promptI18n: true, questionType: true, responseMode: true, pseudocodeDialect: true, responseSchema: true, points: true, options: true, imagePath: true, imageCaption: true, imageAltText: true } } },
   });
   if (!assignment) throw new Error("Only admins or the teacher who owns this class can save this assignment to the library.");
 
@@ -85,7 +85,7 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
         keyVocabulary: template.keyVocabulary ?? undefined,
         dueAt,
         status,
-        questions: { create: template.questions.map((question, index) => ({ order: index + 1, prompt: question.prompt, promptI18n: question.promptI18n ?? undefined, questionType: Object.values(HomeworkQuestionType).includes(question.questionType as HomeworkQuestionType) ? (question.questionType as HomeworkQuestionType) : HomeworkQuestionType.OPEN_TEXT, points: question.points, options: question.options ?? undefined, imagePath: question.imagePath, imageCaption: question.imageCaption, imageAltText: question.imageAltText })) },
+        questions: { create: template.questions.map((question, index) => ({ order: index + 1, prompt: question.prompt, promptI18n: question.promptI18n ?? undefined, questionType: Object.values(HomeworkQuestionType).includes(question.questionType as HomeworkQuestionType) ? (question.questionType as HomeworkQuestionType) : HomeworkQuestionType.OPEN_TEXT, responseMode: Object.values(HomeworkQuestionResponseMode).includes(question.responseMode as HomeworkQuestionResponseMode) ? question.responseMode as HomeworkQuestionResponseMode : HomeworkQuestionResponseMode.TEXT, pseudocodeDialect: question.pseudocodeDialect === PseudocodeDialect.CAMBRIDGE_9618_2026 ? PseudocodeDialect.CAMBRIDGE_9618_2026 : null, responseSchema: question.responseSchema ?? undefined, points: question.points, options: question.options ?? undefined, imagePath: question.imagePath, imageCaption: question.imageCaption, imageAltText: question.imageAltText })) },
       },
       select: { id: true, classId: true },
     })),
