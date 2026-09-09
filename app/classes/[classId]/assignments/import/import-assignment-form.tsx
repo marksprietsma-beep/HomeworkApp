@@ -3,7 +3,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
-import { CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT, CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
+import { CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
 import { importAssignmentForClass, type ImportAssignmentActionState } from "./actions";
 
@@ -87,7 +87,7 @@ const placeholderJson = `{
   }
 }`;
 
-const assignmentChatGptPrompt = `Create an assignment for Clarion. Return only valid JSON. Do not wrap the answer in Markdown or add commentary.
+const assignmentChatGptPrompt = String.raw`Create an assignment for Clarion. Return only strict, valid, serialized JSON. Do not wrap the answer in Markdown or add commentary.
 
 Separate teacher generation context from student-facing assignment content. Use the teacher choices below to create the homework, but do not copy these choices, metadata, planning notes, syllabus context, question mix, difficulty, marks expectations, or glossary choices into assignment.instructions.
 
@@ -116,7 +116,22 @@ Use the Clarion assignment import JSON v1 structure:
 
 Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.
 
-${CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT}
+JSON string-safety requirement:
+- Return serialized JSON, not a JavaScript object literal.
+- Any quotation mark that is part of text inside a JSON string must be escaped as \".
+- Any literal backslash inside a JSON string must be escaped as \\.
+- Represent intended line breaks inside JSON string values using valid JSON escaping such as \n.
+- This especially applies to quoted examples, code/string literals, translations, pseudocode, and phrases such as \"Lab 2\" inside question prompts.
+- Before returning, validate the exact final serialized text, not merely the conceptual object structure.
+
+Final JSON validation before returning:
+1. Build the complete assignment object first.
+2. Serialize it as strict JSON.
+3. Validate the exact serialized response with JSON.parse (or an equivalent strict JSON parser).
+4. Check all embedded quotation marks, backslashes, and line breaks inside string values are JSON-escaped correctly.
+5. Check every { has a matching }, every [ has a matching ], and array/object items are comma-separated correctly.
+6. Do not return the response unless the exact final text is valid parseable JSON.
+7. Do not include Markdown fences, comments, explanations, trailing commas, or any text outside the root JSON object.
 
 ${CHATGPT_RAW_JSON_ONLY_INSTRUCTION}`;
 
@@ -174,10 +189,11 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
         </p>
         <ChatGptJsonHelper
           variant="direct-copy"
-          title="Copy ChatGPT assignment prompt"
-          description="Copy this prompt, paste it into ChatGPT, then replace the topic, year group, question count and bilingual preference with what you want."
+          eyebrow="ChatGPT assignment helper"
+          title="Create an assignment with ChatGPT"
+          description="Copy the Clarion prompt, paste it into ChatGPT, replace the bracketed teacher choices, then paste the returned JSON into Clarion."
           prompt={assignmentChatGptPrompt}
-          copyLabel="Copy ChatGPT assignment prompt"
+          copyLabel="Copy Clarion prompt"
           successMessage="Assignment prompt copied."
           failureMessage="Could not copy the assignment prompt. Use View/edit prompt to copy it manually."
           manualCopyLabel="View/edit prompt"
@@ -220,16 +236,34 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
               Fix these validation errors
             </h3>
             <ul className="mt-3 grid gap-2 text-sm text-red-800">
-              {parseResult.errors.map((error, index) => (
-                <li key={`${error.path}-${error.code}-${index}`}>
-                  <span className="font-mono font-semibold">{error.path}</span>:{" "}
-                  {error.message}
-                </li>
-              ))}
+              {parseResult.errors.map((error, index) => {
+                const [friendly, technical] = error.message.split(" Technical details: ");
+                return (
+                  <li key={`${error.path}-${error.code}-${index}`}>
+                    <span className="font-mono font-semibold">{error.path}</span>: {friendly}
+                    {technical ? (
+                      <details className="mt-2 text-xs">
+                        <summary className="cursor-pointer font-semibold">Technical details</summary>
+                        <code className="mt-1 block break-words">{technical}</code>
+                      </details>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : assignment ? (
           <form action={formAction} className="mt-5 grid gap-5">
+            {"repaired" in parseResult && parseResult.repaired ? (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950" role="status">
+                <p className="font-bold">Clarion repaired a small JSON formatting issue before validation.</p>
+                <p className="mt-1">Please review the assignment preview before importing.</p>
+                <details className="mt-3">
+                  <summary className="cursor-pointer font-semibold">View repaired JSON</summary>
+                  <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 font-mono text-xs">{parseResult.repairedJson}</pre>
+                </details>
+              </div>
+            ) : null}
             {actionState ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-800" role="alert">
                 {actionState.message}

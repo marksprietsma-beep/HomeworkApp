@@ -42,7 +42,8 @@ export type AssignmentImportAssignment = {
 };
 
 export type AssignmentImportParseResult =
-  | { ok: true; assignment: AssignmentImportAssignment; errors: [] }
+  | { ok: true; assignment: AssignmentImportAssignment; errors: []; repaired?: false; repairedJson?: undefined }
+  | { ok: true; assignment: AssignmentImportAssignment; errors: []; repaired: true; repairedJson: string }
   | { ok: false; assignment: null; errors: AssignmentImportError[] };
 
 export function parseAssignmentImportJson(rawJsonText: string): AssignmentImportParseResult;
