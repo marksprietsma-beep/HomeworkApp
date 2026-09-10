@@ -11,6 +11,7 @@ import { prisma } from "../../../../../../../lib/prisma";
 import { releaseFeedback } from "../../../../../../../lib/email-notifications";
 import { assertDraftFeedbackScoreTarget, assertDraftFeedbackScoreUpdated, getAssignmentTotalPoints, validateScoreAwarded } from "../../../../../../../lib/assignment-points";
 import { parsePublicationIntent, PublicationIntent } from "../../../../../../../lib/publication-intent.mjs";
+import { feedbackImportProtection, saveFeedbackWithIntent } from "../../../../../../../lib/publication-workflows.mjs";
 
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number };
 
@@ -115,10 +116,11 @@ export async function saveFeedbackImport(
     select: { id: true },
   });
 
-  if (existingImport) {
+  const duplicateProtection = feedbackImportProtection(existingImport?.id ?? null, [], confirmReplace);
+  if (duplicateProtection.kind === "DUPLICATE") {
     return {
       ok: true,
-      message: `Feedback already saved for this exact payload as import #${existingImport.id}. It was not saved again; import another feedback file to continue.`,
+      message: `Feedback already saved for this exact payload as import #${duplicateProtection.importId}. It was not saved again; import another feedback file to continue.`,
       payloadHash: importPayloadHash,
       submittedRawJson: rawJson,
     };
@@ -136,7 +138,7 @@ export async function saveFeedbackImport(
     },
     select: { id: true, releaseState: true },
   });
-  if (existingFeedback.length > 0 && !confirmReplace) {
+  if (feedbackImportProtection(null, existingFeedback, confirmReplace).kind === "REPLACE_CONFIRMATION_REQUIRED") {
     const released = existingFeedback.filter((item) => item.releaseState === FeedbackReleaseState.RELEASED).length;
     const draft = existingFeedback.length - released;
     return {
@@ -152,7 +154,7 @@ export async function saveFeedbackImport(
   const questions = new Set(context.questions.map((question) => question.id));
 
   try {
-    const saved = await prisma.$transaction(async (tx) => {
+    const saved = await prisma.$transaction(async (tx) => saveFeedbackWithIntent(intent, async () => {
     if (existingFeedback.length > 0) {
       await tx.participantFeedback.deleteMany({ where: { id: { in: existingFeedback.map((item) => item.id) } } });
     }
@@ -270,11 +272,8 @@ export async function saveFeedbackImport(
       }
     }
 
-    const releasedCount = intent === PublicationIntent.PUBLISH
-      ? await releaseFeedback(tx, assignmentId, selectedUser.id, createdFeedbackIds)
-      : 0;
-    return { ...feedbackImport, releasedCount };
-  });
+    return { ...feedbackImport, feedbackIds: createdFeedbackIds };
+  }, (feedbackIds) => releaseFeedback(tx, assignmentId, selectedUser.id, feedbackIds)));
 
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);

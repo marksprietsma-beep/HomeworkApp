@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { automaticEmailEnabled, getAutomaticNotificationPreparation } from "./email-config";
 import { DEFAULT_EMAIL_TEMPLATES, formatSchoolDueDate, type EmailTemplateData } from "./email-templates";
 import { feedbackIdempotencyKey, homeworkIdempotencyKey, isEligibleStudent, isValidRecipientEmail, notificationTypeEnabled } from "./email-notification-policy.mjs";
+import { releaseFeedbackWithNotification, transitionAssignmentStatusWithNotification } from "./publication-workflows.mjs";
 
 type Db = Prisma.TransactionClient;
 
@@ -42,13 +43,7 @@ export async function queueHomeworkPublication(db: Db, assignmentId: number, pub
 }
 
 export async function transitionAssignmentStatus(db: Db, assignmentId: number, status: HomeworkAssignmentStatus) {
-  if (status !== HomeworkAssignmentStatus.PUBLISHED) {
-    return db.homeworkAssignment.update({ where: { id: assignmentId }, data: { status }, select: { id: true, status: true, publicationVersion: true } });
-  }
-  const changed = await db.homeworkAssignment.updateMany({ where: { id: assignmentId, status: { not: HomeworkAssignmentStatus.PUBLISHED } }, data: { status, publicationVersion: { increment: 1 } } });
-  const assignment = await db.homeworkAssignment.findUniqueOrThrow({ where: { id: assignmentId }, select: { id: true, status: true, publicationVersion: true } });
-  if (changed.count === 1) await queueHomeworkPublication(db, assignment.id, assignment.publicationVersion);
-  return assignment;
+  return transitionAssignmentStatusWithNotification(db, assignmentId, status, queueHomeworkPublication);
 }
 
 export async function queueFeedbackReleases(db: Db, feedbackIds: number[]) {
@@ -70,10 +65,5 @@ export async function queueFeedbackReleases(db: Db, feedbackIds: number[]) {
 }
 
 export async function releaseFeedback(db: Db, assignmentId: number, releasedById: number, feedbackIds?: number[]) {
-  const drafts = await db.participantFeedback.findMany({ where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT, ...(feedbackIds ? { id: { in: feedbackIds } } : {}) }, select: { id: true } });
-  if (!drafts.length) return 0;
-  const ids = drafts.map(({ id }) => id);
-  const result = await db.participantFeedback.updateMany({ where: { id: { in: ids }, releaseState: FeedbackReleaseState.DRAFT }, data: { releaseState: FeedbackReleaseState.RELEASED, releasedAt: new Date(), releasedById } });
-  if (result.count) await queueFeedbackReleases(db, ids);
-  return result.count;
+  return releaseFeedbackWithNotification(db, assignmentId, releasedById, queueFeedbackReleases, feedbackIds);
 }

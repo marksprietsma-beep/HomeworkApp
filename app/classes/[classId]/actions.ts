@@ -1,6 +1,6 @@
 "use server";
 
-import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { AccountStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
@@ -13,7 +13,8 @@ import { assertManualCreateResponseMode } from "../../../lib/question-response-m
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
 import { transitionAssignmentStatus } from "../../../lib/email-notifications";
 import { isAdmin } from "../../../lib/permissions";
-import { parsePublicationIntent, PublicationIntent } from "../../../lib/publication-intent.mjs";
+import { parsePublicationIntent } from "../../../lib/publication-intent.mjs";
+import { createAssignmentWithIntent } from "../../../lib/publication-workflows.mjs";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -192,23 +193,16 @@ export async function createAssignmentForClass(
     }
 
     const assignment = await prisma.$transaction(async (tx) => {
-      const created = await tx.homeworkAssignment.create({
-      data: {
+      const created = await createAssignmentWithIntent(tx, {
         classId,
         createdById: selectedUser.id,
         title,
         description: description || null,
-        status: HomeworkAssignmentStatus.DRAFT,
         dueAt,
         questions: {
           create: questions,
         },
-      },
-        select: { id: true },
-      });
-      if (intent === PublicationIntent.PUBLISH) {
-        await transitionAssignmentStatus(tx, created.id, HomeworkAssignmentStatus.PUBLISHED);
-      }
+      }, intent, transitionAssignmentStatus);
       return created;
     });
 
