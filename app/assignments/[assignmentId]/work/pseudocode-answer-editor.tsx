@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CAMBRIDGE_PSEUDOCODE_KEYWORDS, formatCambridgePseudocode, lintCambridgePseudocode } from "../../../../lib/cambridge-pseudocode";
+import { synchroniseEditorScroll } from "../../../../lib/pseudocode-editor-layout";
 
 type PseudocodeAnswerEditorProps = {
   id: string;
@@ -14,30 +15,25 @@ const tokenPattern = /(\/\/.*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|←|<>|>=|<=|[
 
 function tokenClass(token: string) {
   const upper = token.toUpperCase();
-  if (token.startsWith("//")) return "text-slate-500 italic";
+  if (token.startsWith("//")) return "text-slate-500";
   if (token.startsWith("\"") || token.startsWith("'")) return "text-emerald-700";
   if (/^\d/.test(token)) return "text-violet-700";
-  if (/^(←|<>|>=|<=|[+\-*/&=<>])$/.test(token) || upper === "DIV" || upper === "MOD") return "font-semibold text-rose-700";
+  if (/^(←|<>|>=|<=|[+\-*/&=<>])$/.test(token) || upper === "DIV" || upper === "MOD") return "text-rose-700";
   if (CAMBRIDGE_PSEUDOCODE_KEYWORDS.has(upper)) {
-    if (["TRUE", "FALSE", "AND", "OR", "NOT"].includes(upper)) return "font-semibold text-purple-700";
-    if (["INTEGER", "REAL", "CHAR", "STRING", "BOOLEAN", "DATE", "ARRAY", "SET", "OF"].includes(upper)) return "font-semibold text-teal-700";
-    return "font-semibold text-blue-800";
+    if (["TRUE", "FALSE", "AND", "OR", "NOT"].includes(upper)) return "text-purple-700";
+    if (["INTEGER", "REAL", "CHAR", "STRING", "BOOLEAN", "DATE", "ARRAY", "SET", "OF"].includes(upper)) return "text-teal-700";
+    return "text-blue-800";
   }
   return "text-slate-950";
 }
 
 function HighlightedPseudocode({ value }: { value: string }) {
-  const lines = value.split("\n");
   return (
     <>
-      {lines.map((line, lineIndex) => (
-        <Fragment key={lineIndex}>
-          <span className="select-none pr-4 text-right text-slate-400">{String(lineIndex + 1).padStart(2, " ")}</span>
-          <span>
-            {line.length === 0 ? "\u00a0" : line.split(tokenPattern).filter(Boolean).map((part, index) => <span key={`${lineIndex}-${index}`} className={tokenClass(part)}>{part}</span>)}
-          </span>
-          {lineIndex < lines.length - 1 ? "\n" : null}
-        </Fragment>
+      {value.split("\n").map((line, lineIndex) => (
+        <span key={lineIndex} data-code-line className="block min-h-6">
+          {line.length === 0 ? "\u00a0" : line.split(tokenPattern).filter(Boolean).map((part, index) => <span key={`${lineIndex}-${index}`} className={tokenClass(part)}>{part}</span>)}
+        </span>
       ))}
     </>
   );
@@ -45,8 +41,35 @@ function HighlightedPseudocode({ value }: { value: string }) {
 
 export function PseudocodeAnswerEditor({ id, name, defaultValue, dialect }: PseudocodeAnswerEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState(defaultValue);
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
   const hints = useMemo(() => lintCambridgePseudocode(value), [value]);
+
+  useLayoutEffect(() => {
+    const highlight = highlightRef.current;
+    if (!highlight) return;
+
+    const measureLines = () => {
+      const heights = Array.from(highlight.querySelectorAll<HTMLElement>("[data-code-line]"), (line) => line.getBoundingClientRect().height);
+      setLineHeights((current) => current.length === heights.length && current.every((height, index) => height === heights[index]) ? current : heights);
+    };
+
+    measureLines();
+    const observer = new ResizeObserver(measureLines);
+    observer.observe(highlight);
+    highlight.querySelectorAll("[data-code-line]").forEach((line) => observer.observe(line));
+    return () => observer.disconnect();
+  }, [value]);
+
+  function handleScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+    const highlight = highlightRef.current;
+    const gutter = gutterRef.current;
+    if (!highlight || !gutter) return;
+    synchroniseEditorScroll(event.currentTarget, highlight);
+    gutter.scrollTop = event.currentTarget.scrollTop;
+  }
 
   function dispatchInput(textarea: HTMLTextAreaElement) {
     setValue(textarea.value);
@@ -109,8 +132,13 @@ export function PseudocodeAnswerEditor({ id, name, defaultValue, dialect }: Pseu
         <button type="button" onClick={handleFormat} className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-amber-950 shadow-sm transition hover:border-amber-400 hover:bg-amber-100">Format pseudocode</button>
       </div>
       <div className="relative min-h-80 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
-        <pre aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-auto px-4 py-3 font-mono text-sm leading-6 tabular-nums whitespace-pre-wrap"><HighlightedPseudocode value={value || " "} /></pre>
-        <textarea ref={textareaRef} id={id} name={name} defaultValue={defaultValue} rows={12} spellCheck={false} onKeyDown={handleKeyDown} onChange={(event) => setValue(event.currentTarget.value)} className="relative z-10 min-h-80 w-full resize-y bg-transparent px-4 py-3 pl-4 font-mono text-sm leading-6 text-transparent caret-slate-950 outline-none selection:bg-amber-200/70 tabular-nums whitespace-pre-wrap" placeholder={"Write pseudocode here...\nUse Tab to indent."} />
+        <div ref={gutterRef} aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-20 w-12 overflow-hidden border-r border-slate-200 bg-slate-50 py-3 text-right font-mono text-base font-normal leading-6 tracking-normal text-slate-400 [font-synthesis:none] [font-variant-ligatures:none]">
+          {value.split("\n").map((_, index) => <span key={index} className="block pr-2" style={{ height: lineHeights[index] ?? 24 }}>{index + 1}</span>)}
+        </div>
+        <div className="relative ml-12 min-w-0">
+          <pre ref={highlightRef} aria-hidden="true" className="pointer-events-none absolute inset-0 box-border overflow-auto px-3 py-3 font-mono text-base font-normal leading-6 tracking-normal whitespace-pre-wrap break-words [font-synthesis:none] [font-variant-ligatures:none] [scrollbar-gutter:stable] [tab-size:2]"><HighlightedPseudocode value={value || " "} /></pre>
+          <textarea ref={textareaRef} id={id} name={name} defaultValue={defaultValue} rows={12} wrap="soft" spellCheck={false} onScroll={handleScroll} onKeyDown={handleKeyDown} onChange={(event) => setValue(event.currentTarget.value)} className="relative z-10 block min-h-80 w-full resize-y box-border overflow-auto border-0 bg-transparent px-3 py-3 font-mono text-base font-normal leading-6 tracking-normal text-transparent caret-slate-950 outline-none selection:bg-amber-200/70 whitespace-pre-wrap break-words [font-synthesis:none] [font-variant-ligatures:none] [scrollbar-gutter:stable] [tab-size:2]" placeholder={"Write pseudocode here...\nUse Tab to indent."} />
+        </div>
       </div>
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
         <p className="font-bold text-slate-950">Syntax hints (guidance only)</p>
