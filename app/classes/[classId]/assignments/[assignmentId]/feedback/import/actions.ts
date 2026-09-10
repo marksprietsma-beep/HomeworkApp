@@ -9,6 +9,7 @@ import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../../../lib/permissions";
 import { prisma } from "../../../../../../../lib/prisma";
 import { releaseFeedback } from "../../../../../../../lib/email-notifications";
+import { assertDraftFeedbackScoreTarget, assertDraftFeedbackScoreUpdated, getAssignmentTotalPoints, validateScoreAwarded } from "../../../../../../../lib/assignment-points";
 
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
 
@@ -25,6 +26,7 @@ type NormalizedFeedback = {
   participantFeedback: Array<{
     participant: { id: number; name?: string; email?: string | null };
     submission: { id: number; status?: string } | null;
+    scoreAwarded: number | null;
     overallFeedback: string;
     overallFeedbackI18n?: JsonI18n;
     strengths: string[];
@@ -202,6 +204,7 @@ export async function saveFeedbackImport(
           targets: entry.targets,
           targetsI18n: entry.targetsI18n,
           teacherNotes: entry.teacherNotes,
+          scoreAwarded: entry.scoreAwarded,
         },
         select: { id: true },
       });
@@ -298,4 +301,23 @@ export async function releaseFeedbackForAssignment(classId: number, assignmentId
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
   revalidatePath(`/assignments/${assignmentId}/work`);
   return { ok: true, message: count > 0 ? `Released feedback for ${count} student${count === 1 ? "" : "s"}.` : "No draft feedback is waiting for release." };
+}
+
+export async function updateDraftFeedbackScore(classId: number, assignmentId: number, feedbackId: number, formData: FormData) {
+  const { selectedUser } = await getCurrentUserState();
+  const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
+  if (!selectedUser || !pageData.canImport || !pageData.assignment) throw new Error("Only the assigned class teacher or an ADMIN may edit draft scores.");
+  const raw = String(formData.get("scoreAwarded") ?? "").trim();
+  const score = raw === "" ? null : Number(raw);
+  const total = getAssignmentTotalPoints(pageData.assignment.questions);
+  const validationError = validateScoreAwarded(score, total);
+  if (validationError) throw new Error(validationError);
+  const target = await prisma.participantFeedback.findFirst({ where: { id: feedbackId, assignmentId }, select: { releaseState: true, studentId: true, submissionId: true, submission: { select: { assignmentId: true, studentId: true } } } });
+  assertDraftFeedbackScoreTarget(target, assignmentId, score);
+  const updated = await prisma.participantFeedback.updateMany({
+    where: { id: feedbackId, assignmentId, releaseState: FeedbackReleaseState.DRAFT },
+    data: { scoreAwarded: score },
+  });
+  assertDraftFeedbackScoreUpdated(updated.count);
+  revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
 }

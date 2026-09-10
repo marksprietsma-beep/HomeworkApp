@@ -46,6 +46,7 @@ export type AssignedWorkItem = {
   titleI18n: unknown;
   classId: number;
   className: string;
+  leaderboardEnabled: boolean;
   subject: string;
   status: string;
   dueAt: Date | null;
@@ -232,6 +233,7 @@ export async function getLocalDashboardData(user: {
             titleI18n: assignment.titleI18n,
             classId: classItem.id,
             className: classItem.name,
+            leaderboardEnabled: classItem.leaderboardEnabled,
             subject: classItem.subject,
             status: assignment.status,
             dueAt: assignment.dueAt,

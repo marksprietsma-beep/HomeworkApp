@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../lib/auth";
 import { assertSafeResponseModeEdit, type ResponseMode } from "../../../../../../lib/question-response-mode";
-import { canActAsClassTeacher } from "../../../../../../lib/permissions";
+import { canActAsClassTeacher, isAdmin } from "../../../../../../lib/permissions";
 import { prisma } from "../../../../../../lib/prisma";
 import { transitionAssignmentStatus } from "../../../../../../lib/email-notifications";
+import { assertQuestionPointsEditable } from "../../../../../../lib/assignment-points";
 
 export type EditAssignmentFormState = {
   error: string | null;
@@ -53,14 +54,15 @@ export async function updateAssignmentDetails(
       where: {
         id: assignmentId,
         classId,
-        class: { teacherId: selectedUser.id },
+        ...(isAdmin(selectedUser) ? {} : { class: { teacherId: selectedUser.id } }),
       },
       select: {
         id: true,
         submissions: { select: { id: true }, take: 1 },
+        participantFeedback: { where: { scoreAwarded: { not: null } }, select: { id: true }, take: 1 },
         questions: {
           orderBy: { order: "asc" },
-          select: { id: true, questionType: true, responseMode: true, responseSchema: true },
+          select: { id: true, questionType: true, responseMode: true, responseSchema: true, points: true },
         },
       },
     });
@@ -87,6 +89,7 @@ export async function updateAssignmentDetails(
       assignment.questions.map((question) => [question.id, question]),
     );
     const hasResponses = assignment.submissions.length > 0;
+    const hasScoredFeedback = assignment.participantFeedback.length > 0;
     const questionIds = formData.getAll("questionId");
     const prompts = formData.getAll("questionPrompt");
     const types = formData.getAll("questionType");
@@ -145,6 +148,7 @@ export async function updateAssignmentDetails(
         if (points !== null && (!Number.isInteger(points) || points < 1)) {
           throw new Error("Question points must be positive whole numbers when provided.");
         }
+        assertQuestionPointsEditable(existingQuestion.points, points, hasScoredFeedback);
 
         if (existingQuestion.responseMode === HomeworkQuestionResponseMode.STRUCTURED && questionType !== existingQuestion.questionType) {
           throw new Error("Structured question type cannot be changed in the ordinary editor.");

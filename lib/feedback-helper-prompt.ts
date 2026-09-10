@@ -47,7 +47,7 @@ Feedback quality guidance:
 - Do not over-praise weak or missing answers; acknowledge effort only when supported by the response.
 - Do not be harsh, sarcastic, shaming, or personal.
 - Prefer clear classroom language over generic comments.
-- Do not assign scores unless the import schema already has a supported field for them; this schema does not require scores.
+__SCORING_INSTRUCTION__
 
 Follow-up action requirements:
 - Every follow-up action requires a stable non-empty string id.
@@ -72,16 +72,19 @@ const FEEDBACK_LANGUAGE_INSTRUCTIONS: Record<FeedbackLanguageMode, string> = {
   bilingual: "- Generate bilingual feedback. Keep all required English fields and add i18n fields with en and zh wherever the schema supports them: overallFeedbackI18n { en, zh }, strengthsI18n { en, zh }, targetsI18n { en, zh }, questionFeedback[].feedbackI18n { en, zh }, questionFeedback[].strengthsI18n { en, zh }, questionFeedback[].targetsI18n { en, zh }, and followUpActions[].promptI18n { en, zh }.",
 };
 
-export function buildFeedbackHelperPrompt(languageMode: FeedbackLanguageMode = "english") {
-  return FEEDBACK_HELPER_PROMPT_PREFIX.replace("__FEEDBACK_LANGUAGE_INSTRUCTION__", FEEDBACK_LANGUAGE_INSTRUCTIONS[languageMode]);
+export function buildFeedbackHelperPrompt(languageMode: FeedbackLanguageMode = "english", assignmentTotalPoints: number | null = null) {
+  const scoring = assignmentTotalPoints === null
+    ? "- This assignment has no safe canonical point total. Omit scoreAwarded (or use null); do not invent a score or denominator."
+    : `- Clarion's authoritative assignment total is ${assignmentTotalPoints} points. Include scoreAwarded as a whole number from 0 to ${assignmentTotalPoints} for every participant with a submission. Score only the actual submitted answers using the supplied question context; do not invent a hidden mark scheme or denominator. The teacher will review and may correct this proposed score before release.`;
+  return FEEDBACK_HELPER_PROMPT_PREFIX.replace("__FEEDBACK_LANGUAGE_INSTRUCTION__", FEEDBACK_LANGUAGE_INSTRUCTIONS[languageMode]).replace("__SCORING_INSTRUCTION__", scoring);
 }
 
 export const FEEDBACK_HELPER_PROMPT = buildFeedbackHelperPrompt("english");
 
 export const FEEDBACK_RESPONSE_JSON_SEPARATOR = "Here is the response export JSON to mark:";
 
-export function buildFullFeedbackPrompt(responseJson: string, languageMode: FeedbackLanguageMode = "english") {
-  return `${buildFeedbackHelperPrompt(languageMode)}
+export function buildFullFeedbackPrompt(responseJson: string, languageMode: FeedbackLanguageMode = "english", assignmentTotalPoints: number | null = null) {
+  return `${buildFeedbackHelperPrompt(languageMode, assignmentTotalPoints)}
 
 ${FEEDBACK_RESPONSE_JSON_SEPARATOR}
 

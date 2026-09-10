@@ -139,6 +139,7 @@ model Class {
   description         String
   teacherId           Int
   status              ClassStatus          @default(ACTIVE)
+  leaderboardEnabled  Boolean              @default(false)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   teacher             User                 @relation("ClassTeacher", fields: [teacherId], references: [id])
@@ -295,6 +296,7 @@ model ParticipantFeedback {
   targets                String[]
   targetsI18n            Json?
   teacherNotes           String?
+  scoreAwarded           Int?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   feedbackImport         FeedbackImport           @relation(fields: [feedbackImportId], references: [id], onDelete: Cascade)

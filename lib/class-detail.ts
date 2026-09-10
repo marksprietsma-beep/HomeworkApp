@@ -6,6 +6,7 @@ export type ClassDetailData = {
   name: string;
   subject: string;
   description: string;
+  leaderboardEnabled: boolean;
   teacher: {
     id: number;
     displayName: string;
@@ -130,6 +131,7 @@ export async function getClassDetailData(
     name: classItem.name,
     subject: classItem.subject,
     description: classItem.description,
+    leaderboardEnabled: classItem.leaderboardEnabled,
     teacher: classItem.teacher,
     enrolledUsers: classItem.enrollments.map((enrollment) => ({
       id: enrollment.student.id,

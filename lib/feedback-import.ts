@@ -1,6 +1,8 @@
 import type { UserRole } from "@prisma/client";
 import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
+import { getAssignmentTotalPoints } from "./assignment-points";
+import { isAdmin } from "./permissions";
 
 export type FeedbackImportPageData = Awaited<ReturnType<typeof getFeedbackImportPageData>>;
 
@@ -27,7 +29,7 @@ export async function getFeedbackImportPageData(
           },
         },
       },
-      questions: { orderBy: { order: "asc" }, select: { id: true, order: true, prompt: true } },
+      questions: { orderBy: { order: "asc" }, select: { id: true, order: true, prompt: true, points: true } },
       submissions: {
         orderBy: { student: { displayName: "asc" } },
         select: {
@@ -46,7 +48,7 @@ export async function getFeedbackImportPageData(
 
   if (!assignment) return { found: false as const, canImport: false, assignment: null, context: null, existingImports: [] };
 
-  const canImport = canTeachClass(viewer, assignment.class.teacherId);
+  const canImport = isAdmin(viewer) || canTeachClass(viewer, assignment.class.teacherId);
   if (!canImport) return { found: true as const, canImport, assignment, context: null, existingImports: assignment.feedbackImports };
 
   const submissionsByStudentId = new Map(assignment.submissions.map((submission) => [submission.studentId, submission]));
@@ -81,6 +83,7 @@ export async function getFeedbackImportPageData(
       assignment: { id: assignment.id, class: { id: assignment.class.id } },
       class: { id: assignment.class.id },
       questions: assignment.questions.map((question) => ({ id: question.id, order: question.order, prompt: question.prompt })),
+      assignmentTotalPoints: getAssignmentTotalPoints(assignment.questions),
       participants,
     },
   };

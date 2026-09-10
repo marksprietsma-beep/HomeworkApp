@@ -1,6 +1,7 @@
 import { normalizeAssignmentKeyVocabulary, type AssignmentKeyVocabularyItem } from "./assignment-key-vocabulary";
 import { prisma } from "./prisma";
 import { studentAssignmentAccessWhere } from "./access-control";
+import { getAssignmentTotalPoints } from "./assignment-points";
 
 export type ParticipantWorkData = {
   id: number;
@@ -43,6 +44,7 @@ export type ParticipantWorkData = {
   } | null;
   feedback: {
     id: number;
+    scoreAwarded: number | null;
     overallFeedback: string;
     overallFeedbackI18n: unknown;
     strengths: string[];
@@ -158,6 +160,7 @@ export async function getParticipantWorkData(
         take: 1,
         select: {
           id: true,
+          scoreAwarded: true,
           overallFeedback: true,
           overallFeedbackI18n: true,
           strengths: true,
@@ -232,11 +235,7 @@ export async function getParticipantWorkData(
       .filter((answer) => answer.questionId !== null)
       .map((answer) => [answer.questionId, { answerText: answer.answerText, answerData: answer.answerData }]) ?? [],
   );
-  const totalPoints = assignment.questions.reduce<number | null>(
-    (total, question) =>
-      question.points === null ? total : (total ?? 0) + question.points,
-    null,
-  );
+  const totalPoints = getAssignmentTotalPoints(assignment.questions);
 
   return {
     id: assignment.id,

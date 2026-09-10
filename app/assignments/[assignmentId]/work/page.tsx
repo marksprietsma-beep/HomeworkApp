@@ -289,6 +289,7 @@ export default async function ParticipantWorkPage({
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
                 Teacher feedback
               </h2>
+              {work.feedback.scoreAwarded !== null && work.totals.points !== null ? <p className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-lg font-bold text-white">Score: {work.feedback.scoreAwarded} / {work.totals.points}</p> : null}
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Your teacher has added feedback for this assignment.
               </p>
@@ -441,7 +442,7 @@ export default async function ParticipantWorkPage({
           const choices = getMultipleChoiceChoices(question.options);
 
           return (
-            <section
+          <section
               id={`question-${question.id}`}
               key={question.id}
               className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"

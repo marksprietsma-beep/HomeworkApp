@@ -7,6 +7,7 @@ export type FeedbackValidationError = {
 export type FeedbackImportContext = {
   assignmentId?: number;
   classId?: number;
+  assignmentTotalPoints?: number | null;
   assignment?: { id?: number; class?: { id?: number } };
   class?: { id?: number };
   questions?: { id: number }[];
