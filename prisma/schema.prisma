@@ -66,6 +66,19 @@ enum FeedbackReleaseState {
   RELEASED
 }
 
+enum EmailNotificationType {
+  HOMEWORK_PUBLISHED
+  FEEDBACK_RELEASED
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 enum DepartmentTeamRole {
   MEMBER
   ADMIN
@@ -104,6 +117,7 @@ model User {
   departmentMemberships DepartmentTeamMembership[]
   curriculumLibraryItemVersions CurriculumHomeworkLibraryItemVersion[] @relation("CurriculumLibraryVersionEditor")
   sessions               Session[]
+  emailNotifications     EmailNotification[]
 }
 
 model Session {
@@ -158,6 +172,7 @@ model HomeworkAssignment {
   sourceLibraryVersion Int?
   createdAt           DateTime                       @default(now())
   updatedAt           DateTime                       @updatedAt
+  publicationVersion  Int                            @default(0)
   class               Class                          @relation(fields: [classId], references: [id], onDelete: Cascade)
   createdBy           User                           @relation("HomeworkAssignmentCreator", fields: [createdById], references: [id])
   questions           HomeworkQuestion[]
@@ -165,6 +180,7 @@ model HomeworkAssignment {
   feedbackImports     FeedbackImport[]
   participantFeedback ParticipantFeedback[]
   sourceLibraryItem   CurriculumHomeworkLibraryItem? @relation("HomeworkAssignmentSourceLibraryItem", fields: [sourceLibraryItemId], references: [id], onDelete: SetNull)
+  emailNotifications  EmailNotification[]
 
   @@index([classId])
   @@index([createdById])
@@ -287,6 +303,7 @@ model ParticipantFeedback {
   submission             Submission?              @relation(fields: [submissionId], references: [id], onDelete: SetNull)
   questionFeedback       QuestionFeedback[]
   followUpActions        FeedbackFollowUpAction[]
+  emailNotifications     EmailNotification[]
 
   @@unique([assignmentId, studentId, submissionId])
   @@index([feedbackImportId])
@@ -294,6 +311,47 @@ model ParticipantFeedback {
   @@index([studentId])
   @@index([submissionId])
   @@index([releaseState])
+}
+
+model EmailNotificationSettings {
+  id                       Int      @id @default(1)
+  homeworkEnabled          Boolean  @default(true)
+  feedbackEnabled          Boolean  @default(true)
+  homeworkSubjectTemplate  String
+  homeworkBodyTemplate     String
+  feedbackSubjectTemplate  String
+  feedbackBodyTemplate     String
+  updatedAt                DateTime @updatedAt
+}
+
+model EmailNotification {
+  id                    Int                   @id @default(autoincrement())
+  idempotencyKey        String                @unique
+  type                  EmailNotificationType
+  status                EmailDeliveryStatus   @default(PENDING)
+  recipientUserId       Int?
+  recipientEmail        String
+  recipientName         String
+  assignmentId          Int?
+  participantFeedbackId Int?
+  templateData          Json
+  attemptCount          Int                   @default(0)
+  lastError             String?
+  nextAttemptAt         DateTime?
+  leaseUntil            DateTime?
+  attemptedAt           DateTime?
+  sentAt                DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  recipient             User?                 @relation(fields: [recipientUserId], references: [id], onDelete: SetNull)
+  assignment            HomeworkAssignment?   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  participantFeedback   ParticipantFeedback?  @relation(fields: [participantFeedbackId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+  @@index([recipientUserId])
+  @@index([assignmentId])
+  @@index([participantFeedbackId])
 }
 
 model QuestionFeedback {

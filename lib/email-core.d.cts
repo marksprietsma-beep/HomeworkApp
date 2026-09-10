@@ -1,0 +1,11 @@
+export const TEMPLATE_VARIABLES: readonly ["studentName", "className", "assignmentTitle", "dueDate", "clarionLink"];
+export const DEFAULT_EMAIL_TEMPLATES: { readonly homeworkSubject: string; readonly homeworkBody: string; readonly feedbackSubject: string; readonly feedbackBody: string };
+export function validateTemplate(template: string, allowed?: readonly string[]): void;
+export function renderTemplate(template: string, data: Record<string, string>): string;
+export function renderSafeHtml(text: string, link: string, cta: string): string;
+export function automaticEmailEnabled(env?: NodeJS.ProcessEnv): boolean;
+export function getPublicMailDiagnostics(env?: NodeJS.ProcessEnv): { automaticEnabled: boolean; smtpConfigured: boolean; configurationValid: boolean; missing: string[]; problems: string[]; senderName: string; senderAddress: string | null; baseUrlIsHttps: boolean; schoolTimeZone: string };
+export function getMailConfig(env?: NodeJS.ProcessEnv): { host: string; port: number; secure: boolean; requireTLS: boolean; auth: { user: string; pass: string }; from: { name: string; address: string } };
+export function getAutomaticNotificationPreparation(env?: NodeJS.ProcessEnv): { ok: true; baseUrl: string } | { ok: false; error: string };
+export function sanitiseMailError(error: unknown): string;
+export function formatSchoolDueDate(date: Date, env?: NodeJS.ProcessEnv): string;

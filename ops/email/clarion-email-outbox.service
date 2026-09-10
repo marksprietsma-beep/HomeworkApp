@@ -1,0 +1,16 @@
+[Unit]
+Description=Process the Clarion email notification outbox
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=msprietsma
+WorkingDirectory=/opt/clarion
+EnvironmentFile=/opt/clarion/.env.production
+Environment=NPM_CONFIG_CACHE=/tmp/npm-cache
+ExecStart=/usr/bin/npm run email:process
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict

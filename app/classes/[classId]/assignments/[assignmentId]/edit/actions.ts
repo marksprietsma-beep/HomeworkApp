@@ -7,6 +7,7 @@ import { getCurrentUserState } from "../../../../../../lib/auth";
 import { assertSafeResponseModeEdit, type ResponseMode } from "../../../../../../lib/question-response-mode";
 import { canActAsClassTeacher } from "../../../../../../lib/permissions";
 import { prisma } from "../../../../../../lib/prisma";
+import { transitionAssignmentStatus } from "../../../../../../lib/email-notifications";
 
 export type EditAssignmentFormState = {
   error: string | null;
@@ -98,15 +99,8 @@ export async function updateAssignmentDetails(
     const imageAltTexts = formData.getAll("questionImageAltText");
 
     await prisma.$transaction(async (tx) => {
-      await tx.homeworkAssignment.update({
-        where: { id: assignment.id },
-        data: {
-          title,
-          description: description || null,
-          status,
-          dueAt,
-        },
-      });
+      await tx.homeworkAssignment.update({ where: { id: assignment.id }, data: { title, description: description || null, dueAt } });
+      await transitionAssignmentStatus(tx, assignment.id, status);
 
       for (const [index, rawQuestionId] of questionIds.entries()) {
         const questionId = Number(rawQuestionId);

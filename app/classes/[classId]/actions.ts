@@ -11,6 +11,7 @@ import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { assertManualCreateResponseMode } from "../../../lib/question-response-mode";
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
+import { queueHomeworkPublication } from "../../../lib/email-notifications";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -185,7 +186,8 @@ export async function createAssignmentForClass(
       throw new Error("The selected teacher does not teach this class.");
     }
 
-    const assignment = await prisma.homeworkAssignment.create({
+    const assignment = await prisma.$transaction(async (tx) => {
+      const created = await tx.homeworkAssignment.create({
       data: {
         classId,
         createdById: selectedUser.id,
@@ -197,7 +199,13 @@ export async function createAssignmentForClass(
           create: questions,
         },
       },
-      select: { id: true },
+        select: { id: true },
+      });
+      if (status === HomeworkAssignmentStatus.PUBLISHED) {
+        await tx.homeworkAssignment.update({ where: { id: created.id }, data: { publicationVersion: 1 } });
+        await queueHomeworkPublication(tx, created.id, 1);
+      }
+      return created;
     });
 
     assignmentId = assignment.id;
