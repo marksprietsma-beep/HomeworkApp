@@ -10,8 +10,9 @@ import { canActAsClassTeacher } from "../../../../../../../lib/permissions";
 import { prisma } from "../../../../../../../lib/prisma";
 import { releaseFeedback } from "../../../../../../../lib/email-notifications";
 import { assertDraftFeedbackScoreTarget, assertDraftFeedbackScoreUpdated, getAssignmentTotalPoints, validateScoreAwarded } from "../../../../../../../lib/assignment-points";
+import { parsePublicationIntent, PublicationIntent } from "../../../../../../../lib/publication-intent.mjs";
 
-type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
+type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number };
 
 type ImportContext = { participants: Array<{ id: number; submission: { id: number } | null }>; questions: Array<{ id: number }> };
 
@@ -86,10 +87,14 @@ export async function saveFeedbackImport(
 ): Promise<SaveFeedbackImportState> {
   const rawJson = String(formData.get("rawJson") ?? "");
   const confirmReplace = formData.get("confirmReplace") === "on";
+  const intent = parsePublicationIntent(formData.get("intent"));
   const { selectedUser } = await getCurrentUserState();
 
   if (!canActAsClassTeacher(selectedUser)) {
     return { ok: false, message: "You must be signed in as the class teacher or an ADMIN account to import feedback." };
+  }
+  if (!intent) {
+    return { ok: false, message: "Choose Save as Draft or Save & Publish to Students." };
   }
 
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
@@ -172,7 +177,7 @@ export async function saveFeedbackImport(
         operationSummary: {
           created: feedback.participantFeedback.length - existingFeedback.length,
           replaced: existingFeedback.length,
-          releaseState: "DRAFT",
+          releaseState: intent === PublicationIntent.PUBLISH ? "RELEASED" : "DRAFT",
           students: feedback.participantFeedback.length,
           questionFeedback: questionFeedbackCount,
           followUpActions: followUpActionCount,
@@ -182,6 +187,7 @@ export async function saveFeedbackImport(
       select: { id: true },
     });
 
+    const createdFeedbackIds: number[] = [];
     for (const entry of feedback.participantFeedback) {
       const participantFeedback = await tx.participantFeedback.create({
         data: {
@@ -208,6 +214,7 @@ export async function saveFeedbackImport(
         },
         select: { id: true },
       });
+      createdFeedbackIds.push(participantFeedback.id);
 
       for (const action of entry.followUpActions) {
         await tx.feedbackFollowUpAction.create({
@@ -263,12 +270,24 @@ export async function saveFeedbackImport(
       }
     }
 
-    return feedbackImport;
+    const releasedCount = intent === PublicationIntent.PUBLISH
+      ? await releaseFeedback(tx, assignmentId, selectedUser.id, createdFeedbackIds)
+      : 0;
+    return { ...feedbackImport, releasedCount };
   });
 
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
     revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
-    return { ok: true, message: `Feedback saved as draft import #${saved.id}. Review it below, then release feedback to students when ready.`, payloadHash: importPayloadHash, submittedRawJson: rawJson, savedImportId: saved.id, canRelease: true };
+    revalidatePath(`/assignments/${assignmentId}/work`);
+    return {
+      ok: true,
+      message: intent === PublicationIntent.PUBLISH
+        ? `Feedback saved and published to ${saved.releasedCount} student${saved.releasedCount === 1 ? "" : "s"} as import #${saved.id}.`
+        : `Feedback saved as draft import #${saved.id}. Review it below, then release feedback to students when ready.`,
+      payloadHash: importPayloadHash,
+      submittedRawJson: rawJson,
+      savedImportId: saved.id,
+    };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       const duplicate = await prisma.feedbackImport.findUnique({

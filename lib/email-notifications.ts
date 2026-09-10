@@ -69,8 +69,8 @@ export async function queueFeedbackReleases(db: Db, feedbackIds: number[]) {
   return { queued, skipped };
 }
 
-export async function releaseFeedback(db: Db, assignmentId: number, releasedById: number) {
-  const drafts = await db.participantFeedback.findMany({ where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT }, select: { id: true } });
+export async function releaseFeedback(db: Db, assignmentId: number, releasedById: number, feedbackIds?: number[]) {
+  const drafts = await db.participantFeedback.findMany({ where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT, ...(feedbackIds ? { id: { in: feedbackIds } } : {}) }, select: { id: true } });
   if (!drafts.length) return 0;
   const ids = drafts.map(({ id }) => id);
   const result = await db.participantFeedback.updateMany({ where: { id: { in: ids }, releaseState: FeedbackReleaseState.DRAFT }, data: { releaseState: FeedbackReleaseState.RELEASED, releasedAt: new Date(), releasedById } });

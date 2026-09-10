@@ -11,7 +11,9 @@ import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { assertManualCreateResponseMode } from "../../../lib/question-response-mode";
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
-import { queueHomeworkPublication } from "../../../lib/email-notifications";
+import { transitionAssignmentStatus } from "../../../lib/email-notifications";
+import { isAdmin } from "../../../lib/permissions";
+import { parsePublicationIntent, PublicationIntent } from "../../../lib/publication-intent.mjs";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -158,12 +160,8 @@ export async function createAssignmentForClass(
   try {
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
-    const statusValue = String(formData.get("status") ?? HomeworkAssignmentStatus.DRAFT);
-    const status = Object.values(HomeworkAssignmentStatus).includes(
-      statusValue as HomeworkAssignmentStatus,
-    )
-      ? (statusValue as HomeworkAssignmentStatus)
-      : HomeworkAssignmentStatus.DRAFT;
+    const intent = parsePublicationIntent(formData.get("intent"));
+    if (!intent) throw new Error("Choose Save as Draft or Publish Assignment.");
     const dueAt = parseDueAt(formData.get("dueAt"));
     const questions = await parseQuestions(formData);
 
@@ -184,7 +182,7 @@ export async function createAssignmentForClass(
     const classItem = await prisma.class.findFirst({
       where: {
         id: classId,
-        teacherId: selectedUser.id,
+        ...(isAdmin(selectedUser) ? {} : { teacherId: selectedUser.id }),
       },
       select: { id: true },
     });
@@ -200,7 +198,7 @@ export async function createAssignmentForClass(
         createdById: selectedUser.id,
         title,
         description: description || null,
-        status,
+        status: HomeworkAssignmentStatus.DRAFT,
         dueAt,
         questions: {
           create: questions,
@@ -208,9 +206,8 @@ export async function createAssignmentForClass(
       },
         select: { id: true },
       });
-      if (status === HomeworkAssignmentStatus.PUBLISHED) {
-        await tx.homeworkAssignment.update({ where: { id: created.id }, data: { publicationVersion: 1 } });
-        await queueHomeworkPublication(tx, created.id, 1);
+      if (intent === PublicationIntent.PUBLISH) {
+        await transitionAssignmentStatus(tx, created.id, HomeworkAssignmentStatus.PUBLISHED);
       }
       return created;
     });

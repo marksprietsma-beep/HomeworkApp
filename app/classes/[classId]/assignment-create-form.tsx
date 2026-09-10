@@ -2,7 +2,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
+import { HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
 import { createAssignmentForClass, type CreateAssignmentFormState } from "./actions";
 
 type AssignmentCreateFormProps = {
@@ -102,7 +102,7 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem]">
+      <div className="grid gap-4">
         <label className="text-sm font-semibold text-slate-700">
           Description / instructions
           <textarea
@@ -111,20 +111,6 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
             placeholder="What should students do?"
           />
-        </label>
-        <label className="text-sm font-semibold text-slate-700">
-          Status
-          <select
-            name="status"
-            defaultValue={HomeworkAssignmentStatus.DRAFT}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-          >
-            {Object.values(HomeworkAssignmentStatus).map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
         </label>
       </div>
 
@@ -302,13 +288,13 @@ export function AssignmentCreateForm({ classId }: AssignmentCreateFormProps) {
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:justify-self-start"
-      >
-        {isPending ? "Creating…" : "Create assignment"}
-      </button>
+      <div>
+        <p className="mb-3 text-sm text-slate-600">Publishing makes this visible to enrolled students immediately.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" name="intent" value="DRAFT" disabled={isPending} className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400">{isPending ? "Creating…" : "Save as Draft"}</button>
+          <button type="submit" name="intent" value="PUBLISH" disabled={isPending} className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300">{isPending ? "Creating…" : "Publish Assignment"}</button>
+        </div>
+      </div>
     </form>
   );
 }

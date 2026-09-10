@@ -6,7 +6,8 @@ import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-
 import { getCurrentUserState } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
-import { queueHomeworkPublication } from "../../../../../lib/email-notifications";
+import { transitionAssignmentStatus } from "../../../../../lib/email-notifications";
+import { parsePublicationIntent, PublicationIntent } from "../../../../../lib/publication-intent.mjs";
 
 type I18nText = { en: string; zh: string } | null;
 
@@ -79,6 +80,10 @@ export async function importAssignmentForClass(
   }
 
   const rawJson = String(formData.get("rawJson") ?? "");
+  const intent = parsePublicationIntent(formData.get("intent"));
+  if (!intent) {
+    return { ok: false, message: "Choose Save as Draft or Publish Assignment." };
+  }
   const parseResult = parseAssignmentImportJson(rawJson);
 
   if (!parseResult.ok) {
@@ -157,7 +162,7 @@ export async function importAssignmentForClass(
       description: importedAssignment.instructions,
       descriptionI18n: importedAssignment.instructionsI18n ?? undefined,
       keyVocabulary: importedAssignment.keyVocabulary.length > 0 ? importedAssignment.keyVocabulary : undefined,
-      status: importedAssignment.status as HomeworkAssignmentStatus,
+      status: HomeworkAssignmentStatus.DRAFT,
       dueAt: dueDateToDateTime(importedAssignment.dueDate),
       questions: {
         create: questions,
@@ -165,9 +170,8 @@ export async function importAssignmentForClass(
     },
       select: { id: true },
     });
-    if (importedAssignment.status === HomeworkAssignmentStatus.PUBLISHED) {
-      await tx.homeworkAssignment.update({ where: { id: created.id }, data: { publicationVersion: 1 } });
-      await queueHomeworkPublication(tx, created.id, 1);
+    if (intent === PublicationIntent.PUBLISH) {
+      await transitionAssignmentStatus(tx, created.id, HomeworkAssignmentStatus.PUBLISHED);
     }
     return created;
   });

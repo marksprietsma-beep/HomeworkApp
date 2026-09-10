@@ -4,7 +4,7 @@ import { useActionState, useMemo, useRef, useState } from "react";
 import { ChatGptJsonHelper } from "../../../../../../components/chatgpt-json-helper";
 import { FEEDBACK_HELPER_DESCRIPTION, FEEDBACK_HELPER_PROMPT } from "../../../../../../../lib/feedback-helper-prompt";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
-import { releaseFeedbackForAssignment, saveFeedbackImport } from "./actions";
+import { saveFeedbackImport } from "./actions";
 
 type Props = {
   classId: number;
@@ -90,10 +90,6 @@ export function FeedbackImportForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, formAction, pending] = useActionState(
     saveFeedbackImport.bind(null, classId, assignmentId),
-    { ok: false, message: "" },
-  );
-  const [releaseState, releaseAction, releasePending] = useActionState(
-    releaseFeedbackForAssignment.bind(null, classId, assignmentId),
     { ok: false, message: "" },
   );
   const parseResult = useMemo(
@@ -254,13 +250,6 @@ export function FeedbackImportForm({
             draft/released feedback. Saving another payload for the same student or submission requires one replace confirmation, and exact duplicate payloads are blocked.
           </div>
         ) : null}
-        {releaseState.message ? (
-          <div
-            className={`mt-5 rounded-2xl border p-4 text-sm font-semibold ${releaseState.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
-          >
-            {releaseState.message}
-          </div>
-        ) : null}
         {state.message ? (
           <div
             className={`mt-5 rounded-2xl border p-4 text-sm font-semibold ${state.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
@@ -297,7 +286,7 @@ export function FeedbackImportForm({
                   <p className="text-sm font-semibold text-emerald-900">
                     {payloadSaved
                       ? "Feedback saved. Import another feedback file to continue."
-                      : "JSON is valid. Review the summary, then save as Draft when ready."}
+                      : "JSON is valid. Review the preview, then choose whether students should see it now."}
                   </p>
                   {payloadSaved ? (
                     <p className="mt-1 text-xs font-medium text-emerald-800">
@@ -312,27 +301,18 @@ export function FeedbackImportForm({
                       onClick={startNewImport}
                       className="rounded-full border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-400"
                     >
-                      Keep draft / new import
+                      Start new import
                     </button>
                   ) : null}
-                  <button
-                    type="submit"
-                    disabled={pending || payloadSaved}
-                    className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                  >
+                  <button type="submit" name="intent" value="DRAFT" disabled={pending || payloadSaved} className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400">
                     {pending ? "Saving…" : payloadSaved ? "Saved as Draft" : "Save as Draft"}
                   </button>
-                
-                {payloadSaved && state.canRelease ? (
-                  <button
-                    formAction={releaseAction}
-                    disabled={releasePending}
-                    className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                  >
-                    {releasePending ? "Releasing…" : "Release feedback to students"}
+                  <button type="submit" name="intent" value="PUBLISH" disabled={pending || payloadSaved} className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300">
+                    {pending ? "Publishing…" : "Save & Publish to Students"}
                   </button>
-                ) : null}</div>
+                </div>
               </div>
+              {!payloadSaved ? <p className="mt-2 text-xs font-medium text-emerald-800">Publishing releases this feedback to students immediately.</p> : null}
             </div>
             <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Import summary</p>
@@ -343,7 +323,7 @@ export function FeedbackImportForm({
                 <p><strong>Question feedback entries:</strong> {questionFeedbackCount}</p>
                 <p><strong>Follow-up actions:</strong> {followUpActionCount}</p>
                 <p><strong>Bilingual fields detected:</strong> {bilingualDetected ? "Yes" : "No"}</p>
-                <p><strong>Initial state:</strong> Draft (hidden from students)</p>
+                <p><strong>Your choice:</strong> Save hidden drafts or publish to students immediately</p>
                 <p><strong>Warnings:</strong> {existingImportCount > 0 ? "Existing feedback may be replaced if it matches these students/submissions." : "None"}</p>
               </div>
               {existingImportCount > 0 && !payloadSaved ? (
