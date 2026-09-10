@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": false
   },
-  "include": ["tests/**/*.ts", "tests/**/*.mts", "lib/passwords.ts", "lib/password-change-policy.ts", "lib/credential-auth.ts", "lib/auth-guards.ts", "lib/access-control.ts", "lib/permissions.ts", "lib/student-management.ts", "lib/student-csv-import.ts", "lib/temporary-password.ts", "lib/structured-response.ts", "lib/question-response-mode.ts", "lib/assignment-import-parser.d.ts"]
+  "include": ["tests/**/*.ts", "tests/**/*.mts", "lib/passwords.ts", "lib/password-change-policy.ts", "lib/credential-auth.ts", "lib/auth-guards.ts", "lib/access-control.ts", "lib/permissions.ts", "lib/student-management.ts", "lib/student-avatar.ts", "lib/local-media.ts", "lib/student-csv-import.ts", "lib/temporary-password.ts", "lib/structured-response.ts", "lib/question-response-mode.ts", "lib/assignment-import-parser.d.ts"]
 }

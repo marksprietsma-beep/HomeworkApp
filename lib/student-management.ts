@@ -49,6 +49,9 @@ export function resettableStudentWhere(
   };
 }
 
+/** Uses the same class-scoped boundary for the narrowly scoped avatar reset. */
+export const moderatableStudentProfileWhere = resettableStudentWhere;
+
 export function existingAccountEnrollmentError(account: {
   role: UserRoleValue;
   accountStatus: AccountStatus;

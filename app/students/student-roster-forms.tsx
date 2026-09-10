@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { enrollStudentByEmail, initialPasswordResetActionState, initialStudentRosterActionState, removeStudentEnrollment, resetStudentPassword } from "./actions";
+import { enrollStudentByEmail, initialPasswordResetActionState, initialStudentRosterActionState, removeStudentEnrollment, resetStudentPassword, resetStudentProfileImage } from "./actions";
 
 function Result({ state }: { state: typeof initialStudentRosterActionState }) {
   if (!state.error && !state.success) return null;
@@ -65,4 +65,13 @@ export function ResetStudentPasswordForm({ studentId, studentName }: { studentId
       ) : null}
     </div>
   );
+}
+
+export function ResetStudentProfileImageForm({ studentId, studentName }: { studentId: number; studentName: string }) {
+  const [state, action, pending] = useActionState(resetStudentProfileImage, initialStudentRosterActionState);
+  return <form action={action} className="mt-3 flex flex-wrap items-center gap-3" onSubmit={(event) => { if (!window.confirm(`Remove ${studentName}'s profile picture?`)) event.preventDefault(); }}>
+    <input type="hidden" name="studentId" value={studentId} />
+    <button disabled={pending} className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-bold text-red-800 disabled:text-slate-400">{pending ? "Resetting…" : "Reset profile picture"}</button>
+    <Result state={state} />
+  </form>;
 }

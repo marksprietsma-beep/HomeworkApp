@@ -1,10 +1,15 @@
 import { readFile, stat } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@prisma/client";
 import {
   getLocalMediaFilePath,
   getAllowedLocalImageTypes,
   LocalMediaValidationError,
+  LOCAL_MEDIA_PROFILE_IMAGE_DIR,
+  getLocalMediaPublicPath,
 } from "../../../lib/local-media";
+import { getCurrentUser } from "../../../lib/auth";
+import { prisma } from "../../../lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +18,26 @@ type LocalMediaRouteContext = {
 };
 
 export async function GET(_request: NextRequest, context: LocalMediaRouteContext) {
+  const viewer = await getCurrentUser();
+  if (!viewer) return new NextResponse("Authentication required.", { status: 401 });
   const { storageKey } = await context.params;
   const requestedStorageKey = storageKey.join("/");
 
   try {
+    if (requestedStorageKey.startsWith(`${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/`)) {
+      const visibleProfile = await prisma.user.findFirst({
+        where: {
+          profileImagePath: getLocalMediaPublicPath(requestedStorageKey),
+          ...(viewer.role === UserRole.ADMIN
+            ? {}
+            : viewer.role === UserRole.TEACHER
+              ? { role: UserRole.STUDENT, classEnrollments: { some: { class: { teacherId: viewer.id } } } }
+              : { id: viewer.id }),
+        },
+        select: { id: true },
+      });
+      if (!visibleProfile) return new NextResponse("Media file not found.", { status: 404 });
+    }
     const filePath = getLocalMediaFilePath(requestedStorageKey);
     const fileStat = await stat(filePath);
     const extension = filePath.split(".").pop()?.toLowerCase();

@@ -91,6 +91,7 @@ model User {
   mustChangePassword     Boolean                         @default(false)
   accountStatus          AccountStatus                   @default(ACTIVE)
   yearGroup              String?
+  profileImagePath       String?
   isDevelopmentUser      Boolean                         @default(true)
   createdAt              DateTime                        @default(now())
   updatedAt              DateTime                        @updatedAt

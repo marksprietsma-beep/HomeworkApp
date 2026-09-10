@@ -10,6 +10,11 @@ By default, uploaded assignment question images are written under:
 ./data/uploads/assignment-question-images/
 ```
 
+Student profile pictures use the same root under `profile-images/`. Profile
+uploads accept PNG, JPEG, and WEBP (not SVG or GIF), use the same 5 MB limit,
+and receive collision-resistant generated filenames. All local media is served only
+after Clarion authentication.
+
 Set `LOCAL_MEDIA_ROOT` to use a different local or mounted folder:
 
 ```bash
@@ -29,7 +34,7 @@ Server-side local media helpers validate files before writing them:
 - Maximum file size: 5 MB. Manual assignment uploads use a 6 MB Server Action request limit so a 5 MB file plus multipart form overhead can reach server-side validation.
 - Empty files are rejected.
 - Filenames are generated as `YYYY-MM-DD-random-uuid.ext`; the original uploaded filename is not trusted.
-- Paths are constrained to `assignment-question-images/` and cannot traverse outside the configured media root.
+- Paths are constrained to the feature-owned `assignment-question-images/` or `profile-images/` directories and cannot traverse outside the configured media root.
 
 ## App paths
 

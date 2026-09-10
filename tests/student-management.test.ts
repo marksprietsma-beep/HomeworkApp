@@ -5,6 +5,7 @@ import {
   canAccessStudentManagement,
   existingAccountEnrollmentError,
   manageableClassesWhere,
+  moderatableStudentProfileWhere,
   resettableStudentWhere,
   studentDirectoryWhere,
 } from "../lib/student-management";
@@ -57,4 +58,10 @@ test("non-student and disabled accounts cannot be silently converted or reactiva
   assert.match(existingAccountEnrollmentError({ role: UserRole.TEACHER, accountStatus: AccountStatus.ACTIVE }) ?? "", /cannot be changed/);
   assert.match(existingAccountEnrollmentError({ role: UserRole.STUDENT, accountStatus: AccountStatus.DISABLED }) ?? "", /disabled/);
   assert.equal(existingAccountEnrollmentError({ role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE }), null);
+});
+
+test("profile moderation uses the same admin and teacher class scope", () => {
+  assert.deepEqual(moderatableStudentProfileWhere({ id: 1, role: UserRole.ADMIN }, 9), { id: 9, role: UserRole.STUDENT });
+  assert.deepEqual(moderatableStudentProfileWhere({ id: 42, role: UserRole.TEACHER }, 9), { id: 9, role: UserRole.STUDENT, classEnrollments: { some: { class: { teacherId: 42 } } } });
+  assert.deepEqual(moderatableStudentProfileWhere({ id: 3, role: UserRole.STUDENT }, 9), { id: -1, role: UserRole.STUDENT });
 });
