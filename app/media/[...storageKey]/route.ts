@@ -4,7 +4,12 @@ import {
   getLocalMediaFilePath,
   getAllowedLocalImageTypes,
   LocalMediaValidationError,
+  getLocalMediaPublicPath,
+  isProfileImageStorageKey,
 } from "../../../lib/local-media";
+import { getCurrentUser } from "../../../lib/auth";
+import { prisma } from "../../../lib/prisma";
+import { visibleStudentProfileImageWhere } from "../../../lib/student-management";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +18,19 @@ type LocalMediaRouteContext = {
 };
 
 export async function GET(_request: NextRequest, context: LocalMediaRouteContext) {
+  const viewer = await getCurrentUser();
+  if (!viewer) return new NextResponse("Authentication required.", { status: 401 });
   const { storageKey } = await context.params;
   const requestedStorageKey = storageKey.join("/");
 
   try {
+    if (isProfileImageStorageKey(requestedStorageKey)) {
+      const visibleProfile = await prisma.user.findFirst({
+        where: visibleStudentProfileImageWhere(viewer, getLocalMediaPublicPath(requestedStorageKey)),
+        select: { id: true },
+      });
+      if (!visibleProfile) return new NextResponse("Media file not found.", { status: 404 });
+    }
     const filePath = getLocalMediaFilePath(requestedStorageKey);
     const fileStat = await stat(filePath);
     const extension = filePath.split(".").pop()?.toLowerCase();

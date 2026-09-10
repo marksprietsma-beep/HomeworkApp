@@ -337,6 +337,7 @@ function StudentAssignedWorkDashboard({
             Open homework assigned through the classes you are enrolled in,
             enter responses, and return later to review feedback with clarity.
           </p>
+          <Link href="/profile" className="mt-4 inline-flex rounded-full bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-950 hover:bg-cyan-200">Manage profile picture</Link>
         </div>
         <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">

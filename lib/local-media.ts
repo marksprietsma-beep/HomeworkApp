@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const LOCAL_MEDIA_ROUTE_PREFIX = "/media";
 export const LOCAL_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
 export const LOCAL_MEDIA_ASSIGNMENT_QUESTION_DIR = "assignment-question-images";
+export const LOCAL_MEDIA_PROFILE_IMAGE_DIR = "profile-images";
 
 export type AllowedLocalImageType = {
   extension: "png" | "jpg" | "webp" | "gif";
@@ -48,6 +49,10 @@ export function getLocalMediaPublicPath(storageKey: string) {
   return `${LOCAL_MEDIA_ROUTE_PREFIX}/${safeStorageKey}`;
 }
 
+export function isProfileImageStorageKey(storageKey: string) {
+  return storageKey.replaceAll("\\", "/").replace(/^\/+/, "").startsWith(`${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/`);
+}
+
 export function getLocalMediaFilePath(storageKey: string) {
   const safeStorageKey = normalizeStorageKey(storageKey);
   const root = getLocalMediaRoot();
@@ -89,6 +94,43 @@ export async function storeAssignmentQuestionImage(
   };
 }
 
+/** Stores a passive raster profile image under a feature-owned directory. */
+export async function storeProfileImage(file: Blob): Promise<StoredLocalImage> {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    throw new LocalMediaValidationError("Profile image must be PNG, JPEG, or WEBP.");
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const imageType = validateLocalImageBytes(bytes);
+  if (imageType.mimeType === "image/gif") {
+    throw new LocalMediaValidationError("Profile image must be PNG, JPEG, or WEBP.");
+  }
+  if (file.type !== imageType.mimeType) {
+    throw new LocalMediaValidationError("Profile image content does not match its declared type.");
+  }
+  const filename = `${new Date().toISOString().slice(0, 10)}-${randomUUID()}.${imageType.extension}`;
+  const storageKey = `${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/${filename}`;
+  const filePath = getLocalMediaFilePath(storageKey);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, bytes, { flag: "wx" });
+  return { path: getLocalMediaPublicPath(storageKey), storageKey, filename, mimeType: imageType.mimeType, sizeBytes: bytes.byteLength, caption: null, altText: null };
+}
+
+/** Deletes only generated files inside the profile-image directory. */
+export async function removeOwnedProfileImage(mediaPath: string | null | undefined) {
+  if (!mediaPath) return false;
+  try {
+    const storageKey = storageKeyFromLocalMediaPath(mediaPath);
+    if (!storageKey.startsWith(`${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/`)) return false;
+    const filename = storageKey.slice(LOCAL_MEDIA_PROFILE_IMAGE_DIR.length + 1);
+    if (!/^\d{4}-\d{2}-\d{2}-[0-9a-f-]{36}\.(png|jpg|webp)$/.test(filename)) return false;
+    await unlink(getLocalMediaFilePath(storageKey));
+    return true;
+  } catch (error) {
+    if (error instanceof LocalMediaValidationError || (error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export function storageKeyFromLocalMediaPath(mediaPath: string) {
   if (!mediaPath.startsWith(`${LOCAL_MEDIA_ROUTE_PREFIX}/`)) {
     throw new LocalMediaValidationError("Media path must use the local media route prefix.");
@@ -122,8 +164,8 @@ function normalizeStorageKey(storageKey: string) {
     throw new LocalMediaValidationError("Media path is not safe to resolve.");
   }
 
-  if (!normalized.startsWith(`${LOCAL_MEDIA_ASSIGNMENT_QUESTION_DIR}/`)) {
-    throw new LocalMediaValidationError("Media path must be for assignment question images.");
+  if (![LOCAL_MEDIA_ASSIGNMENT_QUESTION_DIR, LOCAL_MEDIA_PROFILE_IMAGE_DIR].some((directory) => normalized.startsWith(`${directory}/`))) {
+    throw new LocalMediaValidationError("Media path must use a supported Clarion media folder.");
   }
 
   return normalized;

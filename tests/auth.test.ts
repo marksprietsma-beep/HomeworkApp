@@ -11,7 +11,7 @@ import { validatePermanentPassword } from "../lib/password-change-policy";
 const scrypt = promisify(scryptCallback);
 const baseUser: User = {
   id: 1, email: "teacher@example.test", displayName: "Teacher", role: UserRole.TEACHER,
-  passwordHash: null, accountStatus: AccountStatus.ACTIVE, yearGroup: null,
+  passwordHash: null, accountStatus: AccountStatus.ACTIVE, yearGroup: null, profileImagePath: null,
   mustChangePassword: false,
   isDevelopmentUser: false, createdAt: new Date(), updatedAt: new Date(),
 };

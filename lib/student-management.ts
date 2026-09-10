@@ -49,6 +49,39 @@ export function resettableStudentWhere(
   };
 }
 
+/** Uses the same class-scoped boundary for the narrowly scoped avatar reset. */
+export const moderatableStudentProfileWhere = resettableStudentWhere;
+
+/** Limits self-service profile mutations to the authenticated student row. */
+export function ownStudentProfileWhere(viewer: StudentManagementViewer): Prisma.UserWhereInput {
+  return viewer.role === UserRole.STUDENT
+    ? { id: viewer.id, role: UserRole.STUDENT }
+    : { id: -1, role: UserRole.STUDENT };
+}
+
+/** Database-level visibility boundary for an individual student's profile image. */
+export function visibleStudentProfileImageWhere(
+  viewer: StudentManagementViewer,
+  profileImagePath: string,
+): Prisma.UserWhereInput {
+  return {
+    role: UserRole.STUDENT,
+    profileImagePath,
+    ...(viewer.role === UserRole.ADMIN
+      ? {}
+      : viewer.role === UserRole.TEACHER
+        ? { classEnrollments: { some: { class: { teacherId: viewer.id } } } }
+        : viewer.role === UserRole.STUDENT
+          ? {
+              OR: [
+                { id: viewer.id },
+                { classEnrollments: { some: { class: { enrollments: { some: { studentId: viewer.id } } } } } },
+              ],
+            }
+          : { id: -1 }),
+  };
+}
+
 export function existingAccountEnrollmentError(account: {
   role: UserRoleValue;
   accountStatus: AccountStatus;

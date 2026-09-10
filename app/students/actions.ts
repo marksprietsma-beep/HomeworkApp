@@ -6,7 +6,8 @@ import { getCurrentUserState } from "../../lib/auth";
 import { hashPassword } from "../../lib/passwords";
 import { prisma } from "../../lib/prisma";
 import { canManageClassRoster } from "../../lib/permissions";
-import { applyStudentPasswordReset, canAccessStudentManagement, existingAccountEnrollmentError, resettableStudentWhere } from "../../lib/student-management";
+import { removeOwnedProfileImage } from "../../lib/local-media";
+import { applyStudentPasswordReset, canAccessStudentManagement, existingAccountEnrollmentError, moderatableStudentProfileWhere, resettableStudentWhere } from "../../lib/student-management";
 import { generateTemporaryPassword } from "../../lib/temporary-password";
 
 export type StudentRosterActionState = { error: string | null; success: string | null };
@@ -123,5 +124,27 @@ export async function resetStudentPassword(
       temporaryPassword: null,
       studentName: null,
     };
+  }
+}
+
+export async function resetStudentProfileImage(
+  _state: StudentRosterActionState,
+  formData: FormData,
+): Promise<StudentRosterActionState> {
+  try {
+    const { selectedUser } = await getCurrentUserState();
+    if (!selectedUser || !canAccessStudentManagement(selectedUser)) throw new Error("Staff access is required.");
+    const studentId = Number(formData.get("studentId"));
+    if (!Number.isInteger(studentId) || studentId < 1) throw new Error("Choose a student account.");
+    const student = await prisma.user.findFirst({ where: moderatableStudentProfileWhere(selectedUser, studentId), select: { id: true, displayName: true, profileImagePath: true } });
+    if (!student) throw new Error("You do not have permission to reset that student's profile picture.");
+    if (!student.profileImagePath) return { error: null, success: `${student.displayName} already uses the default avatar.` };
+    const updated = await prisma.user.updateMany({ where: { ...moderatableStudentProfileWhere(selectedUser, studentId), profileImagePath: student.profileImagePath }, data: { profileImagePath: null } });
+    if (updated.count !== 1) throw new Error("The profile picture changed. Refresh and try again.");
+    await removeOwnedProfileImage(student.profileImagePath).catch(() => undefined);
+    revalidatePath("/students"); revalidatePath("/profile"); revalidatePath("/");
+    return { error: null, success: `${student.displayName}'s profile picture was reset.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not reset this profile picture.", success: null };
   }
 }
