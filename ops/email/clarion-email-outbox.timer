@@ -1,0 +1,11 @@
+[Unit]
+Description=Process pending Clarion email notifications
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=2m
+Persistent=true
+Unit=clarion-email-outbox.service
+
+[Install]
+WantedBy=timers.target

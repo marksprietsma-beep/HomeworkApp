@@ -8,6 +8,7 @@ import { getFeedbackImportPageData } from "../../../../../../../lib/feedback-imp
 import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../../../lib/permissions";
 import { prisma } from "../../../../../../../lib/prisma";
+import { releaseFeedback } from "../../../../../../../lib/email-notifications";
 
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
 
@@ -292,12 +293,9 @@ export async function releaseFeedbackForAssignment(classId: number, assignmentId
   if (!pageData.found || !pageData.assignment || !pageData.canImport) {
     return { ok: false, message: "Feedback release is only available to the class teacher." };
   }
-  const result = await prisma.participantFeedback.updateMany({
-    where: { assignmentId, releaseState: FeedbackReleaseState.DRAFT },
-    data: { releaseState: FeedbackReleaseState.RELEASED, releasedAt: new Date(), releasedById: selectedUser.id },
-  });
+  const count = await prisma.$transaction((tx) => releaseFeedback(tx, assignmentId, selectedUser.id));
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
   revalidatePath(`/assignments/${assignmentId}/work`);
-  return { ok: true, message: result.count > 0 ? `Released feedback for ${result.count} student${result.count === 1 ? "" : "s"}.` : "No draft feedback is waiting for release." };
+  return { ok: true, message: count > 0 ? `Released feedback for ${count} student${count === 1 ? "" : "s"}.` : "No draft feedback is waiting for release." };
 }

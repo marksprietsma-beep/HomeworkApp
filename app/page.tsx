@@ -517,6 +517,12 @@ function DashboardShell({
                 >
                   Duty Scheduler
                 </Link>
+                <Link
+                  href="/admin/email-notifications"
+                  className="inline-flex rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm ring-1 ring-amber-200 transition hover:bg-amber-200"
+                >
+                  Email Notifications
+                </Link>
               </>
             ) : null}
             {(isAdmin(selectedUser) || isTeacher(selectedUser)) ? (

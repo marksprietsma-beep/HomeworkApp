@@ -23,11 +23,14 @@
     "check:duty-scheduler": "node scripts/duty-scheduler-check.mjs",
     "list:classes": "node scripts/list-classes.mjs",
     "list:assignments": "node scripts/list-assignments.mjs",
+    "email:test": "node scripts/email-notifications.mjs send-test",
+    "email:process": "node scripts/email-notifications.mjs process",
     "seed:submissions": "node scripts/seed-submissions.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
     "next": "^15.0.0",
+    "nodemailer": "^7.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../lib/permissions";
 import { prisma } from "../../../../../lib/prisma";
+import { transitionAssignmentStatus } from "../../../../../lib/email-notifications";
 
 export async function updateAssignmentPublishStatus(
   classId: number,
@@ -46,10 +47,7 @@ export async function updateAssignmentPublishStatus(
     throw new Error("Only admins or the teacher who owns this class can change assignment status.");
   }
 
-  await prisma.homeworkAssignment.update({
-    where: { id: assignment.id },
-    data: { status: requestedStatus },
-  });
+  await prisma.$transaction((tx) => transitionAssignmentStatus(tx, assignment.id, requestedStatus as HomeworkAssignmentStatus));
 
   revalidatePath("/");
   revalidatePath(`/classes/${classId}`);

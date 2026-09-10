@@ -7,6 +7,7 @@ import { buildAssignmentTemplate, buildLibraryVersionSnapshot, canManageLibraryI
 import { canUserShareToTeam, parsePositiveId } from "../../lib/department-teams";
 import { getCurrentUserState } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
+import { queueHomeworkPublication } from "../../lib/email-notifications";
 
 function requireTeacherOrAdmin(user: { id: number; role: UserRole } | null) {
   if (!user || user.role === UserRole.STUDENT) throw new Error("You must be signed in as a teacher or ADMIN account to use the curriculum library.");
@@ -71,8 +72,9 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
   const dueAt = parseLibraryDueAt(formData.get("dueAt"));
   const status = parseAssignmentStatus(formData.get("status"));
 
-  const createdAssignments = await prisma.$transaction(
-    classIds.map((classId) => prisma.homeworkAssignment.create({
+  const createdAssignments = await prisma.$transaction(async (tx) => {
+    const created = [];
+    for (const classId of classIds) created.push(await tx.homeworkAssignment.create({
       data: {
         classId,
         createdById: user.id,
@@ -88,8 +90,13 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
         questions: { create: template.questions.map((question, index) => ({ order: index + 1, prompt: question.prompt, promptI18n: question.promptI18n ?? undefined, questionType: Object.values(HomeworkQuestionType).includes(question.questionType as HomeworkQuestionType) ? (question.questionType as HomeworkQuestionType) : HomeworkQuestionType.OPEN_TEXT, responseMode: Object.values(HomeworkQuestionResponseMode).includes(question.responseMode as HomeworkQuestionResponseMode) ? question.responseMode as HomeworkQuestionResponseMode : HomeworkQuestionResponseMode.TEXT, pseudocodeDialect: question.pseudocodeDialect === PseudocodeDialect.CAMBRIDGE_9618_2026 ? PseudocodeDialect.CAMBRIDGE_9618_2026 : null, responseSchema: question.responseSchema ?? undefined, points: question.points, options: question.options ?? undefined, imagePath: question.imagePath, imageCaption: question.imageCaption, imageAltText: question.imageAltText })) },
       },
       select: { id: true, classId: true },
-    })),
-  );
+    }));
+    if (status === "PUBLISHED") for (const assignment of created) {
+      await tx.homeworkAssignment.update({ where: { id: assignment.id }, data: { publicationVersion: 1 } });
+      await queueHomeworkPublication(tx, assignment.id, 1);
+    }
+    return created;
+  });
 
   revalidatePath("/");
   revalidatePath("/curriculum-library");
