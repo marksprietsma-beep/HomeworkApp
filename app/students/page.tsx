@@ -1,4 +1,4 @@
-import { AccountStatus, UserRole } from "@prisma/client";
+import { AccountStatus, ClassStatus, UserRole } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../lib/auth";
@@ -22,7 +22,7 @@ export default async function StudentsPage({ searchParams }: Props) {
       id: true, displayName: true, email: true, yearGroup: true, profileImagePath: true, accountStatus: true, mustChangePassword: true,
       classEnrollments: { where: enrollmentWhere, orderBy: { class: { name: "asc" } }, select: { class: { select: { id: true, name: true, subject: true } } } },
     } }),
-    prisma.class.findMany({ where: manageableClassesWhere(selectedUser), orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.class.findMany({ where: { ...manageableClassesWhere(selectedUser), status: ClassStatus.ACTIVE }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.user.count({ where }),
   ]);
 

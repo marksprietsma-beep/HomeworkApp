@@ -1,6 +1,6 @@
 "use server";
 
-import { CurriculumLibraryVisibility, HomeworkQuestionResponseMode, HomeworkQuestionType, Prisma, PseudocodeDialect, UserRole } from "@prisma/client";
+import { ClassStatus, CurriculumLibraryVisibility, HomeworkQuestionResponseMode, HomeworkQuestionType, Prisma, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { buildAssignmentTemplate, buildLibraryVersionSnapshot, canManageLibraryItem, getLibraryVisibilityWhere, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
@@ -59,7 +59,7 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
   const [libraryItem, classes] = await Promise.all([
     prisma.curriculumHomeworkLibraryItem.findFirst({ where: { id: libraryItemId, ...getLibraryVisibilityWhere(user) } }),
     prisma.class.findMany({
-      where: { id: { in: classIds }, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
+      where: { id: { in: classIds }, status: ClassStatus.ACTIVE, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
       select: { id: true },
     }),
   ]);

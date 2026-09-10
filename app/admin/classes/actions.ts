@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses, isEligibleClassTeacher } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
+import { classCanBePurged, classPurgeConfirmationMatches, nextClassStatus } from "../../../lib/class-lifecycle";
 
 export type AdminClassFormState = { error: string | null; success: string | null };
 
@@ -94,5 +95,79 @@ export async function updateAdminClass(_previousState: AdminClassFormState, form
   } catch (error) {
     if (isUniqueConstraintError(error)) return { error: "A class with this name already exists.", success: null };
     return { error: error instanceof Error ? error.message : "Could not update this class.", success: null };
+  }
+}
+
+function revalidateClassLifecycle(classId: number) {
+  revalidatePath("/admin/classes");
+  revalidatePath(`/classes/${classId}`);
+  revalidatePath("/");
+}
+
+export async function toggleAdminClassStatus(_previousState: AdminClassFormState, formData: FormData): Promise<AdminClassFormState> {
+  try {
+    await assertAdminCanManageClasses();
+    const classId = Number(readTrimmed(formData, "classId"));
+    if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class.");
+
+    const target = await prisma.class.findUnique({ where: { id: classId }, select: { name: true, status: true } });
+    if (!target) throw new Error("This class no longer exists.");
+    const status = nextClassStatus(target.status);
+    await prisma.class.update({ where: { id: classId }, data: { status } });
+    revalidateClassLifecycle(classId);
+    return { error: null, success: `${target.name} is now ${status === ClassStatus.ACTIVE ? "active" : "inactive"}. No class data was removed.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not change this class's status.", success: null };
+  }
+}
+
+export async function purgeAdminClass(_previousState: AdminClassFormState, formData: FormData): Promise<AdminClassFormState> {
+  try {
+    await assertAdminCanManageClasses();
+    const classId = Number(readTrimmed(formData, "classId"));
+    const confirmation = readTrimmed(formData, "confirmation");
+    if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class to purge.");
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Re-read and validate the protected fields inside the destructive transaction.
+      const target = await tx.class.findUnique({ where: { id: classId }, select: { name: true, status: true } });
+      if (!target) throw new Error("This class no longer exists.");
+      if (!classCanBePurged(target.status)) throw new Error("Make this class inactive before permanently purging it.");
+      if (!classPurgeConfirmationMatches(confirmation, target.name)) {
+        throw new Error(`Confirmation did not match. Type DELETE or the exact class name (${target.name}).`);
+      }
+
+      const assignmentWhere = { classId };
+      const feedbackWhere = { assignment: assignmentWhere };
+      const submissionWhere = { assignment: assignmentWhere };
+      const counts = {
+        enrollments: await tx.classEnrollment.count({ where: { classId } }),
+        assignments: await tx.homeworkAssignment.count({ where: assignmentWhere }),
+        submissions: await tx.submission.count({ where: submissionWhere }),
+        answers: await tx.submissionAnswer.count({ where: { submission: submissionWhere } }),
+        feedback: await tx.participantFeedback.count({ where: feedbackWhere }),
+      };
+
+      // Delete class-owned rows explicitly, deepest first. User and curriculum-library
+      // rows are intentionally absent; assignment source references point outward.
+      await tx.emailNotification.deleteMany({ where: { assignment: assignmentWhere } });
+      await tx.feedbackFollowUpAction.deleteMany({ where: { participantFeedback: feedbackWhere } });
+      await tx.questionFeedback.deleteMany({ where: { participantFeedback: feedbackWhere } });
+      await tx.participantFeedback.deleteMany({ where: feedbackWhere });
+      await tx.feedbackImport.deleteMany({ where: { assignment: assignmentWhere } });
+      await tx.submissionAnswer.deleteMany({ where: { submission: submissionWhere } });
+      await tx.submission.deleteMany({ where: submissionWhere });
+      await tx.homeworkQuestion.deleteMany({ where: { assignment: assignmentWhere } });
+      await tx.homeworkAssignment.deleteMany({ where: assignmentWhere });
+      await tx.classEnrollment.deleteMany({ where: { classId } });
+      await tx.class.delete({ where: { id: classId } });
+      return { name: target.name, counts };
+    });
+
+    revalidateClassLifecycle(classId);
+    return { error: null, success: `${result.name} was permanently purged with ${result.counts.enrollments} enrolments, ${result.counts.assignments} assignments, ${result.counts.submissions} submissions, ${result.counts.answers} answers, and ${result.counts.feedback} feedback records.` };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown database error.";
+    return { error: message.startsWith("Confirmation") || message.includes("inactive") || message.includes("no longer exists") ? message : `The class could not be safely purged. Nothing was removed. ${message}`, success: null };
   }
 }
