@@ -36,3 +36,7 @@ export function assertDraftFeedbackScoreTarget(target: { releaseState: string; s
     throw new Error("A score requires a real submission belonging to this student and assignment.");
   }
 }
+
+export function assertDraftFeedbackScoreUpdated(updatedCount: number) {
+  if (updatedCount !== 1) throw new Error("Only draft feedback scores can be edited.");
+}

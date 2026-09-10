@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertDraftFeedbackScoreTarget, assertQuestionPointsEditable, calculateHomeworkPoints, getAssignmentTotalPoints, validateScoreAwarded } from "../lib/assignment-points";
+import { assertDraftFeedbackScoreTarget, assertDraftFeedbackScoreUpdated, assertQuestionPointsEditable, calculateHomeworkPoints, getAssignmentTotalPoints, validateScoreAwarded } from "../lib/assignment-points";
 test("canonical assignment total requires complete positive point data", () => {
   assert.equal(getAssignmentTotalPoints([{ points: 4 }, { points: 6 }]), 10);
   assert.equal(getAssignmentTotalPoints([{ points: 4 }, { points: null }]), null);
@@ -17,6 +17,10 @@ test("draft score correction requires matching canonical submission but clearing
   assert.doesNotThrow(() => assertDraftFeedbackScoreTarget({ ...valid, submissionId: null, submission: null }, 42, null));
   assert.throws(() => assertDraftFeedbackScoreTarget({ ...valid, releaseState: "RELEASED" }, 42, 7), /Only draft/);
   assert.throws(() => assertDraftFeedbackScoreTarget({ ...valid, submission: { assignmentId: 42, studentId: 4 } }, 42, 7), /real submission/);
+});
+test("draft score write rejects a concurrent state change before update", () => {
+  assert.doesNotThrow(() => assertDraftFeedbackScoreUpdated(1));
+  assert.throws(() => assertDraftFeedbackScoreUpdated(0), /Only draft feedback scores can be edited/);
 });
 test("homework points reward submitted completion and rounded released quality", () => {
   assert.equal(calculateHomeworkPoints({ submitted: false, assignmentTotalPoints: 10, releasedScoreAwarded: 10 }), 0);
