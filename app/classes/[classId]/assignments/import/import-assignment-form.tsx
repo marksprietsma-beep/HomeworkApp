@@ -108,7 +108,7 @@ Choose the format deliberately: use assignment-import-v1 for ordinary text, pseu
 
 Use the Clarion assignment import structure:
 - Root object with formatVersion set to "assignment-import-v1" for ordinary homework or "assignment-import-v2" for structured responses, and an assignment object.
-- Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary.
+- Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary. Always generate status as DRAFT; the teacher makes the publication decision in Clarion after reviewing the preview.
 - assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."
 - Do not put teacher generation context into assignment.instructions. If metadata genuinely belongs in the JSON, express it through title, questions, points, dueDate, status, or keyVocabulary instead of adding a long teacher-facing paragraph.
 - Questions must preserve stable string ids such as q1 exactly, use sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, optional textI18n, and optional positive integer points/marks.
@@ -278,16 +278,18 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
             <div className="sticky top-3 z-10 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-slate-200/70 backdrop-blur">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-emerald-900">
-                  JSON is valid. Review the student instructions and status, then save when ready.
+                  JSON is valid. Review the preview, then choose whether students should see it now.
                 </p>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  {isPending ? "Creating…" : "Confirm and create"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="submit" name="intent" value="DRAFT" disabled={isPending} className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400">
+                    {isPending ? "Creating…" : "Save as Draft"}
+                  </button>
+                  <button type="submit" name="intent" value="PUBLISH" disabled={isPending} className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300">
+                    {isPending ? "Creating…" : "Publish Assignment"}
+                  </button>
+                </div>
               </div>
+              <p className="mt-2 text-xs font-medium text-emerald-800">Publishing makes this visible to enrolled students immediately. The imported status is shown for compatibility, but your button choice decides.</p>
             </div>
 
             <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -312,7 +314,7 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                 <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:min-w-80 lg:grid-cols-2">
                   <div className="rounded-xl bg-white p-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Status
+                      Imported status
                     </p>
                     <p className="mt-1 font-bold text-slate-950">
                       {assignment.status}

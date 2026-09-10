@@ -1,12 +1,14 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { getCurrentUserState } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
-import { queueHomeworkPublication } from "../../../../../lib/email-notifications";
+import { transitionAssignmentStatus } from "../../../../../lib/email-notifications";
+import { parsePublicationIntent } from "../../../../../lib/publication-intent.mjs";
+import { createAssignmentWithIntent } from "../../../../../lib/publication-workflows.mjs";
 
 type I18nText = { en: string; zh: string } | null;
 
@@ -79,6 +81,10 @@ export async function importAssignmentForClass(
   }
 
   const rawJson = String(formData.get("rawJson") ?? "");
+  const intent = parsePublicationIntent(formData.get("intent"));
+  if (!intent) {
+    return { ok: false, message: "Choose Save as Draft or Publish Assignment." };
+  }
   const parseResult = parseAssignmentImportJson(rawJson);
 
   if (!parseResult.ok) {
@@ -148,8 +154,7 @@ export async function importAssignmentForClass(
   }));
 
   const assignment = await prisma.$transaction(async (tx) => {
-    const created = await tx.homeworkAssignment.create({
-    data: {
+    const created = await createAssignmentWithIntent(tx, {
       classId,
       createdById: selectedUser.id,
       title: importedAssignment.title,
@@ -157,18 +162,11 @@ export async function importAssignmentForClass(
       description: importedAssignment.instructions,
       descriptionI18n: importedAssignment.instructionsI18n ?? undefined,
       keyVocabulary: importedAssignment.keyVocabulary.length > 0 ? importedAssignment.keyVocabulary : undefined,
-      status: importedAssignment.status as HomeworkAssignmentStatus,
       dueAt: dueDateToDateTime(importedAssignment.dueDate),
       questions: {
         create: questions,
       },
-    },
-      select: { id: true },
-    });
-    if (importedAssignment.status === HomeworkAssignmentStatus.PUBLISHED) {
-      await tx.homeworkAssignment.update({ where: { id: created.id }, data: { publicationVersion: 1 } });
-      await queueHomeworkPublication(tx, created.id, 1);
-    }
+    }, intent, transitionAssignmentStatus);
     return created;
   });
 

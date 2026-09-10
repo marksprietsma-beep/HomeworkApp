@@ -1,6 +1,6 @@
 "use server";
 
-import { AccountStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { AccountStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
@@ -11,7 +11,10 @@ import { getCurrentUserState } from "../../../lib/auth";
 import { LocalMediaValidationError, storeAssignmentQuestionImage } from "../../../lib/local-media";
 import { assertManualCreateResponseMode } from "../../../lib/question-response-mode";
 import { canActAsClassTeacher, canManageClassRoster } from "../../../lib/permissions";
-import { queueHomeworkPublication } from "../../../lib/email-notifications";
+import { transitionAssignmentStatus } from "../../../lib/email-notifications";
+import { isAdmin } from "../../../lib/permissions";
+import { parsePublicationIntent } from "../../../lib/publication-intent.mjs";
+import { createAssignmentWithIntent } from "../../../lib/publication-workflows.mjs";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -158,12 +161,8 @@ export async function createAssignmentForClass(
   try {
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
-    const statusValue = String(formData.get("status") ?? HomeworkAssignmentStatus.DRAFT);
-    const status = Object.values(HomeworkAssignmentStatus).includes(
-      statusValue as HomeworkAssignmentStatus,
-    )
-      ? (statusValue as HomeworkAssignmentStatus)
-      : HomeworkAssignmentStatus.DRAFT;
+    const intent = parsePublicationIntent(formData.get("intent"));
+    if (!intent) throw new Error("Choose Save as Draft or Publish Assignment.");
     const dueAt = parseDueAt(formData.get("dueAt"));
     const questions = await parseQuestions(formData);
 
@@ -184,7 +183,7 @@ export async function createAssignmentForClass(
     const classItem = await prisma.class.findFirst({
       where: {
         id: classId,
-        teacherId: selectedUser.id,
+        ...(isAdmin(selectedUser) ? {} : { teacherId: selectedUser.id }),
       },
       select: { id: true },
     });
@@ -194,24 +193,16 @@ export async function createAssignmentForClass(
     }
 
     const assignment = await prisma.$transaction(async (tx) => {
-      const created = await tx.homeworkAssignment.create({
-      data: {
+      const created = await createAssignmentWithIntent(tx, {
         classId,
         createdById: selectedUser.id,
         title,
         description: description || null,
-        status,
         dueAt,
         questions: {
           create: questions,
         },
-      },
-        select: { id: true },
-      });
-      if (status === HomeworkAssignmentStatus.PUBLISHED) {
-        await tx.homeworkAssignment.update({ where: { id: created.id }, data: { publicationVersion: 1 } });
-        await queueHomeworkPublication(tx, created.id, 1);
-      }
+      }, intent, transitionAssignmentStatus);
       return created;
     });
 
