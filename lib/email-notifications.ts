@@ -1,7 +1,7 @@
 import "server-only";
 import { AccountStatus, EmailDeliveryStatus, EmailNotificationType, FeedbackReleaseState, HomeworkAssignmentStatus, Prisma, UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
-import { automaticEmailEnabled, getClarionBaseUrl } from "./email-config";
+import { automaticEmailEnabled, getAutomaticNotificationPreparation } from "./email-config";
 import { DEFAULT_EMAIL_TEMPLATES, formatSchoolDueDate, type EmailTemplateData } from "./email-templates";
 import { feedbackIdempotencyKey, homeworkIdempotencyKey, isEligibleStudent, isValidRecipientEmail, notificationTypeEnabled } from "./email-notification-policy.mjs";
 
@@ -27,14 +27,14 @@ export async function queueHomeworkPublication(db: Db, assignmentId: number, pub
     where: { id: assignmentId },
     select: { id: true, title: true, dueAt: true, class: { select: { name: true, enrollments: { where: { student: { role: UserRole.STUDENT, accountStatus: AccountStatus.ACTIVE } }, select: { student: { select: { id: true, email: true, displayName: true } } } } } } },
   });
-  const baseUrl = getClarionBaseUrl();
+  const preparation = getAutomaticNotificationPreparation();
   let queued = 0, skipped = 0;
   for (const { student } of assignment.class.enrollments) {
-    const status = isValidRecipientEmail(student.email) ? EmailDeliveryStatus.PENDING : EmailDeliveryStatus.SKIPPED;
+    const status = preparation.ok && isValidRecipientEmail(student.email) ? EmailDeliveryStatus.PENDING : EmailDeliveryStatus.SKIPPED;
     const idempotencyKey = homeworkIdempotencyKey(assignment.id, publicationVersion, student.id);
     await db.emailNotification.upsert({
       where: { idempotencyKey }, update: {},
-      create: { idempotencyKey, type: EmailNotificationType.HOMEWORK_PUBLISHED, status, recipientUserId: student.id, recipientEmail: student.email, recipientName: student.displayName, assignmentId: assignment.id, lastError: status === EmailDeliveryStatus.SKIPPED ? "Recipient email is missing or invalid." : null, templateData: { studentName: student.displayName, className: assignment.class.name, assignmentTitle: assignment.title, dueDate: assignment.dueAt ? formatSchoolDueDate(assignment.dueAt) : "", clarionLink: `${baseUrl}/assignments/${assignment.id}/work` } satisfies EmailTemplateData },
+      create: { idempotencyKey, type: EmailNotificationType.HOMEWORK_PUBLISHED, status, recipientUserId: student.id, recipientEmail: student.email, recipientName: student.displayName, assignmentId: assignment.id, lastError: status === EmailDeliveryStatus.SKIPPED ? preparation.ok ? "Recipient email is missing or invalid." : preparation.error : null, templateData: { studentName: student.displayName, className: assignment.class.name, assignmentTitle: assignment.title, dueDate: preparation.ok && assignment.dueAt ? formatSchoolDueDate(assignment.dueAt) : "", clarionLink: preparation.ok ? `${preparation.baseUrl}/assignments/${assignment.id}/work` : "" } satisfies EmailTemplateData },
     });
     if (status === EmailDeliveryStatus.PENDING) queued++; else skipped++;
   }
@@ -56,14 +56,14 @@ export async function queueFeedbackReleases(db: Db, feedbackIds: number[]) {
   const settings = await getEmailSettings(db);
   if (!notificationTypeEnabled(settings, "FEEDBACK_RELEASED")) return { queued: 0, skipped: 0 };
   const rows = await db.participantFeedback.findMany({ where: { id: { in: feedbackIds }, releaseState: FeedbackReleaseState.RELEASED }, select: { id: true, student: { select: { id: true, email: true, displayName: true, role: true, accountStatus: true } }, assignment: { select: { id: true, title: true, class: { select: { name: true } } } } } });
-  const baseUrl = getClarionBaseUrl();
+  const preparation = getAutomaticNotificationPreparation();
   let queued = 0, skipped = 0;
   for (const row of rows) {
     const student = row.student;
     if (!isEligibleStudent(student)) continue;
-    const status = isValidRecipientEmail(student.email) ? EmailDeliveryStatus.PENDING : EmailDeliveryStatus.SKIPPED;
+    const status = preparation.ok && isValidRecipientEmail(student.email) ? EmailDeliveryStatus.PENDING : EmailDeliveryStatus.SKIPPED;
     const idempotencyKey = feedbackIdempotencyKey(row.id, student.id);
-    await db.emailNotification.upsert({ where: { idempotencyKey }, update: {}, create: { idempotencyKey, type: EmailNotificationType.FEEDBACK_RELEASED, status, recipientUserId: student.id, recipientEmail: student.email, recipientName: student.displayName, assignmentId: row.assignment.id, participantFeedbackId: row.id, lastError: status === EmailDeliveryStatus.SKIPPED ? "Recipient email is missing or invalid." : null, templateData: { studentName: student.displayName, className: row.assignment.class.name, assignmentTitle: row.assignment.title, dueDate: "", clarionLink: `${baseUrl}/assignments/${row.assignment.id}/work` } satisfies EmailTemplateData } });
+    await db.emailNotification.upsert({ where: { idempotencyKey }, update: {}, create: { idempotencyKey, type: EmailNotificationType.FEEDBACK_RELEASED, status, recipientUserId: student.id, recipientEmail: student.email, recipientName: student.displayName, assignmentId: row.assignment.id, participantFeedbackId: row.id, lastError: status === EmailDeliveryStatus.SKIPPED ? preparation.ok ? "Recipient email is missing or invalid." : preparation.error : null, templateData: { studentName: student.displayName, className: row.assignment.class.name, assignmentTitle: row.assignment.title, dueDate: "", clarionLink: preparation.ok ? `${preparation.baseUrl}/assignments/${row.assignment.id}/work` : "" } satisfies EmailTemplateData } });
     if (status === EmailDeliveryStatus.PENDING) queued++; else skipped++;
   }
   return { queued, skipped };

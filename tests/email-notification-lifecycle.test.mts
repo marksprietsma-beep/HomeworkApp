@@ -4,7 +4,7 @@ import test from "node:test";
 import { feedbackIdempotencyKey, homeworkIdempotencyKey, isEligibleStudent, isValidRecipientEmail, notificationTypeEnabled, shouldQueueFeedback, shouldQueuePublication } from "../lib/email-notification-policy.mjs";
 import { claimNotification, MAX_AUTOMATIC_ATTEMPTS, processEmailOutbox } from "../lib/email-outbox-runtime.mjs";
 import core from "../lib/email-core.cjs";
-const { automaticEmailEnabled, formatSchoolDueDate, getPublicMailDiagnostics, sanitiseMailError } = core;
+const { automaticEmailEnabled, formatSchoolDueDate, getAutomaticNotificationPreparation, getPublicMailDiagnostics, sanitiseMailError } = core;
 
 test("assignment lifecycle captures only genuine publications with deterministic republish versions", () => {
   assert.equal(shouldQueuePublication("DRAFT", "DRAFT"), false);
@@ -64,6 +64,25 @@ test("atomic claim allows only one concurrent owner and an expired lease is recl
   assert.equal(db.row.attemptCount, 2);
 });
 
+test("each job in a long batch receives a fresh lease at its actual claim time", async () => {
+  const rows = new Map([1, 2].map((id) => [id, { id, type: "HOMEWORK_PUBLISHED", status: "PENDING", recipientEmail: `student${id}@example.org`, attemptCount: 0, nextAttemptAt: null, leaseUntil: null as Date | null, createdAt: new Date(id), templateData: { studentName: `Student ${id}`, className: "Maths", assignmentTitle: "Fractions", dueDate: "", clarionLink: "https://clarion.example/work" } }]));
+  const claimedLeases: Date[] = [];
+  const db = { emailNotification: {
+    findMany: async () => [{ id: 1 }, { id: 2 }],
+    updateMany: async ({ where, data }: any) => { const row = rows.get(where.id)!; if (row.status !== "PENDING") return { count: 0 }; row.status = data.status; row.leaseUntil = data.leaseUntil; row.attemptCount++; claimedLeases.push(data.leaseUntil); return { count: 1 }; },
+    findUnique: async ({ where }: any) => ({ ...rows.get(where.id)! }),
+    update: async ({ where, data }: any) => { Object.assign(rows.get(where.id)!, data); return rows.get(where.id)!; },
+  }, emailNotificationSettings: { findUnique: async () => null } };
+  const start = new Date("2026-09-10T00:00:00Z");
+  const times = [start, start, new Date(start.getTime() + 4 * 60_000), new Date(start.getTime() + 4 * 60_000), new Date(start.getTime() + 4 * 60_000)];
+  const previous = process.env.EMAIL_NOTIFICATIONS_ENABLED; process.env.EMAIL_NOTIFICATIONS_ENABLED = "true";
+  try { await processEmailOutbox({ db, clock: () => times.shift() ?? times.at(-1) ?? start, transport: { verify: async () => undefined, send: async () => undefined } }); }
+  finally { process.env.EMAIL_NOTIFICATIONS_ENABLED = previous; }
+  assert.equal(claimedLeases.length, 2);
+  assert.equal(claimedLeases[0].getTime(), start.getTime() + 5 * 60_000);
+  assert.equal(claimedLeases[1].getTime(), start.getTime() + 9 * 60_000);
+});
+
 test("overlapping processors physically send once and success records SENT", async () => {
   const previous = process.env.EMAIL_NOTIFICATIONS_ENABLED; process.env.EMAIL_NOTIFICATIONS_ENABLED = "true";
   try {
@@ -104,4 +123,17 @@ test("disabled mode, school timezone and diagnostics are safe and deterministic"
   assert.equal(JSON.stringify(diagnostics).includes("super-secret"), false);
   assert.equal(notificationTypeEnabled({ homeworkEnabled: true, feedbackEnabled: false }, "HOMEWORK_PUBLISHED"), true);
   assert.equal(notificationTypeEnabled({ homeworkEnabled: true, feedbackEnabled: false }, "FEEDBACK_RELEASED"), false);
+});
+
+test("missing application URL and invalid timezone fail safe without undoing canonical state", () => {
+  for (const env of [
+    { EMAIL_NOTIFICATIONS_ENABLED: "true", SMTP_HOST: "smtp.example", SMTP_PORT: "587", SMTP_USER: "user", SMTP_PASSWORD: "secret", MAIL_FROM_ADDRESS: "mail@example.org", SCHOOL_TIME_ZONE: "Asia/Shanghai" },
+    { EMAIL_NOTIFICATIONS_ENABLED: "true", SMTP_HOST: "smtp.example", SMTP_PORT: "587", SMTP_USER: "user", SMTP_PASSWORD: "secret", MAIL_FROM_ADDRESS: "mail@example.org", APP_BASE_URL: "https://clarion.example", SCHOOL_TIME_ZONE: "Not/AZone" },
+  ] as NodeJS.ProcessEnv[]) {
+    const canonical = { assignment: "PUBLISHED", feedback: "RELEASED" };
+    const preparation = getAutomaticNotificationPreparation(env);
+    assert.equal(preparation.ok, false);
+    assert.deepEqual(canonical, { assignment: "PUBLISHED", feedback: "RELEASED" });
+    assert.doesNotMatch(JSON.stringify(preparation), /secret/);
+  }
 });

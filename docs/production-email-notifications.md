@@ -2,6 +2,8 @@
 
 Clarion uses a PostgreSQL outbox: publishing homework or releasing feedback commits the canonical state and one idempotent notification record in the same transaction. SMTP runs separately, so an unavailable mail server cannot roll back teacher work. Automatic event capture and the worker are guarded by `EMAIL_NOTIFICATIONS_ENABLED=true`; while it is false, events create no dormant backlog.
 
+If automatic delivery is enabled while required configuration is missing or invalid, the teacher's publication/release still succeeds and the intended notifications are recorded as permanently `SKIPPED` with a non-secret diagnostic. They are never left as malformed `PENDING` messages that could be delivered later after an unrelated configuration change.
+
 ## Server environment
 
 Keep these values only in the protected `/opt/clarion/.env.production` (never in Git, Prisma, browser-visible variables, tickets, or logs):
