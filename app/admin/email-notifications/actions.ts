@@ -4,9 +4,10 @@ import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
-import { DEFAULT_EMAIL_TEMPLATES, renderSafeHtml, validateTemplate } from "../../../lib/email-templates";
-import { createMailTransport, sanitiseMailError } from "../../../lib/email-transport";
+import { DEFAULT_EMAIL_TEMPLATES, validateTemplate } from "../../../lib/email-templates";
+import { sanitiseMailError } from "../../../lib/email-transport";
 import { processEmailOutbox } from "../../../lib/email-delivery";
+import { sendTestEmail as sendDiagnosticEmail } from "../../../lib/email-outbox-runtime.mjs";
 
 export type EmailAdminState = { ok: boolean; message: string } | null;
 
@@ -41,16 +42,15 @@ export async function sendTestEmail(_state: EmailAdminState, formData: FormData)
   const to = String(formData.get("recipient") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, message: "Enter a valid trusted test email address." };
   try {
-    const transport = await createMailTransport();
-    await transport.send({ to, subject: "Clarion email configuration test", text: "This test confirms that Clarion can submit email using its configured server-side transport. Automatic student notifications are unchanged.", html: renderSafeHtml("This test confirms that Clarion can submit email using its configured server-side transport. Automatic student notifications are unchanged.", "https://clarion.invalid", "Clarion SMTP test") });
-    return { ok: true, message: `SMTP accepted the test message for ${to}.` };
+    return { ok: true, message: await sendDiagnosticEmail(to) };
   } catch (error) { return { ok: false, message: `Test email failed: ${sanitiseMailError(error)}` }; }
 }
 
-export async function retryDelivery(formData: FormData) {
+export async function retryDelivery(_state: EmailAdminState, formData: FormData): Promise<EmailAdminState> {
   await requireRole(UserRole.ADMIN);
   const id = Number(formData.get("notificationId"));
-  if (!Number.isInteger(id)) throw new Error("Choose a valid notification.");
-  await processEmailOutbox({ ids: [id] });
+  if (!Number.isInteger(id)) return { ok: false, message: "Choose a valid notification." };
+  const result = await processEmailOutbox({ ids: [id], manual: true });
   revalidatePath("/admin/email-notifications");
+  return { ok: result.sent === 1, message: result.message };
 }

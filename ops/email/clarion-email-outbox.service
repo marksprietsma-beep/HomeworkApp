@@ -5,13 +5,12 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=clarion
-Group=clarion
+User=msprietsma
 WorkingDirectory=/opt/clarion
 EnvironmentFile=/opt/clarion/.env.production
+Environment=NPM_CONFIG_CACHE=/tmp/npm-cache
 ExecStart=/usr/bin/npm run email:process
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/opt/clarion/.next

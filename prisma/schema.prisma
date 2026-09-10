@@ -73,6 +73,7 @@ enum EmailNotificationType {
 
 enum EmailDeliveryStatus {
   PENDING
+  PROCESSING
   SENT
   FAILED
   SKIPPED
@@ -337,6 +338,7 @@ model EmailNotification {
   attemptCount          Int                   @default(0)
   lastError             String?
   nextAttemptAt         DateTime?
+  leaseUntil            DateTime?
   attemptedAt           DateTime?
   sentAt                DateTime?
   createdAt             DateTime              @default(now())

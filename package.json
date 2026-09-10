@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && mkdir -p .test-dist/lib && cp lib/assignment-import-parser.mjs .test-dist/lib/ && node --test .test-dist/tests/*.test.js .test-dist/tests/*.test.mjs; status=$?; rm -rf .test-dist; exit $status",
+    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && mkdir -p .test-dist/lib && cp lib/*.mjs lib/*.cjs .test-dist/lib/ && node --test .test-dist/tests/*.test.js .test-dist/tests/*.test.mjs; status=$?; rm -rf .test-dist; exit $status",
     "db:check": "node scripts/db-check.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

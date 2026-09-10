@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { saveEmailSettings, sendTestEmail, type EmailAdminState } from "./actions";
+import { retryDelivery, saveEmailSettings, sendTestEmail, type EmailAdminState } from "./actions";
 
 type Settings = { homeworkEnabled: boolean; feedbackEnabled: boolean; homeworkSubjectTemplate: string; homeworkBodyTemplate: string; feedbackSubjectTemplate: string; feedbackBodyTemplate: string };
-const sample: Record<string, string> = { studentName: "Alex Student", className: "Year 9 Mathematics", assignmentTitle: "Fractions review", dueDate: "Due: 18 September 2026, 16:00 UTC", clarionLink: "https://clarion.school.example/assignments/123/work" };
+const sample: Record<string, string> = { studentName: "Alex Student", className: "Year 9 Mathematics", assignmentTitle: "Fractions review", dueDate: "Due: 18 September 2026, 16:00 (Asia/Shanghai)", clarionLink: "https://clarion.school.example/assignments/123/work" };
 function preview(value: string) { return value.replace(/{{\s*([^{}]+?)\s*}}/g, (_, key) => sample[key] ?? `{{${key}}}`).replace(/^\s*\n/gm, "\n"); }
 function Message({ state }: { state: EmailAdminState }) { return state ? <p className={`mt-3 rounded-xl p-3 text-sm ${state.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>{state.message}</p> : null; }
 
@@ -21,3 +21,5 @@ export function EmailSettingsForm({ settings }: { settings: Settings }) {
 }
 
 export function TestEmailForm() { const [state, action, pending] = useActionState(sendTestEmail, null); return <form action={action} className="mt-4"><label className="block text-sm font-semibold">Trusted test recipient<input name="recipient" type="email" required className="mt-2 w-full rounded-xl border p-3 font-normal" placeholder="trusted.test@example.org" /></label><button disabled={pending} className="mt-3 rounded-full bg-slate-950 px-5 py-2 text-sm font-bold text-white">{pending ? "Sending…" : "Send test email"}</button><Message state={state} /></form>; }
+
+export function RetryDeliveryForm({ id, exhausted }: { id: number; exhausted: boolean }) { const [state, action, pending] = useActionState(retryDelivery, null); return <form action={action} className="mt-2"><input type="hidden" name="notificationId" value={id} /><button disabled={pending} className="font-bold text-amber-700 disabled:opacity-50">{pending ? "Retrying…" : exhausted ? "Retry after automatic limit" : "Retry now"}</button>{exhausted ? <p className="text-xs text-slate-500">Automatic retries stopped after five attempts; an administrator may make one deliberate additional attempt.</p> : null}<Message state={state} /></form>; }

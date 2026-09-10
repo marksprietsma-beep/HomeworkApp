@@ -1,6 +1,6 @@
 -- Add a database-backed, idempotent email notification outbox and non-secret settings.
 CREATE TYPE "EmailNotificationType" AS ENUM ('HOMEWORK_PUBLISHED', 'FEEDBACK_RELEASED');
-CREATE TYPE "EmailDeliveryStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'SKIPPED');
+CREATE TYPE "EmailDeliveryStatus" AS ENUM ('PENDING', 'PROCESSING', 'SENT', 'FAILED', 'SKIPPED');
 
 ALTER TABLE "HomeworkAssignment" ADD COLUMN "publicationVersion" INTEGER NOT NULL DEFAULT 0;
 
@@ -30,6 +30,7 @@ CREATE TABLE "EmailNotification" (
   "attemptCount" INTEGER NOT NULL DEFAULT 0,
   "lastError" TEXT,
   "nextAttemptAt" TIMESTAMP(3),
+  "leaseUntil" TIMESTAMP(3),
   "attemptedAt" TIMESTAMP(3),
   "sentAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
