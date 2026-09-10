@@ -5,7 +5,7 @@ import { getFeedbackImportPageData } from "../../../../../../lib/feedback-import
 import { buildFullFeedbackPrompt } from "../../../../../../lib/feedback-helper-prompt";
 import { assignmentResponseExportHasBilingualContent, getAssignmentResponseExportData } from "../../../../../../lib/response-export";
 import { getResponseOverviewData } from "../../../../../../lib/response-overview";
-import { releaseFeedbackForAssignment } from "../feedback/import/actions";
+import { releaseFeedbackForAssignment, updateDraftFeedbackScore } from "../feedback/import/actions";
 import { ResponseFeedbackWorkflow } from "./response-feedback-workflow";
 
 export const dynamic = "force-dynamic";
@@ -86,8 +86,8 @@ export default async function ResponseOverviewPage({
 
   const feedbackPrompts = exportResult.exportData
     ? {
-        english: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "english"),
-        bilingual: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "bilingual"),
+        english: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "english", importData.context?.assignmentTotalPoints ?? null),
+        bilingual: buildFullFeedbackPrompt(JSON.stringify(exportResult.exportData, null, 2), "bilingual", importData.context?.assignmentTotalPoints ?? null),
         defaultMode: assignmentResponseExportHasBilingualContent(exportResult.exportData) ? "bilingual" as const : "english" as const,
       }
     : null;
@@ -181,6 +181,10 @@ export default async function ResponseOverviewPage({
                   <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${feedback.releaseState === "RELEASED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{feedback.releaseState === "RELEASED" ? "Released" : "Draft"}</span>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-slate-800">{feedback.overallFeedback}</p>
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-sm font-bold text-slate-950">Score: {feedback.scoreAwarded ?? "Not scored"}{feedback.scoreAwarded !== null && overview.totals.points !== null ? ` / ${overview.totals.points}` : ""}</p>
+                  {feedback.releaseState === "DRAFT" ? <form action={updateDraftFeedbackScore.bind(null, overview.class.id, overview.id, feedback.id)} className="mt-2 flex flex-wrap items-end gap-2"><label className="text-xs font-semibold text-slate-600">Correct draft score<input name="scoreAwarded" type="number" min="0" max={overview.totals.points ?? undefined} step="1" defaultValue={feedback.scoreAwarded ?? ""} className="mt-1 block w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label><button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Save score</button></form> : null}
+                </div>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{feedback.questionFeedbackCount} question feedback entries · {feedback.followUpActionCount} follow-up actions</p>
               </li>
             ))}

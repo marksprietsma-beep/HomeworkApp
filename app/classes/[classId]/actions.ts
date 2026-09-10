@@ -17,6 +17,13 @@ export type CreateAssignmentFormState = {
   error: string | null;
 };
 
+export async function updateLeaderboardSetting(classId: number, formData: FormData) {
+  await requireManagedClass(classId);
+  await prisma.class.update({ where: { id: classId }, data: { leaderboardEnabled: formData.get("leaderboardEnabled") === "on" } });
+  revalidatePath(`/classes/${classId}`);
+  revalidatePath(`/classes/${classId}/leaderboard`);
+}
+
 type ParsedQuestion = {
   order: number;
   prompt: string;

@@ -32,6 +32,7 @@ type PreviewQuestionFeedback = {
   followUpActions: PreviewAction[];
 };
 type PreviewParticipantFeedback = {
+  scoreAwarded: number | null;
   participant: { id: number; name?: string; email?: string | null };
   submission: { id: number; status?: string } | null;
   overallFeedback: string;
@@ -402,6 +403,7 @@ export function FeedbackImportForm({
                     {entry.participant.email ?? "No email"} · Submission{" "}
                     {entry.submission?.id ?? "none"}
                   </p>
+                  <p className="mt-3 text-sm font-bold text-slate-950">Score: {entry.scoreAwarded ?? "Not scored"}{entry.scoreAwarded !== null && context.assignmentTotalPoints !== null ? ` / ${context.assignmentTotalPoints}` : ""}</p>
                   <p className="mt-4 text-sm leading-6 text-slate-800">
                     <strong>Overall:</strong> {entry.overallFeedback}
                   </p>

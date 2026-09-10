@@ -1,5 +1,7 @@
 # ChatGPT feedback JSON v1
 
+Participant feedback may include an optional `scoreAwarded` whole number. Clarion validates it against the canonical total derived from all stored question points; never include `scoreOutOf`. Omit scoring (or use `null`) when the assignment has no safe total. Scores remain teacher-review drafts until feedback is released.
+
 This document defines the stable JSON shape that ChatGPT should generate after a teacher exports assignment response data and asks ChatGPT to review it. The format is intentionally small, paste-friendly, and easy for the future MAR-145 feedback import parser to validate.
 
 The app does **not** generate this feedback inside the product in v1. The teacher exports response data, pastes it into ChatGPT, asks for feedback, copies ChatGPT's JSON output, and later imports that JSON back into the app when MAR-145 adds the parser/import flow.

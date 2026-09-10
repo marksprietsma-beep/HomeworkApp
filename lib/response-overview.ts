@@ -1,6 +1,8 @@
 import type { UserRole } from "@prisma/client";
 import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
+import { getAssignmentTotalPoints } from "./assignment-points";
+import { isAdmin } from "./permissions";
 
 export type ResponseOverviewData = {
   id: number;
@@ -30,6 +32,7 @@ export type ResponseOverviewData = {
     studentName: string;
     studentEmail: string | null;
     releaseState: string;
+    scoreAwarded: number | null;
     overallFeedback: string;
     questionFeedbackCount: number;
     followUpActionCount: number;
@@ -99,7 +102,7 @@ export async function getResponseOverviewData(
           { updatedAt: "desc" },
         ],
         select: {
-          studentId: true,
+          studentId: true, scoreAwarded: true,
           id: true,
           sourceParticipantName: true,
           sourceParticipantEmail: true,
@@ -131,7 +134,7 @@ export async function getResponseOverviewData(
     return { overview: null, canView: false, found: false };
   }
 
-  const canView = canTeachClass(viewer, assignment.class.teacherId);
+  const canView = isAdmin(viewer) || canTeachClass(viewer, assignment.class.teacherId);
 
   if (!canView) {
     return { overview: null, canView, found: true };
@@ -140,11 +143,7 @@ export async function getResponseOverviewData(
   const submissionsByStudentId = new Map(
     assignment.submissions.map((submission) => [submission.studentId, submission]),
   );
-  const totalPoints = assignment.questions.reduce<number | null>(
-    (total, question) =>
-      question.points === null ? total : (total ?? 0) + question.points,
-    null,
-  );
+  const totalPoints = getAssignmentTotalPoints(assignment.questions);
   const feedbackByStudentId = new Map<number, (typeof assignment.participantFeedback)[number]>();
   for (const feedback of assignment.participantFeedback) {
     if (feedback.studentId && !feedbackByStudentId.has(feedback.studentId)) {
@@ -157,6 +156,7 @@ export async function getResponseOverviewData(
     studentName: feedback.sourceParticipantName ?? `Student ${feedback.studentId ?? "unknown"}`,
     studentEmail: feedback.sourceParticipantEmail,
     releaseState: feedback.releaseState,
+    scoreAwarded: feedback.scoreAwarded,
     overallFeedback: feedback.overallFeedback,
     questionFeedbackCount: feedback.questionFeedback.length,
     followUpActionCount: feedback.followUpActions.length + feedback.questionFeedback.reduce((total, question) => total + question.followUpActions.length, 0),

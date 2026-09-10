@@ -212,6 +212,7 @@ function StudentAssignmentCard({
             </span>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            <Link href={`/classes/${assignment.classId}/leaderboard`} className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-900 shadow-sm">Class leaderboard</Link>
             <Link
               href={hasFeedback ? `${workHref}#feedback` : workHref}
               className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"

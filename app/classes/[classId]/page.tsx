@@ -14,7 +14,7 @@ import {
 } from "../../../lib/assignment-list-filters";
 import { updateAssignmentPublishStatus } from "./assignments/[assignmentId]/actions";
 import { canManageClasses, canManageClassRoster, canTeachClass } from "../../../lib/permissions";
-import { addStudentToClassRoster, removeStudentFromClassRoster } from "./actions";
+import { addStudentToClassRoster, removeStudentFromClassRoster, updateLeaderboardSetting } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +157,13 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
           <StatCard label="Questions" value={classDetail.totals.questions} />
           <StatCard label="Submissions" value={classDetail.totals.submissions} />
         </div>
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-cyan-200 bg-cyan-50/70 p-6 shadow-sm sm:p-8">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-800">Class leaderboard</p>
+        <h2 className="mt-2 text-2xl font-bold text-slate-950">Homework Points</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-700">Each submitted homework earns 10 points, with up to 10 additional points from released teacher-reviewed feedback.</p>
+        <div className="mt-4 flex flex-wrap items-center gap-3"><Link href={`/classes/${classDetail.id}/leaderboard`} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Preview leaderboard</Link>{canManageRoster ? <form action={updateLeaderboardSetting.bind(null, classDetail.id)} className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="leaderboardEnabled" defaultChecked={classDetail.leaderboardEnabled} /> Enabled for students</label><button className="rounded-full border border-cyan-300 bg-white px-4 py-2 text-sm font-semibold">Save setting</button></form> : null}</div>
       </section>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
