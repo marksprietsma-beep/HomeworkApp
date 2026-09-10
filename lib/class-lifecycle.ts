@@ -12,3 +12,7 @@ export function classCanBePurged(status: ClassStatus) {
 export function nextClassStatus(status: ClassStatus) {
   return status === ClassStatus.ACTIVE ? ClassStatus.INACTIVE : ClassStatus.ACTIVE;
 }
+
+export function classMetadataUpdateData(input: { name: string; subject: string; description: string; teacherId: number }) {
+  return { name: input.name, subject: input.subject, description: input.description, teacherId: input.teacherId };
+}

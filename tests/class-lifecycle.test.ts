@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ClassStatus } from "@prisma/client";
-import { classCanBePurged, classPurgeConfirmationMatches, nextClassStatus } from "../lib/class-lifecycle";
+import { classCanBePurged, classMetadataUpdateData, classPurgeConfirmationMatches, nextClassStatus } from "../lib/class-lifecycle";
 
 test("class lifecycle toggles between active and inactive", () => {
   assert.equal(nextClassStatus(ClassStatus.ACTIVE), ClassStatus.INACTIVE);
   assert.equal(nextClassStatus(ClassStatus.INACTIVE), ClassStatus.ACTIVE);
+});
+
+test("ordinary metadata edits cannot carry a forged lifecycle status", () => {
+  const forgedInput = { name: "Maths", subject: "Maths", description: "History", teacherId: 3, status: ClassStatus.INACTIVE };
+  assert.deepEqual(classMetadataUpdateData(forgedInput), { name: "Maths", subject: "Maths", description: "History", teacherId: 3 });
+  assert.equal("status" in classMetadataUpdateData(forgedInput), false);
 });
 
 test("only inactive classes may be permanently purged", () => {

@@ -1,6 +1,6 @@
 "use server";
 
-import { HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
+import { ClassStatus, HomeworkAssignmentStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../lib/auth";
@@ -9,6 +9,7 @@ import { canActAsClassTeacher, isAdmin } from "../../../../../../lib/permissions
 import { prisma } from "../../../../../../lib/prisma";
 import { transitionAssignmentStatus } from "../../../../../../lib/email-notifications";
 import { assertQuestionPointsEditable } from "../../../../../../lib/assignment-points";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../../../../../lib/access-control";
 
 export type EditAssignmentFormState = {
   error: string | null;
@@ -54,7 +55,7 @@ export async function updateAssignmentDetails(
       where: {
         id: assignmentId,
         classId,
-        ...(isAdmin(selectedUser) ? {} : { class: { teacherId: selectedUser.id } }),
+        class: { status: ClassStatus.ACTIVE, ...(isAdmin(selectedUser) ? {} : { teacherId: selectedUser.id }) },
       },
       select: {
         id: true,
@@ -68,7 +69,8 @@ export async function updateAssignmentDetails(
     });
 
     if (!assignment) {
-      throw new Error("Only the teacher who owns this class can edit this assignment.");
+      const inactive = await prisma.class.count({ where: { id: classId, status: ClassStatus.INACTIVE } });
+      throw new Error(inactive ? INACTIVE_CLASS_MUTATION_ERROR : "Only the teacher who owns this class can edit this assignment.");
     }
 
     const title = String(formData.get("title") ?? "").trim();

@@ -21,6 +21,7 @@ type ManagedClass = {
   participantFeedbackCount: number;
   questionFeedbackCount: number;
   followUpActionCount: number;
+  notificationCount: number;
 };
 
 const initialState: AdminClassFormState = { error: null, success: null };
@@ -71,7 +72,6 @@ export function EditableClassRow({ classItem, teachers }: { classItem: ManagedCl
       <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Subject<input name="subject" required defaultValue={classItem.subject} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950" /></label>
       <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Notes<input name="description" defaultValue={classItem.description} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950" /></label>
       <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Teacher<select name="teacherId" defaultValue={classItem.teacherId} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-950">{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.displayName}</option>)}</select></label>
-      <input type="hidden" name="status" value={classItem.status} />
       <p className={`self-center rounded-full px-3 py-2 text-center text-xs font-bold uppercase tracking-wide ${inactive ? "bg-slate-300 text-slate-800" : "bg-emerald-100 text-emerald-800"}`}>{inactive ? "Inactive" : "Active"}</p>
       <p className="text-xs font-semibold text-slate-500">{classItem.enrollmentCount} enrolled<br />{classItem.assignmentCount} assignments</p>
       <div className="flex flex-wrap gap-2">
@@ -90,7 +90,7 @@ export function EditableClassRow({ classItem, teachers }: { classItem: ManagedCl
         <input type="hidden" name="classId" value={classItem.id} />
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">Danger zone</p>
         <h3 className="mt-1 font-bold text-red-950">Purge {classItem.name} permanently</h3>
-        <p className="mt-2 text-xs leading-5 text-red-900">This removes {classItem.enrollmentCount} enrolments, {classItem.assignmentCount} assignments, {classItem.submissionCount} submissions, {classItem.answerCount} answers, {classItem.feedbackImportCount} feedback imports, {classItem.participantFeedbackCount} participant feedback records, {classItem.questionFeedbackCount} question feedback records, and {classItem.followUpActionCount} follow-up actions. User accounts and curriculum-library items are retained.</p>
+        <p className="mt-2 text-xs leading-5 text-red-900">This removes {classItem.enrollmentCount} enrolments, {classItem.assignmentCount} assignments, {classItem.submissionCount} submissions, {classItem.answerCount} answers, {classItem.feedbackImportCount} feedback imports, {classItem.participantFeedbackCount} participant feedback records, {classItem.questionFeedbackCount} question feedback records, {classItem.followUpActionCount} follow-up actions, and {classItem.notificationCount} email notifications. User accounts and curriculum-library items are retained.</p>
         <label className="mt-3 block text-xs font-semibold text-red-950">Type <strong>DELETE</strong> or the exact class name to confirm<input name="confirmation" required autoComplete="off" className="mt-1 w-full max-w-md rounded-lg border border-red-300 bg-white px-3 py-2 text-sm" /></label>
         <button disabled={purgePending} className="mt-3 rounded-full bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:bg-red-300">{purgePending ? "Purging…" : "Purge class permanently…"}</button>
         <div className="mt-3"><FormMessage state={purgeState} /></div>

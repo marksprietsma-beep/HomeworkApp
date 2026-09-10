@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses, isEligibleClassTeacher } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
-import { classCanBePurged, classPurgeConfirmationMatches, nextClassStatus } from "../../../lib/class-lifecycle";
+import { classCanBePurged, classMetadataUpdateData, classPurgeConfirmationMatches, nextClassStatus } from "../../../lib/class-lifecycle";
 
 export type AdminClassFormState = { error: string | null; success: string | null };
 
@@ -80,14 +80,14 @@ export async function updateAdminClass(_previousState: AdminClassFormState, form
     const subject = readTrimmed(formData, "subject") || "General";
     const description = readTrimmed(formData, "description");
     const teacherId = Number(readTrimmed(formData, "teacherId"));
-    const status = parseStatus(readTrimmed(formData, "status"));
 
     if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class to update.");
     if (!name) throw new Error("Enter a class name.");
     if (!subject) throw new Error("Enter a subject.");
     await assertActiveTeacher(teacherId);
 
-    await prisma.class.update({ where: { id: classId }, data: { name, subject, description, teacherId, status } });
+    const updated = await prisma.class.updateMany({ where: { id: classId }, data: classMetadataUpdateData({ name, subject, description, teacherId }) });
+    if (updated.count !== 1) throw new Error("This class no longer exists. Refresh class management.");
     revalidatePath("/admin/classes");
     revalidatePath(`/classes/${classId}`);
     revalidatePath("/");
@@ -113,7 +113,8 @@ export async function toggleAdminClassStatus(_previousState: AdminClassFormState
     const target = await prisma.class.findUnique({ where: { id: classId }, select: { name: true, status: true } });
     if (!target) throw new Error("This class no longer exists.");
     const status = nextClassStatus(target.status);
-    await prisma.class.update({ where: { id: classId }, data: { status } });
+    const updated = await prisma.class.updateMany({ where: { id: classId, status: target.status }, data: { status } });
+    if (updated.count !== 1) throw new Error("This class changed or was purged by another request. Refresh and try again.");
     revalidateClassLifecycle(classId);
     return { error: null, success: `${target.name} is now ${status === ClassStatus.ACTIVE ? "active" : "inactive"}. No class data was removed.` };
   } catch (error) {
@@ -140,17 +141,19 @@ export async function purgeAdminClass(_previousState: AdminClassFormState, formD
       const assignmentWhere = { classId };
       const feedbackWhere = { assignment: assignmentWhere };
       const submissionWhere = { assignment: assignmentWhere };
+      const notificationWhere = { OR: [{ assignment: assignmentWhere }, { participantFeedback: feedbackWhere }] };
       const counts = {
         enrollments: await tx.classEnrollment.count({ where: { classId } }),
         assignments: await tx.homeworkAssignment.count({ where: assignmentWhere }),
         submissions: await tx.submission.count({ where: submissionWhere }),
         answers: await tx.submissionAnswer.count({ where: { submission: submissionWhere } }),
         feedback: await tx.participantFeedback.count({ where: feedbackWhere }),
+        notifications: await tx.emailNotification.count({ where: notificationWhere }),
       };
 
       // Delete class-owned rows explicitly, deepest first. User and curriculum-library
       // rows are intentionally absent; assignment source references point outward.
-      await tx.emailNotification.deleteMany({ where: { assignment: assignmentWhere } });
+      await tx.emailNotification.deleteMany({ where: notificationWhere });
       await tx.feedbackFollowUpAction.deleteMany({ where: { participantFeedback: feedbackWhere } });
       await tx.questionFeedback.deleteMany({ where: { participantFeedback: feedbackWhere } });
       await tx.participantFeedback.deleteMany({ where: feedbackWhere });
@@ -158,14 +161,17 @@ export async function purgeAdminClass(_previousState: AdminClassFormState, formD
       await tx.submissionAnswer.deleteMany({ where: { submission: submissionWhere } });
       await tx.submission.deleteMany({ where: submissionWhere });
       await tx.homeworkQuestion.deleteMany({ where: { assignment: assignmentWhere } });
+      const assignmentIds = await tx.homeworkAssignment.findMany({ where: assignmentWhere, select: { id: true } });
+      await tx.curriculumHomeworkLibraryItem.updateMany({ where: { sourceAssignmentId: { in: assignmentIds.map(({ id }) => id) } }, data: { sourceAssignmentId: null } });
       await tx.homeworkAssignment.deleteMany({ where: assignmentWhere });
       await tx.classEnrollment.deleteMany({ where: { classId } });
-      await tx.class.delete({ where: { id: classId } });
+      const removed = await tx.class.deleteMany({ where: { id: classId, status: ClassStatus.INACTIVE } });
+      if (removed.count !== 1) throw new Error("The class was reactivated or removed by another request. Nothing was purged.");
       return { name: target.name, counts };
     });
 
     revalidateClassLifecycle(classId);
-    return { error: null, success: `${result.name} was permanently purged with ${result.counts.enrollments} enrolments, ${result.counts.assignments} assignments, ${result.counts.submissions} submissions, ${result.counts.answers} answers, and ${result.counts.feedback} feedback records.` };
+    return { error: null, success: `${result.name} was permanently purged with ${result.counts.enrollments} enrolments, ${result.counts.assignments} assignments, ${result.counts.submissions} submissions, ${result.counts.answers} answers, ${result.counts.feedback} feedback records, and ${result.counts.notifications} notifications.` };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown database error.";
     return { error: message.startsWith("Confirmation") || message.includes("inactive") || message.includes("no longer exists") ? message : `The class could not be safely purged. Nothing was removed. ${message}`, success: null };

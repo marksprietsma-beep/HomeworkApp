@@ -1,6 +1,6 @@
 "use server";
 
-import { AccountStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { AccountStatus, ClassStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
@@ -15,6 +15,7 @@ import { transitionAssignmentStatus } from "../../../lib/email-notifications";
 import { isAdmin } from "../../../lib/permissions";
 import { parsePublicationIntent } from "../../../lib/publication-intent.mjs";
 import { createAssignmentWithIntent } from "../../../lib/publication-workflows.mjs";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../../lib/access-control";
 
 export type CreateAssignmentFormState = {
   error: string | null;
@@ -183,13 +184,15 @@ export async function createAssignmentForClass(
     const classItem = await prisma.class.findFirst({
       where: {
         id: classId,
+        status: ClassStatus.ACTIVE,
         ...(isAdmin(selectedUser) ? {} : { teacherId: selectedUser.id }),
       },
       select: { id: true },
     });
 
     if (!classItem) {
-      throw new Error("The selected teacher does not teach this class.");
+      const inactive = await prisma.class.count({ where: { id: classId, status: ClassStatus.INACTIVE } });
+      throw new Error(inactive ? INACTIVE_CLASS_MUTATION_ERROR : "The selected teacher does not teach this class.");
     }
 
     const assignment = await prisma.$transaction(async (tx) => {
@@ -227,7 +230,7 @@ async function requireManagedClass(classId: number) {
 
   const classItem = await prisma.class.findUnique({
     where: { id: classId },
-    select: { id: true, teacherId: true },
+    select: { id: true, teacherId: true, status: true },
   });
 
   if (!classItem) {
@@ -237,6 +240,8 @@ async function requireManagedClass(classId: number) {
   if (!canManageClassRoster(selectedUser, classItem.teacherId)) {
     throw new Error("You do not have permission to manage this class roster.");
   }
+
+  if (classItem.status === ClassStatus.INACTIVE) throw new Error(INACTIVE_CLASS_MUTATION_ERROR);
 
   return classItem;
 }
