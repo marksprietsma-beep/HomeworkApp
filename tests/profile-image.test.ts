@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LOCAL_MEDIA_MAX_BYTES, LocalMediaValidationError, validateLocalImageBytes } from "../lib/local-media";
+import { isProfileImageStorageKey, LOCAL_MEDIA_MAX_BYTES, LocalMediaValidationError, validateLocalImageBytes } from "../lib/local-media";
 import { studentInitials } from "../lib/student-avatar";
 
 test("avatar initials provide a clean null-image fallback", () => {
@@ -17,4 +17,9 @@ test("profile-compatible raster signatures are accepted and SVG is rejected", ()
 
 test("oversized uploads are rejected server-side", () => {
   assert.throws(() => validateLocalImageBytes(Buffer.alloc(LOCAL_MEDIA_MAX_BYTES + 1)), /5 MB or smaller/);
+});
+
+test("assignment media remains outside profile-specific authorization", () => {
+  assert.equal(isProfileImageStorageKey("profile-images/generated.jpg"), true);
+  assert.equal(isProfileImageStorageKey("assignment-question-images/generated.jpg"), false);
 });

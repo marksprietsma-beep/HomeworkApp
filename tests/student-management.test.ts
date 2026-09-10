@@ -6,8 +6,10 @@ import {
   existingAccountEnrollmentError,
   manageableClassesWhere,
   moderatableStudentProfileWhere,
+  ownStudentProfileWhere,
   resettableStudentWhere,
   studentDirectoryWhere,
+  visibleStudentProfileImageWhere,
 } from "../lib/student-management";
 
 test("admin student directory includes every student and searchable account fields", () => {
@@ -64,4 +66,42 @@ test("profile moderation uses the same admin and teacher class scope", () => {
   assert.deepEqual(moderatableStudentProfileWhere({ id: 1, role: UserRole.ADMIN }, 9), { id: 9, role: UserRole.STUDENT });
   assert.deepEqual(moderatableStudentProfileWhere({ id: 42, role: UserRole.TEACHER }, 9), { id: 9, role: UserRole.STUDENT, classEnrollments: { some: { class: { teacherId: 42 } } } });
   assert.deepEqual(moderatableStudentProfileWhere({ id: 3, role: UserRole.STUDENT }, 9), { id: -1, role: UserRole.STUDENT });
+});
+
+test("student self-service profile mutations can target only their own student row", () => {
+  assert.deepEqual(ownStudentProfileWhere({ id: 7, role: UserRole.STUDENT }), {
+    id: 7,
+    role: UserRole.STUDENT,
+  });
+  assert.deepEqual(ownStudentProfileWhere({ id: 7, role: UserRole.TEACHER }), {
+    id: -1,
+    role: UserRole.STUDENT,
+  });
+});
+
+test("students can read their own or a classmate's profile image but not an unrelated student's", () => {
+  const where = visibleStudentProfileImageWhere(
+    { id: 7, role: UserRole.STUDENT },
+    "/media/profile-images/avatar.jpg",
+  );
+  assert.deepEqual(where, {
+    role: UserRole.STUDENT,
+    profileImagePath: "/media/profile-images/avatar.jpg",
+    OR: [
+      { id: 7 },
+      { classEnrollments: { some: { class: { enrollments: { some: { studentId: 7 } } } } } },
+    ],
+  });
+});
+
+test("profile image visibility preserves scoped teacher and unrestricted admin behaviour", () => {
+  assert.deepEqual(visibleStudentProfileImageWhere({ id: 42, role: UserRole.TEACHER }, "/media/profile-images/a.jpg"), {
+    role: UserRole.STUDENT,
+    profileImagePath: "/media/profile-images/a.jpg",
+    classEnrollments: { some: { class: { teacherId: 42 } } },
+  });
+  assert.deepEqual(visibleStudentProfileImageWhere({ id: 1, role: UserRole.ADMIN }, "/media/profile-images/a.jpg"), {
+    role: UserRole.STUDENT,
+    profileImagePath: "/media/profile-images/a.jpg",
+  });
 });

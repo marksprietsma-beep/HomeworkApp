@@ -1,15 +1,15 @@
 import { readFile, stat } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import { UserRole } from "@prisma/client";
 import {
   getLocalMediaFilePath,
   getAllowedLocalImageTypes,
   LocalMediaValidationError,
-  LOCAL_MEDIA_PROFILE_IMAGE_DIR,
   getLocalMediaPublicPath,
+  isProfileImageStorageKey,
 } from "../../../lib/local-media";
 import { getCurrentUser } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
+import { visibleStudentProfileImageWhere } from "../../../lib/student-management";
 
 export const dynamic = "force-dynamic";
 
@@ -24,16 +24,9 @@ export async function GET(_request: NextRequest, context: LocalMediaRouteContext
   const requestedStorageKey = storageKey.join("/");
 
   try {
-    if (requestedStorageKey.startsWith(`${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/`)) {
+    if (isProfileImageStorageKey(requestedStorageKey)) {
       const visibleProfile = await prisma.user.findFirst({
-        where: {
-          profileImagePath: getLocalMediaPublicPath(requestedStorageKey),
-          ...(viewer.role === UserRole.ADMIN
-            ? {}
-            : viewer.role === UserRole.TEACHER
-              ? { role: UserRole.STUDENT, classEnrollments: { some: { class: { teacherId: viewer.id } } } }
-              : { id: viewer.id }),
-        },
+        where: visibleStudentProfileImageWhere(viewer, getLocalMediaPublicPath(requestedStorageKey)),
         select: { id: true },
       });
       if (!visibleProfile) return new NextResponse("Media file not found.", { status: 404 });

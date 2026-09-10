@@ -49,6 +49,10 @@ export function getLocalMediaPublicPath(storageKey: string) {
   return `${LOCAL_MEDIA_ROUTE_PREFIX}/${safeStorageKey}`;
 }
 
+export function isProfileImageStorageKey(storageKey: string) {
+  return storageKey.replaceAll("\\", "/").replace(/^\/+/, "").startsWith(`${LOCAL_MEDIA_PROFILE_IMAGE_DIR}/`);
+}
+
 export function getLocalMediaFilePath(storageKey: string) {
   const safeStorageKey = normalizeStorageKey(storageKey);
   const root = getLocalMediaRoot();

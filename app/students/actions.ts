@@ -141,7 +141,7 @@ export async function resetStudentProfileImage(
     if (!student.profileImagePath) return { error: null, success: `${student.displayName} already uses the default avatar.` };
     const updated = await prisma.user.updateMany({ where: { ...moderatableStudentProfileWhere(selectedUser, studentId), profileImagePath: student.profileImagePath }, data: { profileImagePath: null } });
     if (updated.count !== 1) throw new Error("The profile picture changed. Refresh and try again.");
-    await removeOwnedProfileImage(student.profileImagePath);
+    await removeOwnedProfileImage(student.profileImagePath).catch(() => undefined);
     revalidatePath("/students"); revalidatePath("/profile"); revalidatePath("/");
     return { error: null, success: `${student.displayName}'s profile picture was reset.` };
   } catch (error) {
