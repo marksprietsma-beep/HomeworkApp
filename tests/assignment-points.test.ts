@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateHomeworkPoints, getAssignmentTotalPoints, validateScoreAwarded } from "../lib/assignment-points";
+import { assertDraftFeedbackScoreTarget, assertQuestionPointsEditable, calculateHomeworkPoints, getAssignmentTotalPoints, validateScoreAwarded } from "../lib/assignment-points";
 test("canonical assignment total requires complete positive point data", () => {
   assert.equal(getAssignmentTotalPoints([{ points: 4 }, { points: 6 }]), 10);
   assert.equal(getAssignmentTotalPoints([{ points: 4 }, { points: null }]), null);
   assert.equal(getAssignmentTotalPoints([]), null);
+});
+test("question point meaning is locked after any score exists", () => {
+  assert.doesNotThrow(() => assertQuestionPointsEditable(10, 10, true));
+  assert.doesNotThrow(() => assertQuestionPointsEditable(10, 20, false));
+  assert.throws(() => assertQuestionPointsEditable(10, 20, true), /cannot be changed while scored feedback exists/);
+});
+test("draft score correction requires matching canonical submission but clearing remains safe", () => {
+  const valid = { releaseState: "DRAFT", studentId: 3, submissionId: 18, submission: { assignmentId: 42, studentId: 3 } };
+  assert.doesNotThrow(() => assertDraftFeedbackScoreTarget(valid, 42, 7));
+  assert.doesNotThrow(() => assertDraftFeedbackScoreTarget({ ...valid, submissionId: null, submission: null }, 42, null));
+  assert.throws(() => assertDraftFeedbackScoreTarget({ ...valid, releaseState: "RELEASED" }, 42, 7), /Only draft/);
+  assert.throws(() => assertDraftFeedbackScoreTarget({ ...valid, submission: { assignmentId: 42, studentId: 4 } }, 42, 7), /real submission/);
 });
 test("homework points reward submitted completion and rounded released quality", () => {
   assert.equal(calculateHomeworkPoints({ submitted: false, assignmentTotalPoints: 10, releasedScoreAwarded: 10 }), 0);

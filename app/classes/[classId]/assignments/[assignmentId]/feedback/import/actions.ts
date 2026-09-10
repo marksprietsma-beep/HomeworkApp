@@ -9,7 +9,7 @@ import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../../../lib/permissions";
 import { prisma } from "../../../../../../../lib/prisma";
 import { releaseFeedback } from "../../../../../../../lib/email-notifications";
-import { getAssignmentTotalPoints, validateScoreAwarded } from "../../../../../../../lib/assignment-points";
+import { assertDraftFeedbackScoreTarget, getAssignmentTotalPoints, validateScoreAwarded } from "../../../../../../../lib/assignment-points";
 
 type SaveFeedbackImportState = { ok: boolean; message: string; payloadHash?: string; submittedRawJson?: string; savedImportId?: number; canRelease?: boolean };
 
@@ -312,7 +312,8 @@ export async function updateDraftFeedbackScore(classId: number, assignmentId: nu
   const total = getAssignmentTotalPoints(pageData.assignment.questions);
   const validationError = validateScoreAwarded(score, total);
   if (validationError) throw new Error(validationError);
-  const updated = await prisma.participantFeedback.updateMany({ where: { id: feedbackId, assignmentId, releaseState: FeedbackReleaseState.DRAFT }, data: { scoreAwarded: score } });
-  if (updated.count !== 1) throw new Error("Only draft feedback scores can be edited.");
+  const target = await prisma.participantFeedback.findFirst({ where: { id: feedbackId, assignmentId }, select: { releaseState: true, studentId: true, submissionId: true, submission: { select: { assignmentId: true, studentId: true } } } });
+  assertDraftFeedbackScoreTarget(target, assignmentId, score);
+  await prisma.participantFeedback.update({ where: { id: feedbackId }, data: { scoreAwarded: score } });
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/responses`);
 }

@@ -23,3 +23,16 @@ export function calculateHomeworkPoints(input: { submitted: boolean; assignmentT
   if (input.assignmentTotalPoints === null || input.releasedScoreAwarded === null || validateScoreAwarded(input.releasedScoreAwarded, input.assignmentTotalPoints)) return 10;
   return 10 + Math.round(10 * input.releasedScoreAwarded / input.assignmentTotalPoints);
 }
+
+export function assertQuestionPointsEditable(existingPoints: number | null, nextPoints: number | null, hasScoredFeedback: boolean) {
+  if (hasScoredFeedback && existingPoints !== nextPoints) {
+    throw new Error("Question points cannot be changed while scored feedback exists. Clear or replace draft scores first.");
+  }
+}
+
+export function assertDraftFeedbackScoreTarget(target: { releaseState: string; studentId: number | null; submissionId: number | null; submission: { assignmentId: number; studentId: number } | null } | null, assignmentId: number, score: number | null) {
+  if (!target || target.releaseState !== "DRAFT") throw new Error("Only draft feedback scores can be edited.");
+  if (score !== null && (!target.studentId || !target.submissionId || target.submission?.assignmentId !== assignmentId || target.submission.studentId !== target.studentId)) {
+    throw new Error("A score requires a real submission belonging to this student and assignment.");
+  }
+}
