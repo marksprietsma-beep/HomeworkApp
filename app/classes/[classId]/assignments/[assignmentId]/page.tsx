@@ -1,3 +1,4 @@
+import { QuestionPrompt } from "../../../../components/question-prompt";
 import { StructuredResponseRenderer } from "../../../../components/structured-response-renderer";
 import { CurriculumLibraryVisibility, HomeworkAssignmentStatus } from "@prisma/client";
 import type { ReactNode } from "react";
@@ -85,6 +86,11 @@ function getPlainLocalizedText(fallback: string, i18n: unknown, mode: LanguageMo
 function renderLocalizedText(fallback: string, i18n: unknown, mode: LanguageMode) {
   const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
   return <span className="grid gap-1 [line-break:loose] [overflow-wrap:break-word] [word-break:normal]">{parts.map((part, index) => <span key={index}>{part}</span>)}</span>;
+}
+
+function renderQuestionPrompt(fallback: string, i18n: unknown, mode: LanguageMode) {
+  const parts = mode === "bilingual" ? getBilingualTextParts(fallback, i18n) : [getLocalizedText(fallback, i18n, mode)];
+  return <div className="grid gap-2">{parts.map((part, index) => <QuestionPrompt key={index} prompt={part} />)}</div>;
 }
 
 function renderChoiceText(fallback: string, options: unknown, optionIndex: number, mode: LanguageMode) {
@@ -501,9 +507,9 @@ export default async function HomeworkDetailPage({
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                         Question {question.order} · {question.questionType}
                       </p>
-                      <p className="mt-2 text-base leading-7 text-slate-950">
-                        {renderLocalizedText(question.prompt, question.promptI18n, languageMode)}
-                      </p>
+                      <div className="mt-2 text-base leading-7 text-slate-950">
+                        {renderQuestionPrompt(question.prompt, question.promptI18n, languageMode)}
+                      </div>
                     </div>
                     <p className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
                       {question.points ? `${question.points} pts` : "No points"}
