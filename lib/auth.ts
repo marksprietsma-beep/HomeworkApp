@@ -27,13 +27,13 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   if (!token) return null;
   const session = await prisma.session.findUnique({
     where: { tokenDigest: digestToken(token) },
-    include: { user: { select: { id: true, displayName: true, email: true, role: true, accountStatus: true, mustChangePassword: true } } },
+    include: { user: { select: { id: true, displayName: true, email: true, role: true, accountStatus: true, mustChangePassword: true, themePreference: true, textSizePreference: true } } },
   });
   if (!session || session.expiresAt <= new Date() || session.user.accountStatus !== AccountStatus.ACTIVE) {
     if (session) await prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
     return null;
   }
-  return { id: session.user.id, displayName: session.user.displayName, email: session.user.email, role: session.user.role, mustChangePassword: session.user.mustChangePassword };
+  return { id: session.user.id, displayName: session.user.displayName, email: session.user.email, role: session.user.role, mustChangePassword: session.user.mustChangePassword, themePreference: session.user.themePreference, textSizePreference: session.user.textSizePreference };
 }
 
 export async function getCurrentUserState() {

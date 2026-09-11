@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { promisify } from "node:util";
 import { scrypt as scryptCallback } from "node:crypto";
 import test from "node:test";
-import { AccountStatus, UserRole, type User } from "@prisma/client";
+import { AccountStatus, TextSizePreference, ThemePreference, UserRole, type User } from "@prisma/client";
 import { authenticateCredentials, getDummyPasswordHash } from "../lib/credential-auth";
 import { requireAuthenticatedUserValue, requirePasswordChangeCompleteValue, requireRoleValue, selectIdentitySource } from "../lib/auth-guards";
 import { hashPassword, SCRYPT_PARAMETERS, verifyPassword } from "../lib/passwords";
@@ -13,6 +13,7 @@ const baseUser: User = {
   id: 1, email: "teacher@example.test", displayName: "Teacher", role: UserRole.TEACHER,
   passwordHash: null, accountStatus: AccountStatus.ACTIVE, yearGroup: null, profileImagePath: null,
   mustChangePassword: false,
+  themePreference: ThemePreference.SYSTEM, textSizePreference: TextSizePreference.STANDARD,
   isDevelopmentUser: false, createdAt: new Date(), updatedAt: new Date(),
 };
 

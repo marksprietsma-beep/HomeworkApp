@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { AccountStatus, type UserRole } from "@prisma/client";
+import { AccountStatus, type TextSizePreference, type ThemePreference, type UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export const LOCAL_DEV_USER_COOKIE = "homework_local_dev_user_id";
@@ -10,6 +10,8 @@ export type LocalDevUser = {
   email: string;
   role: UserRole;
   mustChangePassword?: boolean;
+  themePreference: ThemePreference;
+  textSizePreference: TextSizePreference;
 };
 
 export async function getLocalDevelopmentUsers(): Promise<LocalDevUser[]> {
@@ -31,6 +33,8 @@ export async function getLocalDevelopmentUsers(): Promise<LocalDevUser[]> {
       displayName: true,
       email: true,
       role: true,
+      themePreference: true,
+      textSizePreference: true,
     },
   });
 }
