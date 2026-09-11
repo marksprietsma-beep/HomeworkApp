@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses, isEligibleClassTeacher } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
-import { classCanBePurged, classMetadataUpdateData, classPurgeConfirmationMatches, nextClassStatus } from "../../../lib/class-lifecycle";
+import { classMetadataUpdateData, nextClassStatus } from "../../../lib/class-lifecycle";
+import { purgeClassInTransaction } from "../../../lib/class-purge";
 
 export type AdminClassFormState = { error: string | null; success: string | null };
 
@@ -129,46 +130,7 @@ export async function purgeAdminClass(_previousState: AdminClassFormState, formD
     const confirmation = readTrimmed(formData, "confirmation");
     if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class to purge.");
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Re-read and validate the protected fields inside the destructive transaction.
-      const target = await tx.class.findUnique({ where: { id: classId }, select: { name: true, status: true } });
-      if (!target) throw new Error("This class no longer exists.");
-      if (!classCanBePurged(target.status)) throw new Error("Make this class inactive before permanently purging it.");
-      if (!classPurgeConfirmationMatches(confirmation, target.name)) {
-        throw new Error(`Confirmation did not match. Type DELETE or the exact class name (${target.name}).`);
-      }
-
-      const assignmentWhere = { classId };
-      const feedbackWhere = { assignment: assignmentWhere };
-      const submissionWhere = { assignment: assignmentWhere };
-      const notificationWhere = { OR: [{ assignment: assignmentWhere }, { participantFeedback: feedbackWhere }] };
-      const counts = {
-        enrollments: await tx.classEnrollment.count({ where: { classId } }),
-        assignments: await tx.homeworkAssignment.count({ where: assignmentWhere }),
-        submissions: await tx.submission.count({ where: submissionWhere }),
-        answers: await tx.submissionAnswer.count({ where: { submission: submissionWhere } }),
-        feedback: await tx.participantFeedback.count({ where: feedbackWhere }),
-        notifications: await tx.emailNotification.count({ where: notificationWhere }),
-      };
-
-      // Delete class-owned rows explicitly, deepest first. User and curriculum-library
-      // rows are intentionally absent; assignment source references point outward.
-      await tx.emailNotification.deleteMany({ where: notificationWhere });
-      await tx.feedbackFollowUpAction.deleteMany({ where: { participantFeedback: feedbackWhere } });
-      await tx.questionFeedback.deleteMany({ where: { participantFeedback: feedbackWhere } });
-      await tx.participantFeedback.deleteMany({ where: feedbackWhere });
-      await tx.feedbackImport.deleteMany({ where: { assignment: assignmentWhere } });
-      await tx.submissionAnswer.deleteMany({ where: { submission: submissionWhere } });
-      await tx.submission.deleteMany({ where: submissionWhere });
-      await tx.homeworkQuestion.deleteMany({ where: { assignment: assignmentWhere } });
-      const assignmentIds = await tx.homeworkAssignment.findMany({ where: assignmentWhere, select: { id: true } });
-      await tx.curriculumHomeworkLibraryItem.updateMany({ where: { sourceAssignmentId: { in: assignmentIds.map(({ id }) => id) } }, data: { sourceAssignmentId: null } });
-      await tx.homeworkAssignment.deleteMany({ where: assignmentWhere });
-      await tx.classEnrollment.deleteMany({ where: { classId } });
-      const removed = await tx.class.deleteMany({ where: { id: classId, status: ClassStatus.INACTIVE } });
-      if (removed.count !== 1) throw new Error("The class was reactivated or removed by another request. Nothing was purged.");
-      return { name: target.name, counts };
-    });
+    const result = await prisma.$transaction((tx) => purgeClassInTransaction(tx, classId, confirmation));
 
     revalidateClassLifecycle(classId);
     return { error: null, success: `${result.name} was permanently purged with ${result.counts.enrollments} enrolments, ${result.counts.assignments} assignments, ${result.counts.submissions} submissions, ${result.counts.answers} answers, ${result.counts.feedback} feedback records, and ${result.counts.notifications} notifications.` };

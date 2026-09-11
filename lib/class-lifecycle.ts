@@ -16,3 +16,7 @@ export function nextClassStatus(status: ClassStatus) {
 export function classMetadataUpdateData(input: { name: string; subject: string; description: string; teacherId: number }) {
   return { name: input.name, subject: input.subject, description: input.description, teacherId: input.teacherId };
 }
+
+export function canMutateClassFeedback(status: ClassStatus, ownsClass: boolean) {
+  return status === ClassStatus.ACTIVE && ownsClass;
+}
