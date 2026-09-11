@@ -15,10 +15,12 @@ export type AppearancePreferences = {
   textSizePreference: TextSizePreference;
 };
 
+type AppearanceRole = typeof UserRole.STUDENT | typeof UserRole.ADMIN;
+
 type AppearanceViewer = AppearancePreferences & { role: UserRole };
 
 export function appearanceForViewer(viewer: AppearanceViewer | null | undefined): AppearancePreferences {
-  if (viewer?.role !== UserRole.STUDENT) return LIGHT_STANDARD_APPEARANCE;
+  if (viewer?.role !== UserRole.STUDENT && viewer?.role !== UserRole.ADMIN) return LIGHT_STANDARD_APPEARANCE;
   return {
     themePreference: viewer.themePreference,
     textSizePreference: viewer.textSizePreference,
@@ -50,19 +52,22 @@ export function resolveTheme(preference: ThemePreference, systemIsDark: boolean)
 type AppearanceUserStore = {
   user: {
     updateMany(args: {
-      where: { id: number; role: "STUDENT" };
+      where: { id: number; role: AppearanceRole };
       data: AppearancePreferences;
     }): Promise<{ count: number }>;
   };
 };
 
-export async function updateStudentAppearance(
+export async function updateOwnAppearancePreferences(
   store: AppearanceUserStore,
-  authenticatedStudentId: number,
+  authenticatedUser: { id: number; role: UserRole },
   preferences: AppearancePreferences,
 ) {
+  if (authenticatedUser.role !== UserRole.STUDENT && authenticatedUser.role !== UserRole.ADMIN) {
+    throw new Error("You do not have permission to update appearance settings.");
+  }
   return store.user.updateMany({
-    where: { id: authenticatedStudentId, role: "STUDENT" },
+    where: { id: authenticatedUser.id, role: authenticatedUser.role },
     data: preferences,
   });
 }

@@ -489,6 +489,12 @@ function DashboardShell({
             {isAdmin(selectedUser) ? (
               <>
                 <Link
+                  href="/profile"
+                  className="inline-flex rounded-full bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-950 shadow-sm transition hover:bg-cyan-200"
+                >
+                  Appearance settings
+                </Link>
+                <Link
                   href="/admin/users"
                   className="inline-flex rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
                 >

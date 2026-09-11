@@ -6,7 +6,7 @@ import { requireRole } from "../../lib/auth";
 import { LocalMediaValidationError, removeOwnedProfileImage, storeProfileImage } from "../../lib/local-media";
 import { prisma } from "../../lib/prisma";
 import { ownStudentProfileWhere } from "../../lib/student-management";
-import { parseAppearancePreferences, updateStudentAppearance } from "../../lib/appearance";
+import { parseAppearancePreferences, updateOwnAppearancePreferences } from "../../lib/appearance";
 
 export type ProfileImageActionState = { error: string | null; success: string | null };
 export const initialProfileImageActionState: ProfileImageActionState = { error: null, success: null };
@@ -18,14 +18,14 @@ function refreshProfileViews() { revalidatePath("/profile"); revalidatePath("/st
 export async function updateOwnAppearance(_state: AppearanceActionState, formData: FormData): Promise<AppearanceActionState> {
   void _state;
   try {
-    const viewer = await requireRole(UserRole.STUDENT);
+    const viewer = await requireRole(UserRole.STUDENT, UserRole.ADMIN);
     const preferences = parseAppearancePreferences({
       themePreference: formData.get("themePreference"),
       textSizePreference: formData.get("textSizePreference"),
     });
     if (!preferences) return { error: "Choose a supported theme and text size.", success: null };
-    const updated = await updateStudentAppearance(prisma, viewer.id, preferences);
-    if (updated.count !== 1) return { error: "Your student account could not be found.", success: null };
+    const updated = await updateOwnAppearancePreferences(prisma, viewer, preferences);
+    if (updated.count !== 1) return { error: "Your account could not be found.", success: null };
     revalidatePath("/", "layout");
     return { error: null, success: "Appearance settings saved." };
   } catch (error) {
