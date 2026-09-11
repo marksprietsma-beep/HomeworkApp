@@ -35,42 +35,40 @@ while the source/build failure is corrected; do not restart it with a partial
 
 ## Runtime verification
 
-Fetch fresh HTML for both the home page and the affected class route. Then
-extract every CSS and JavaScript `/_next/static/` URL and request it from the
-public origin. This detects stale HTML referencing a removed chunk as well as
-missing styles.
+Fetch fresh HTML from the public login page, then extract every CSS and
+JavaScript `/_next/static/` URL and request it from the public origin. This
+detects stale public HTML referencing a removed chunk as well as missing styles
+without putting production session credentials in shell history.
 
 ```bash
 origin=https://clarion.haikouhaluolideceshi.xyz
 workdir=$(mktemp -d)
 
-for route in / /classes/3; do
-  name=$(printf '%s' "$route" | tr '/' '_' )
-  html="$workdir/${name:-home}.html"
-  curl --fail --silent --show-error -H 'Cache-Control: no-cache' \
-    "$origin$route" -o "$html"
+html="$workdir/login.html"
+assets="$workdir/login.assets"
+curl --fail --silent --show-error -H 'Cache-Control: no-cache' \
+  "$origin/login" -o "$html"
 
-  grep -oE '/_next/static/[^"'"'"' ]+\.(css|js)' "$html" |
-    sort -u > "$html.assets"
-  test -s "$html.assets"
+grep -oE '/_next/static/[^"'"'"' ]+\.(css|js)' "$html" | sort -u > "$assets"
+test -s "$assets"
 
-  while IFS= read -r asset; do
-    headers="$workdir/headers"
-    body="$workdir/body"
-    curl --fail --silent --show-error --dump-header "$headers" \
-      -H 'Cache-Control: no-cache' "$origin$asset" -o "$body"
-    test -s "$body"
-    case "$asset" in
-      *.css) grep -iq '^content-type: *text/css' "$headers" ;;
-      *.js)  grep -Eiq '^content-type: *(application|text)/(javascript|x-javascript)' "$headers" ;;
-    esac
-  done < "$html.assets"
-done
+while IFS= read -r asset; do
+  headers="$workdir/headers"
+  body="$workdir/body"
+  curl --fail --silent --show-error --dump-header "$headers" \
+    -H 'Cache-Control: no-cache' "$origin$asset" -o "$body"
+  test -s "$body"
+  case "$asset" in
+    *.css) grep -iq '^content-type: *text/css' "$headers" ;;
+    *.js)  grep -Eiq '^content-type: *(application|text)/(javascript|x-javascript)' "$headers" ;;
+  esac
+done < "$assets"
 ```
 
 After those commands pass:
 
-1. Open `/` and `/classes/3` in a new private/incognito session.
+1. Sign in normally in a new private/incognito session, then open `/` and
+   `/classes/3`. Do not copy the authenticated session cookie into shell commands.
 2. Confirm the Network panel has no `/_next/static/` 404 or 403 response.
 3. Confirm the Console has no hydration, chunk-load, or client exception. Record
    the complete stack trace if `/classes/3` still fails; that would indicate a
