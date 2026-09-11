@@ -5,6 +5,7 @@ import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
 import { StructuredResponseRenderer } from "../../../../components/structured-response-renderer";
+import { QuestionPrompt } from "../../../../components/question-prompt";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
 import { importAssignmentForClass, type ImportAssignmentActionState } from "./actions";
 
@@ -115,6 +116,7 @@ Use the Clarion assignment import structure:
 - Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions. Add optional responseMode: "PSEUDOCODE" and pseudocodeDialect: "CAMBRIDGE_9618_2026" only when students are expected to write, complete, trace, debug, or explain pseudocode/code-style answers. Do not add pseudocode metadata to ordinary prose questions.
 - For a structured question, keep type OPEN_TEXT, set responseMode to "STRUCTURED", and include responseSchema with schemaVersion 1. kind "table" uses columns [{id,label,optional align/width}] and rows [{id,label,optional style,cells keyed by column id}]. kind "t_account" uses title and entries [{id,side (debit or credit),label,optional detail,optional amount}]. Cells allow editable boolean, inputType text/number/currency, static value, or blank. Row styles are normal, section_header, subtotal, total, or spacer. All row/column/entry IDs must be stable, unique identifiers beginning with a letter; editable answer IDs are deterministically row.column or entry.detail/entry.amount. Use semantic metadata only: never emit HTML, CSS, JavaScript, formulas, or visual-coordinate-only IDs.
 - For Cambridge 9618 pseudocode questions, preserve indentation and line breaks. Use uppercase keywords, mixed-case identifiers starting with a letter, // comments, the ← assignment arrow, and structures such as DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
+- When a question contains a multi-line pseudocode sample, put it inside \`\`\`pseudocode and closing \`\`\` fences within the ordinary prompt string. Preserve its line breaks and indentation; keep surrounding prose outside the fences. This presentation syntax does not change responseMode. Apply it independently in textI18n.en and textI18n.zh when bilingual samples are present.
 - MULTIPLE_CHOICE questions must include options with stable ids and text, plus optional textI18n on each option. Do not add options to OPEN_TEXT questions.
 - Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
 - Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, use natural Simplified Chinese, not literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
@@ -411,9 +413,9 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                         {formatPoints(question.points)}
                       </span>
                     </div>
-                    <p className="mt-4 text-sm leading-6 text-slate-950">
-                      {question.prompt}
-                    </p>
+                    <div className="mt-4 text-sm leading-6 text-slate-950">
+                      <QuestionPrompt prompt={question.prompt} />
+                    </div>
                     {question.responseMode === "STRUCTURED" ? <div className="mt-4"><StructuredResponseRenderer questionId={question.order} schema={question.responseSchema} readOnly /></div> : null}
                     {question.options.length > 0 ? (
                       <ul className="mt-4 grid gap-2 sm:grid-cols-2">

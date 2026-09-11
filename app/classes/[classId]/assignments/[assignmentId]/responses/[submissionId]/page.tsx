@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { StructuredResponseRenderer } from "../../../../../../components/structured-response-renderer";
+import { QuestionPrompt } from "../../../../../../components/question-prompt";
 import { getResponseDetailData } from "../../../../../../../lib/response-detail";
 
 export const dynamic = "force-dynamic";
@@ -197,9 +198,9 @@ export default async function ResponseDetailPage({ params }: ResponseDetailPageP
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                       Question {question.order || index + 1} · {question.questionType}
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold leading-7 text-slate-950">
-                      {question.prompt}
-                    </h2>
+                    <div className="mt-2 text-lg font-semibold leading-7 text-slate-950">
+                      <QuestionPrompt prompt={question.prompt} />
+                    </div>
                   </div>
                   <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm ring-1 ring-slate-200">
                     {question.points === null ? "No points" : `${question.points} pts`}

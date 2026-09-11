@@ -78,6 +78,8 @@ Use either `keyVocabulary` or `glossary`, not both. Entries may include:
 
 ## Pseudocode question metadata
 
+Multi-line pseudocode shown *inside a question prompt* must use a fenced block beginning with ` ```pseudocode ` and ending with ` ``` ` within the ordinary JSON prompt string. Preserve intended newlines and indentation, and leave introductory or follow-up prose outside the fences. This is presentation syntax, not a new response mode: choose `responseMode` based on the answer students should enter. The same convention is supported independently in bilingual `textI18n.en` and `textI18n.zh` strings. Encode line breaks as `\n` in JSON.
+
 Use:
 
 ```json

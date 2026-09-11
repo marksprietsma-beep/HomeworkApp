@@ -5,6 +5,7 @@ import { archiveLibraryItem, assignLibraryItemToClass, duplicateLibraryItem, upd
 import { canManageLibraryItem, getAssignableClassesForUser, getCurriculumLibraryItemDetail, isAssignmentTemplate } from "../../../lib/curriculum-library";
 import { getShareableTeamsForUser } from "../../../lib/department-teams";
 import { getCurrentUserState } from "../../../lib/auth";
+import { QuestionPrompt } from "../../components/question-prompt";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function CurriculumLibraryItemPage({ params, searchParams }
           <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm">
             <h2 className="text-xl font-bold text-slate-950">Content preview</h2>
             <p className="mt-2 text-sm text-slate-600">Bilingual title, description, vocabulary and question fields are preserved in the saved assignment JSON. Raw JSON editing is intentionally not exposed in v1.</p>
-            {template ? <div className="mt-4 grid gap-3"><p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"><span className="font-bold text-slate-950">Description:</span> {template.description || "No description saved."}</p>{template.questions.slice(0, 5).map((question, index) => <div key={`${question.order}-${index}`} className="rounded-2xl border border-slate-200 p-4 text-sm"><p className="font-bold text-slate-950">Question {index + 1} · {question.questionType}</p><p className="mt-1 text-slate-700">{question.prompt}</p>{question.points ? <p className="mt-1 text-xs font-semibold text-slate-500">{question.points} points</p> : null}</div>)}{template.questions.length > 5 ? <p className="text-sm text-slate-500">+ {template.questions.length - 5} more question(s)</p> : null}</div> : <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">This item has an older or invalid assignment template shape. Metadata is still available.</p>}
+            {template ? <div className="mt-4 grid gap-3"><p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"><span className="font-bold text-slate-950">Description:</span> {template.description || "No description saved."}</p>{template.questions.slice(0, 5).map((question, index) => <div key={`${question.order}-${index}`} className="rounded-2xl border border-slate-200 p-4 text-sm"><p className="font-bold text-slate-950">Question {index + 1} · {question.questionType}</p><div className="mt-1 text-slate-700"><QuestionPrompt prompt={question.prompt} /></div>{question.points ? <p className="mt-1 text-xs font-semibold text-slate-500">{question.points} points</p> : null}</div>)}{template.questions.length > 5 ? <p className="text-sm text-slate-500">+ {template.questions.length - 5} more question(s)</p> : null}</div> : <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">This item has an older or invalid assignment template shape. Metadata is still available.</p>}
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm">
