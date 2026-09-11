@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserState } from "../../../lib/auth";
 import { canManageClasses, isEligibleClassTeacher } from "../../../lib/permissions";
 import { prisma } from "../../../lib/prisma";
+import { classMetadataUpdateData, nextClassStatus } from "../../../lib/class-lifecycle";
+import { purgeClassInTransaction } from "../../../lib/class-purge";
 
 export type AdminClassFormState = { error: string | null; success: string | null };
 
@@ -79,14 +81,14 @@ export async function updateAdminClass(_previousState: AdminClassFormState, form
     const subject = readTrimmed(formData, "subject") || "General";
     const description = readTrimmed(formData, "description");
     const teacherId = Number(readTrimmed(formData, "teacherId"));
-    const status = parseStatus(readTrimmed(formData, "status"));
 
     if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class to update.");
     if (!name) throw new Error("Enter a class name.");
     if (!subject) throw new Error("Enter a subject.");
     await assertActiveTeacher(teacherId);
 
-    await prisma.class.update({ where: { id: classId }, data: { name, subject, description, teacherId, status } });
+    const updated = await prisma.class.updateMany({ where: { id: classId }, data: classMetadataUpdateData({ name, subject, description, teacherId }) });
+    if (updated.count !== 1) throw new Error("This class no longer exists. Refresh class management.");
     revalidatePath("/admin/classes");
     revalidatePath(`/classes/${classId}`);
     revalidatePath("/");
@@ -94,5 +96,46 @@ export async function updateAdminClass(_previousState: AdminClassFormState, form
   } catch (error) {
     if (isUniqueConstraintError(error)) return { error: "A class with this name already exists.", success: null };
     return { error: error instanceof Error ? error.message : "Could not update this class.", success: null };
+  }
+}
+
+function revalidateClassLifecycle(classId: number) {
+  revalidatePath("/admin/classes");
+  revalidatePath(`/classes/${classId}`);
+  revalidatePath("/");
+}
+
+export async function toggleAdminClassStatus(_previousState: AdminClassFormState, formData: FormData): Promise<AdminClassFormState> {
+  try {
+    await assertAdminCanManageClasses();
+    const classId = Number(readTrimmed(formData, "classId"));
+    if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class.");
+
+    const target = await prisma.class.findUnique({ where: { id: classId }, select: { name: true, status: true } });
+    if (!target) throw new Error("This class no longer exists.");
+    const status = nextClassStatus(target.status);
+    const updated = await prisma.class.updateMany({ where: { id: classId, status: target.status }, data: { status } });
+    if (updated.count !== 1) throw new Error("This class changed or was purged by another request. Refresh and try again.");
+    revalidateClassLifecycle(classId);
+    return { error: null, success: `${target.name} is now ${status === ClassStatus.ACTIVE ? "active" : "inactive"}. No class data was removed.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not change this class's status.", success: null };
+  }
+}
+
+export async function purgeAdminClass(_previousState: AdminClassFormState, formData: FormData): Promise<AdminClassFormState> {
+  try {
+    await assertAdminCanManageClasses();
+    const classId = Number(readTrimmed(formData, "classId"));
+    const confirmation = readTrimmed(formData, "confirmation");
+    if (!Number.isInteger(classId) || classId <= 0) throw new Error("Choose a valid class to purge.");
+
+    const result = await prisma.$transaction((tx) => purgeClassInTransaction(tx, classId, confirmation));
+
+    revalidateClassLifecycle(classId);
+    return { error: null, success: `${result.name} was permanently purged with ${result.counts.enrollments} enrolments, ${result.counts.assignments} assignments, ${result.counts.submissions} submissions, ${result.counts.answers} answers, ${result.counts.feedback} feedback records, and ${result.counts.notifications} notifications.` };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown database error.";
+    return { error: message.startsWith("Confirmation") || message.includes("inactive") || message.includes("no longer exists") ? message : `The class could not be safely purged. Nothing was removed. ${message}`, success: null };
   }
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
+import { ClassStatus, HomeworkQuestionResponseMode, HomeworkQuestionType, PseudocodeDialect, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
 import { getCurrentUserState } from "../../../../../lib/auth";
@@ -9,6 +9,7 @@ import { storeAssignmentQuestionImage } from "../../../../../lib/local-media";
 import { transitionAssignmentStatus } from "../../../../../lib/email-notifications";
 import { parsePublicationIntent } from "../../../../../lib/publication-intent.mjs";
 import { createAssignmentWithIntent } from "../../../../../lib/publication-workflows.mjs";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../../../../lib/access-control";
 
 type I18nText = { en: string; zh: string } | null;
 
@@ -110,13 +111,15 @@ export async function importAssignmentForClass(
   const classItem = await prisma.class.findFirst({
     where: {
       id: classId,
+      status: ClassStatus.ACTIVE,
       ...(selectedUser.role === UserRole.ADMIN ? {} : { teacherId: selectedUser.id }),
     },
     select: { id: true },
   });
 
   if (!classItem) {
-    return { ok: false, message: "Only admins or the teacher assigned to this class can import assignments." };
+    const inactive = await prisma.class.count({ where: { id: classId, status: ClassStatus.INACTIVE } });
+    return { ok: false, message: inactive ? INACTIVE_CLASS_MUTATION_ERROR : "Only admins or the teacher assigned to this class can import assignments." };
   }
 
   const imageFiles = formData.getAll("questionImageFile");

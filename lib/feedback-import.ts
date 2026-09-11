@@ -3,6 +3,7 @@ import { canTeachClass } from "./permissions";
 import { prisma } from "./prisma";
 import { getAssignmentTotalPoints } from "./assignment-points";
 import { isAdmin } from "./permissions";
+import { canMutateClassFeedback } from "./class-lifecycle";
 
 export type FeedbackImportPageData = Awaited<ReturnType<typeof getFeedbackImportPageData>>;
 
@@ -22,6 +23,7 @@ export async function getFeedbackImportPageData(
           id: true,
           name: true,
           teacherId: true,
+          status: true,
           teacher: { select: { id: true, displayName: true, email: true } },
           enrollments: {
             orderBy: { student: { displayName: "asc" } },
@@ -48,7 +50,7 @@ export async function getFeedbackImportPageData(
 
   if (!assignment) return { found: false as const, canImport: false, assignment: null, context: null, existingImports: [] };
 
-  const canImport = isAdmin(viewer) || canTeachClass(viewer, assignment.class.teacherId);
+  const canImport = canMutateClassFeedback(assignment.class.status, isAdmin(viewer) || canTeachClass(viewer, assignment.class.teacherId));
   if (!canImport) return { found: true as const, canImport, assignment, context: null, existingImports: assignment.feedbackImports };
 
   const submissionsByStudentId = new Map(assignment.submissions.map((submission) => [submission.studentId, submission]));

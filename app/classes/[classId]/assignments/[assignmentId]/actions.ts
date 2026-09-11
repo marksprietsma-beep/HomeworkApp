@@ -1,12 +1,13 @@
 "use server";
 
-import { HomeworkAssignmentStatus, UserRole } from "@prisma/client";
+import { ClassStatus, HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../lib/permissions";
 import { prisma } from "../../../../../lib/prisma";
 import { transitionAssignmentStatus } from "../../../../../lib/email-notifications";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../../../../lib/access-control";
 
 export async function updateAssignmentPublishStatus(
   classId: number,
@@ -32,19 +33,14 @@ export async function updateAssignmentPublishStatus(
     where: {
       id: assignmentId,
       classId,
-      ...(selectedUser.role === UserRole.ADMIN
-        ? {}
-        : {
-            class: {
-              teacherId: selectedUser.id,
-            },
-          }),
+      class: { status: ClassStatus.ACTIVE, ...(selectedUser.role === UserRole.ADMIN ? {} : { teacherId: selectedUser.id }) },
     },
     select: { id: true },
   });
 
   if (!assignment) {
-    throw new Error("Only admins or the teacher who owns this class can change assignment status.");
+    const inactive = await prisma.class.count({ where: { id: classId, status: ClassStatus.INACTIVE } });
+    throw new Error(inactive ? INACTIVE_CLASS_MUTATION_ERROR : "Only admins or the teacher who owns this class can change assignment status.");
   }
 
   await prisma.$transaction((tx) => transitionAssignmentStatus(tx, assignment.id, requestedStatus as HomeworkAssignmentStatus));
@@ -79,6 +75,7 @@ export async function duplicateAssignmentForClass(
       classId,
       class: {
         teacherId: selectedUser.id,
+        status: ClassStatus.ACTIVE,
       },
     },
     include: {
@@ -103,7 +100,8 @@ export async function duplicateAssignmentForClass(
   });
 
   if (!assignment) {
-    throw new Error("Only the teacher who owns this class can duplicate this assignment.");
+    const inactive = await prisma.class.count({ where: { id: classId, status: ClassStatus.INACTIVE } });
+    throw new Error(inactive ? INACTIVE_CLASS_MUTATION_ERROR : "Only the teacher who owns this class can duplicate this assignment.");
   }
 
   const duplicate = await prisma.homeworkAssignment.create({

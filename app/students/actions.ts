@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { UserRole } from "@prisma/client";
+import { ClassStatus, UserRole } from "@prisma/client";
 import { getCurrentUserState } from "../../lib/auth";
 import { hashPassword } from "../../lib/passwords";
 import { prisma } from "../../lib/prisma";
@@ -9,6 +9,7 @@ import { canManageClassRoster } from "../../lib/permissions";
 import { removeOwnedProfileImage } from "../../lib/local-media";
 import { applyStudentPasswordReset, canAccessStudentManagement, existingAccountEnrollmentError, moderatableStudentProfileWhere, resettableStudentWhere } from "../../lib/student-management";
 import { generateTemporaryPassword } from "../../lib/temporary-password";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../lib/access-control";
 
 export type StudentRosterActionState = { error: string | null; success: string | null };
 export const initialStudentRosterActionState: StudentRosterActionState = { error: null, success: null };
@@ -28,10 +29,11 @@ async function requireManagedClass(classId: number) {
   const { selectedUser } = await getCurrentUserState();
   if (!selectedUser || !canAccessStudentManagement(selectedUser)) throw new Error("Staff access is required.");
   if (!Number.isInteger(classId) || classId < 1) throw new Error("Choose a class.");
-  const classItem = await prisma.class.findUnique({ where: { id: classId }, select: { id: true, name: true, teacherId: true } });
+  const classItem = await prisma.class.findUnique({ where: { id: classId }, select: { id: true, name: true, teacherId: true, status: true } });
   if (!classItem || !canManageClassRoster(selectedUser, classItem.teacherId)) {
     throw new Error("You do not have permission to manage that class roster.");
   }
+  if (classItem.status === ClassStatus.INACTIVE) throw new Error(INACTIVE_CLASS_MUTATION_ERROR);
   return classItem;
 }
 

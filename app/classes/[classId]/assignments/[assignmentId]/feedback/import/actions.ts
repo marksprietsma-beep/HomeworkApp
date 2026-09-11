@@ -5,6 +5,7 @@ import { FeedbackFollowUpActionType, FeedbackReleaseState, Prisma } from "@prism
 import { revalidatePath } from "next/cache";
 import { parseFeedbackImportJson } from "../../../../../../../lib/feedback-import-parser.mjs";
 import { getFeedbackImportPageData } from "../../../../../../../lib/feedback-import";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../../../../../../lib/access-control";
 import { getCurrentUserState } from "../../../../../../../lib/auth";
 import { canActAsClassTeacher } from "../../../../../../../lib/permissions";
 import { prisma } from "../../../../../../../lib/prisma";
@@ -100,7 +101,7 @@ export async function saveFeedbackImport(
 
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
   if (!pageData.found || !pageData.assignment || !pageData.context || !pageData.canImport) {
-    return { ok: false, message: "Feedback import is only available to the class teacher." };
+    return { ok: false, message: pageData.assignment?.class.status === "INACTIVE" ? INACTIVE_CLASS_MUTATION_ERROR : "Feedback import is only available to the class teacher." };
   }
 
   const parseResult = parseFeedbackImportJson(rawJson, pageData.context);
@@ -312,7 +313,7 @@ export async function releaseFeedbackForAssignment(classId: number, assignmentId
   }
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
   if (!pageData.found || !pageData.assignment || !pageData.canImport) {
-    return { ok: false, message: "Feedback release is only available to the class teacher." };
+    return { ok: false, message: pageData.assignment?.class.status === "INACTIVE" ? INACTIVE_CLASS_MUTATION_ERROR : "Feedback release is only available to the class teacher." };
   }
   const count = await prisma.$transaction((tx) => releaseFeedback(tx, assignmentId, selectedUser.id));
   revalidatePath(`/classes/${classId}/assignments/${assignmentId}/feedback/import`);
@@ -324,6 +325,7 @@ export async function releaseFeedbackForAssignment(classId: number, assignmentId
 export async function updateDraftFeedbackScore(classId: number, assignmentId: number, feedbackId: number, formData: FormData) {
   const { selectedUser } = await getCurrentUserState();
   const pageData = await getFeedbackImportPageData(classId, assignmentId, selectedUser);
+  if (pageData.assignment?.class.status === "INACTIVE") throw new Error(INACTIVE_CLASS_MUTATION_ERROR);
   if (!selectedUser || !pageData.canImport || !pageData.assignment) throw new Error("Only the assigned class teacher or an ADMIN may edit draft scores.");
   const raw = String(formData.get("scoreAwarded") ?? "").trim();
   const score = raw === "" ? null : Number(raw);

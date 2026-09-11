@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { HomeworkAssignmentStatus, UserRole } from "@prisma/client";
+import { ClassStatus, HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import {
   studentAssignmentAccessWhere,
   studentFeedbackActionAccessWhere,
@@ -42,7 +42,7 @@ test("student assignment reads and submissions are scoped to that student's enro
   assert.deepEqual(studentAssignmentAccessWhere(7, studentA), {
     id: 7,
     status: HomeworkAssignmentStatus.PUBLISHED,
-    class: { enrollments: { some: { studentId: studentA.id } } },
+    class: { status: ClassStatus.ACTIVE, enrollments: { some: { studentId: studentA.id } } },
   });
   assert.notDeepEqual(studentAssignmentAccessWhere(7, studentA), studentAssignmentAccessWhere(7, studentB));
 });
@@ -50,7 +50,7 @@ test("student assignment reads and submissions are scoped to that student's enro
 test("student feedback mutations are scoped to released feedback owned by that student", () => {
   assert.deepEqual(studentFeedbackActionAccessWhere(12, 7, studentA), {
     id: 12,
-    participantFeedback: { assignmentId: 7, studentId: studentA.id, releaseState: "RELEASED" },
+    participantFeedback: { assignmentId: 7, studentId: studentA.id, releaseState: "RELEASED", assignment: { class: { status: ClassStatus.ACTIVE } } },
   });
   assert.notDeepEqual(
     studentFeedbackActionAccessWhere(12, 7, studentA),

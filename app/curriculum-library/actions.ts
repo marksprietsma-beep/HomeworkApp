@@ -1,10 +1,11 @@
 "use server";
 
-import { CurriculumLibraryVisibility, HomeworkQuestionResponseMode, HomeworkQuestionType, Prisma, PseudocodeDialect, UserRole } from "@prisma/client";
+import { ClassStatus, CurriculumLibraryVisibility, HomeworkQuestionResponseMode, HomeworkQuestionType, Prisma, PseudocodeDialect, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { buildAssignmentTemplate, buildLibraryVersionSnapshot, canManageLibraryItem, getLibraryVisibilityWhere, isAssignmentTemplate, parseAssignmentStatus, parseClassIds, parseLibraryDueAt, parseTags } from "../../lib/curriculum-library";
 import { canUserShareToTeam, parsePositiveId } from "../../lib/department-teams";
+import { INACTIVE_CLASS_MUTATION_ERROR } from "../../lib/access-control";
 import { getCurrentUserState } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { queueHomeworkPublication } from "../../lib/email-notifications";
@@ -59,12 +60,15 @@ export async function assignLibraryItemToClass(libraryItemId: number, formData: 
   const [libraryItem, classes] = await Promise.all([
     prisma.curriculumHomeworkLibraryItem.findFirst({ where: { id: libraryItemId, ...getLibraryVisibilityWhere(user) } }),
     prisma.class.findMany({
-      where: { id: { in: classIds }, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
+      where: { id: { in: classIds }, status: ClassStatus.ACTIVE, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
       select: { id: true },
     }),
   ]);
   if (!libraryItem || !isAssignmentTemplate(libraryItem.assignmentJson)) throw new Error("Choose an existing library item.");
-  if (classes.length !== classIds.length) throw new Error("Only admins or target class teachers can assign library homework to those classes.");
+  if (classes.length !== classIds.length) {
+    const inactive = await prisma.class.count({ where: { id: { in: classIds }, status: ClassStatus.INACTIVE } });
+    throw new Error(inactive ? INACTIVE_CLASS_MUTATION_ERROR : "Only admins or target class teachers can assign library homework to those classes.");
+  }
 
   const template = libraryItem.assignmentJson;
   const title = String(formData.get("title") ?? template.title).trim();

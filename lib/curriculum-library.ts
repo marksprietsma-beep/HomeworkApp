@@ -1,4 +1,4 @@
-import { CurriculumLibraryVisibility, HomeworkAssignmentStatus, UserRole } from "@prisma/client";
+import { ClassStatus, CurriculumLibraryVisibility, HomeworkAssignmentStatus, UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type CurriculumLibraryFilters = {
@@ -80,8 +80,8 @@ export async function getCurriculumLibraryData(filters: CurriculumLibraryFilters
 export async function getAssignableClassesForUser(user: { id: number; role: UserRole } | null) {
   if (!user || user.role === UserRole.STUDENT) return [];
   return prisma.class.findMany({
-    where: user.role === UserRole.ADMIN ? {} : { teacherId: user.id },
-    orderBy: [{ status: "asc" }, { name: "asc" }],
+    where: { status: ClassStatus.ACTIVE, ...(user.role === UserRole.ADMIN ? {} : { teacherId: user.id }) },
+    orderBy: { name: "asc" },
     select: { id: true, name: true, subject: true, teacher: { select: { displayName: true } } },
   });
 }

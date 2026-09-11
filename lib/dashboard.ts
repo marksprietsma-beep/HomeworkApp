@@ -94,9 +94,9 @@ export async function getLocalDashboardData(user: {
 }): Promise<LocalDashboardData> {
   const classes = await prisma.class.findMany({
     where: isAdmin(user)
-      ? undefined
+      ? { status: ClassStatus.ACTIVE }
       : isTeacher(user)
-        ? { teacherId: user.id }
+        ? { teacherId: user.id, status: ClassStatus.ACTIVE }
         : {
             status: ClassStatus.ACTIVE,
             enrollments: {

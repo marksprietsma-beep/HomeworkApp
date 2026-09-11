@@ -1,4 +1,6 @@
-import { HomeworkAssignmentStatus, UserRole, type UserRole as UserRoleValue } from "@prisma/client";
+import { ClassStatus, HomeworkAssignmentStatus, UserRole, type UserRole as UserRoleValue } from "@prisma/client";
+
+export const INACTIVE_CLASS_MUTATION_ERROR = "This class is inactive. Reactivate it before making teaching changes.";
 
 export type AccessViewer = {
   id: number;
@@ -11,6 +13,7 @@ export function studentAssignmentAccessWhere(assignmentId: number, viewer: Acces
     id: assignmentId,
     status: HomeworkAssignmentStatus.PUBLISHED,
     class: {
+      status: ClassStatus.ACTIVE,
       enrollments: {
         some: {
           studentId: viewer?.role === UserRole.STUDENT ? viewer.id : -1,
@@ -32,7 +35,7 @@ export function studentFeedbackActionAccessWhere(
       assignmentId,
       studentId: viewer?.role === UserRole.STUDENT ? viewer.id : -1,
       releaseState: "RELEASED" as const,
+      assignment: { class: { status: ClassStatus.ACTIVE } },
     },
   };
 }
-
