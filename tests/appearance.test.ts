@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TextSizePreference, ThemePreference } from "@prisma/client";
-import { appearanceRootAttributes, DEFAULT_APPEARANCE, parseAppearancePreferences, resolveTheme, updateStudentAppearance } from "../lib/appearance";
+import { TextSizePreference, ThemePreference, UserRole } from "@prisma/client";
+import { appearanceForViewer, appearanceRootAttributes, DEFAULT_APPEARANCE, parseAppearancePreferences, resolveTheme, updateStudentAppearance } from "../lib/appearance";
 
 test("existing users receive safe appearance defaults", () => {
   assert.deepEqual(DEFAULT_APPEARANCE, {
@@ -9,7 +9,7 @@ test("existing users receive safe appearance defaults", () => {
     textSizePreference: TextSizePreference.STANDARD,
   });
   assert.deepEqual(appearanceRootAttributes(null), {
-    "data-theme": "system",
+    "data-theme": "light",
     "data-text-size": "standard",
   });
 });
@@ -39,6 +39,24 @@ test("saved preferences produce root theme and large-text state", () => {
   assert.deepEqual(appearanceRootAttributes({ themePreference: ThemePreference.DARK, textSizePreference: TextSizePreference.LARGE }), {
     "data-theme": "dark",
     "data-text-size": "large",
+  });
+});
+
+test("only student appearance preferences apply at the application root", () => {
+  const darkAndLarge = {
+    themePreference: ThemePreference.DARK,
+    textSizePreference: TextSizePreference.LARGE,
+  };
+  assert.deepEqual(appearanceForViewer({ role: UserRole.STUDENT, ...darkAndLarge }), darkAndLarge);
+  for (const role of [UserRole.TEACHER, UserRole.ADMIN]) {
+    assert.deepEqual(appearanceRootAttributes(appearanceForViewer({ role, ...darkAndLarge })), {
+      "data-theme": "light",
+      "data-text-size": "standard",
+    });
+  }
+  assert.deepEqual(appearanceRootAttributes(appearanceForViewer(null)), {
+    "data-theme": "light",
+    "data-text-size": "standard",
   });
 });
 

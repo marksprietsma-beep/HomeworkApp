@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { appearanceRootAttributes, DEFAULT_APPEARANCE } from "../lib/appearance";
+import { appearanceForViewer, appearanceRootAttributes } from "../lib/appearance";
 import { getCurrentUser } from "../lib/auth";
 import "./globals.css";
 
@@ -19,10 +19,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getCurrentUser();
-  const appearance = user ? {
-    themePreference: user.themePreference,
-    textSizePreference: user.textSizePreference,
-  } : DEFAULT_APPEARANCE;
+  const appearance = appearanceForViewer(user);
 
   return (
     <html lang="en" {...appearanceRootAttributes(appearance)}>

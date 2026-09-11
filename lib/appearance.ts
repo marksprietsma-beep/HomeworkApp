@@ -1,7 +1,12 @@
-import { TextSizePreference, ThemePreference } from "@prisma/client";
+import { TextSizePreference, ThemePreference, UserRole } from "@prisma/client";
 
 export const DEFAULT_APPEARANCE = {
   themePreference: ThemePreference.SYSTEM,
+  textSizePreference: TextSizePreference.STANDARD,
+} as const;
+
+export const LIGHT_STANDARD_APPEARANCE = {
+  themePreference: ThemePreference.LIGHT,
   textSizePreference: TextSizePreference.STANDARD,
 } as const;
 
@@ -9,6 +14,16 @@ export type AppearancePreferences = {
   themePreference: ThemePreference;
   textSizePreference: TextSizePreference;
 };
+
+type AppearanceViewer = AppearancePreferences & { role: UserRole };
+
+export function appearanceForViewer(viewer: AppearanceViewer | null | undefined): AppearancePreferences {
+  if (viewer?.role !== UserRole.STUDENT) return LIGHT_STANDARD_APPEARANCE;
+  return {
+    themePreference: viewer.themePreference,
+    textSizePreference: viewer.textSizePreference,
+  };
+}
 
 export function parseAppearancePreferences(input: {
   themePreference: unknown;
@@ -20,7 +35,7 @@ export function parseAppearancePreferences(input: {
 }
 
 export function appearanceRootAttributes(preferences: AppearancePreferences | null | undefined) {
-  const safe = preferences ?? DEFAULT_APPEARANCE;
+  const safe = preferences ?? LIGHT_STANDARD_APPEARANCE;
   return {
     "data-theme": safe.themePreference.toLowerCase(),
     "data-text-size": safe.textSizePreference.toLowerCase(),
