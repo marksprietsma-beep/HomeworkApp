@@ -5,6 +5,8 @@ umask 077
 readonly BACKUP_ROOT="${CLARION_BACKUP_ROOT:-/var/backups/clarion}"
 readonly PGPASSFILE="${PGPASSFILE:-/etc/clarion/backup.pgpass}"
 readonly UPLOADS_ROOT="${CLARION_UPLOADS_ROOT:-/var/lib/clarion/uploads}"
+# Debian installs runuser under /usr/sbin, which is not guaranteed to be in sudo's PATH.
+readonly RUNUSER="/usr/sbin/runuser"
 export PGHOST="${PGHOST:-127.0.0.1}" PGPORT="${PGPORT:-5432}" PGUSER="${PGUSER:-clarion}" PGPASSFILE
 backup="${1:-}"
 if [[ -z "$backup" ]]; then
@@ -19,11 +21,12 @@ readonly SET_PATH="$BACKUP_ROOT/$backup"
 }
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "Run restore verification as root" >&2; exit 1; }
 [[ -r "$PGPASSFILE" ]] || { echo "PostgreSQL credential file is unreadable" >&2; exit 1; }
+[[ -x "$RUNUSER" ]] || { echo "Required Debian utility is missing: $RUNUSER" >&2; exit 1; }
 
 test_database="clarion_restore_test_$$"
 extract_dir="$(mktemp -d /tmp/clarion-restore-test.XXXXXX)"
 cleanup() {
-  env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE runuser -u postgres -- \
+  env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE "$RUNUSER" -u postgres -- \
     dropdb --if-exists -- "$test_database" >/dev/null 2>&1 || true
   rm -rf --one-file-system -- "$extract_dir"
 }
@@ -31,18 +34,18 @@ trap cleanup EXIT
 
 pg_restore --list "$SET_PATH/database.dump" >/dev/null
 tar --list --gzip --file="$SET_PATH/uploads.tar.gz" >/dev/null
-env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE runuser -u postgres -- \
+env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE "$RUNUSER" -u postgres -- \
   createdb --owner=clarion -- "$test_database"
 pg_restore --exit-on-error --no-owner --no-privileges --dbname="$test_database" "$SET_PATH/database.dump"
 
 for table in User Class HomeworkAssignment; do
-  count="$(env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE runuser -u postgres -- \
+  count="$(env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE "$RUNUSER" -u postgres -- \
     psql --dbname="$test_database" --tuples-only --no-align \
     --command="SELECT count(*) FROM \"$table\";")"
   [[ "$count" =~ ^[0-9]+$ ]] || { echo "Could not verify table $table" >&2; exit 1; }
   echo "Verified table $table ($count rows)"
 done
-session_exists="$(env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE runuser -u postgres -- \
+session_exists="$(env -u PGHOST -u PGPORT -u PGUSER -u PGPASSFILE "$RUNUSER" -u postgres -- \
   psql --dbname="$test_database" --tuples-only --no-align \
   --command="SELECT to_regclass('\"Session\"') IS NOT NULL;")"
 [[ "$session_exists" == "t" ]] || { echo "Expected Session table is absent" >&2; exit 1; }
