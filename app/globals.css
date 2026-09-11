@@ -3,11 +3,131 @@
 @tailwind utilities;
 
 :root {
+  --page: #f8fafc;
+  --surface: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #020617;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --page: #020617;
+  --surface: #0f172a;
+  --surface-subtle: #111c31;
+  --surface-muted: #1e293b;
+  --border: #334155;
+  --border-strong: #475569;
+  --text: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    --page: #020617;
+    --surface: #0f172a;
+    --surface-subtle: #111c31;
+    --surface-muted: #1e293b;
+    --border: #334155;
+    --border-strong: #475569;
+    --text: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    color-scheme: dark;
+  }
+}
+
+html[data-text-size="large"] {
+  font-size: 112.5%;
 }
 
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #020617;
+  background: var(--page);
+  color: var(--text);
+}
+
+/* Existing pages use a deliberately small Tailwind palette. These mappings
+   make those shared surface utilities semantic without a component rewrite. */
+.bg-white, .bg-white\/80, .bg-white\/90 { background-color: var(--surface); }
+.bg-slate-50 { background-color: var(--surface-subtle); }
+.bg-slate-100 { background-color: var(--surface-muted); }
+.text-slate-950, .text-slate-900 { color: var(--text); }
+.text-slate-800, .text-slate-700 { color: var(--text-secondary); }
+.text-slate-600, .text-slate-500 { color: var(--text-muted); }
+.border-slate-200, .border-slate-100, .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border); }
+.border-slate-300, .border-slate-400 { border-color: var(--border-strong); }
+.ring-slate-200 { --tw-ring-color: var(--border); }
+.ring-slate-300, .ring-slate-400 { --tw-ring-color: var(--border-strong); }
+
+/* Status surfaces retain hue and contrast rather than being flattened into
+   neutral cards. Text and icons still carry explicit status labels in markup. */
+html[data-theme="dark"] .bg-amber-50,
+html[data-theme="dark"] .bg-amber-100 { background-color: #422006; }
+html[data-theme="dark"] .text-amber-700,
+html[data-theme="dark"] .text-amber-800,
+html[data-theme="dark"] .text-amber-900,
+html[data-theme="dark"] .text-amber-950 { color: #fde68a; }
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .bg-emerald-100 { background-color: #052e2b; }
+html[data-theme="dark"] .text-emerald-700,
+html[data-theme="dark"] .text-emerald-800,
+html[data-theme="dark"] .text-emerald-900,
+html[data-theme="dark"] .text-emerald-950 { color: #a7f3d0; }
+html[data-theme="dark"] .bg-red-50,
+html[data-theme="dark"] .bg-red-100,
+html[data-theme="dark"] .bg-rose-50 { background-color: #450a0a; }
+html[data-theme="dark"] .text-red-700,
+html[data-theme="dark"] .text-red-800,
+html[data-theme="dark"] .text-red-900,
+html[data-theme="dark"] .text-red-950,
+html[data-theme="dark"] .text-rose-700,
+html[data-theme="dark"] .text-rose-800 { color: #fecaca; }
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-blue-100,
+html[data-theme="dark"] .bg-cyan-50,
+html[data-theme="dark"] .bg-cyan-100 { background-color: #083344; }
+html[data-theme="dark"] .text-blue-700,
+html[data-theme="dark"] .text-blue-800,
+html[data-theme="dark"] .text-violet-700,
+html[data-theme="dark"] .text-purple-700,
+html[data-theme="dark"] .text-teal-700,
+html[data-theme="dark"] .text-cyan-700,
+html[data-theme="dark"] .text-cyan-800,
+html[data-theme="dark"] .text-cyan-900,
+html[data-theme="dark"] .text-cyan-950 { color: #a5f3fc; }
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] .bg-amber-50, html[data-theme="system"] .bg-amber-100 { background-color: #422006; }
+  html[data-theme="system"] :is(.text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: #fde68a; }
+  html[data-theme="system"] :is(.bg-emerald-50, .bg-emerald-100) { background-color: #052e2b; }
+  html[data-theme="system"] :is(.text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950) { color: #a7f3d0; }
+  html[data-theme="system"] :is(.bg-red-50, .bg-red-100, .bg-rose-50) { background-color: #450a0a; }
+  html[data-theme="system"] :is(.text-red-700, .text-red-800, .text-red-900, .text-red-950, .text-rose-700, .text-rose-800) { color: #fecaca; }
+  html[data-theme="system"] :is(.bg-blue-50, .bg-blue-100, .bg-cyan-50, .bg-cyan-100) { background-color: #083344; }
+  html[data-theme="system"] :is(.text-blue-700, .text-blue-800, .text-violet-700, .text-purple-700, .text-teal-700, .text-cyan-700, .text-cyan-800, .text-cyan-900, .text-cyan-950) { color: #a5f3fc; }
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+:disabled {
+  opacity: 0.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

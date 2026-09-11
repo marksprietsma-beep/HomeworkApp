@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { appearanceForViewer, appearanceRootAttributes } from "../lib/appearance";
+import { getCurrentUser } from "../lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,13 +13,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+  const appearance = appearanceForViewer(user);
+
   return (
-    <html lang="en">
+    <html lang="en" {...appearanceRootAttributes(appearance)}>
       <body>{children}</body>
     </html>
   );
