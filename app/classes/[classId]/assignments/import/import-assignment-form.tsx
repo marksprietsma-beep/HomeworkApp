@@ -3,8 +3,10 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { parseAssignmentImportJson } from "../../../../../lib/assignment-import-parser.mjs";
-import { CHATGPT_RAW_JSON_ONLY_INSTRUCTION } from "../../../../../lib/chatgpt-json-quality-control";
-import { ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE } from "../../../../../lib/assignment-pseudocode-prompt-guidance";
+import {
+  ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS,
+  ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE,
+} from "../../../../../lib/assignment-pseudocode-prompt-guidance";
 import { StructuredResponseRenderer } from "../../../../components/structured-response-renderer";
 import { QuestionPrompt } from "../../../../components/question-prompt";
 import { ChatGptJsonHelper } from "../../../../components/chatgpt-json-helper";
@@ -139,9 +141,8 @@ Final JSON validation before returning:
 4. Check all embedded quotation marks, backslashes, and line breaks inside string values are JSON-escaped correctly.
 5. Check every { has a matching }, every [ has a matching ], and array/object items are comma-separated correctly.
 6. Do not return the response unless the exact final text is valid parseable JSON.
-7. Do not include Markdown fences, comments, explanations, trailing commas, or any text outside the root JSON object.
+7. ${ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS}`;
 
-${CHATGPT_RAW_JSON_ONLY_INSTRUCTION}`;
 
 const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
   OPEN_TEXT: "Open text",

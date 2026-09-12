@@ -13,12 +13,12 @@ Mark can paste this into ChatGPT when asking it to create an assignment:
 > 2. Internally check that every { has a matching }, every [ has a matching ], and every array item is separated by a comma.
 > 3. Check that the whole response would succeed with JSON.parse.
 > 4. Do not return the response unless it is valid parseable JSON.
-> 5. Do not include Markdown fences, comments, explanations, trailing commas, or any text outside the JSON object.
+> 5. Do not wrap the overall JSON response in Markdown fences. Triple-backtick pseudocode fences are permitted only inside JSON string values where required by the pseudocode sample presentation rules. Do not include comments, explanations, trailing commas, or any text outside the JSON object.
 > 6. Prefer flatter structures where valid. Use participant-level followUpActions unless question-level followUpActions are essential.
 > 7. Preserve every ID exactly as provided in the Clarion export.
 > 8. If an attached export file is available, use the full attached file contents rather than relying only on visible pasted text in the chat.
 > 
-> Return raw importable JSON only. No Markdown. No explanation. No comments. No trailing commas.
+> Return raw importable JSON only. Do not wrap the overall response in Markdown. No explanation. No comments. No trailing commas.
 
 ## Stable root shape
 

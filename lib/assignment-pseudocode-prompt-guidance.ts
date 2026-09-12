@@ -15,3 +15,7 @@ Strict JSON character rules:
 - Do not escape colons and do not add backslashes before ordinary punctuation. Keep dueDate as normal JSON syntax, for example "dueDate":null.
 - Quotes that are part of string content must be JSON-escaped, for example: "prompt":"Store the text \"Ready\" in Status."
 - Return strict serialized JSON only. Validate the exact final response using JSON.parse or an equivalent strict parser before returning it.`;
+
+export const ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS = `Do not wrap the overall JSON response in Markdown fences. Triple-backtick pseudocode fences are permitted only inside JSON string values where required by the pseudocode sample presentation rules. Do not include comments, explanations, trailing commas, or any text outside the root JSON object.
+
+Return raw importable JSON only. Do not wrap the overall response in Markdown. No explanation. No comments. No trailing commas.`;
