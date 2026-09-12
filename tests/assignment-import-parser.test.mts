@@ -2,7 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 // The production parser is intentionally a plain ESM module shared with fixture scripts.
 // @ts-expect-error TypeScript does not pair a sibling .d.ts with an explicit .mjs import.
-import { parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
+import { normalizeSingleBacktickPseudocodeFences, parseAssignmentImportJson } from "../lib/assignment-import-parser.mjs";
+
+test("canonical pseudocode fences remain unchanged", () => {
+  const canonical = "Before\n```pseudocode\nDECLARE X : INTEGER\n```\nAfter";
+  assert.equal(normalizeSingleBacktickPseudocodeFences(canonical), canonical);
+});
+
+test("repairs only paired line-delimited single-backtick pseudocode fences", () => {
+  assert.equal(normalizeSingleBacktickPseudocodeFences("Before\n`pseudocode\n  OUTPUT X\n`\nAfter"), "Before\n```pseudocode\n  OUTPUT X\n```\nAfter");
+  assert.equal(normalizeSingleBacktickPseudocodeFences("Use `Name` and `Age` here."), "Use `Name` and `Age` here.");
+  assert.equal(normalizeSingleBacktickPseudocodeFences("Input a user's name."), "Input a user's name.");
+  assert.equal(normalizeSingleBacktickPseudocodeFences("Before\n`pseudocode\nOUTPUT X\nAfter"), "Before\n`pseudocode\nOUTPUT X\nAfter");
+});
 
 test("v2 accepts structured tables while v1 remains strict", () => {
   const question = { id: "q1", order: 1, type: "OPEN_TEXT", responseMode: "STRUCTURED", prompt: "Complete it", responseSchema: { schemaVersion: 1, kind: "table", columns: [{ id: "label", label: "" }, { id: "total", label: "£" }], rows: [{ id: "total_row", label: "Total", cells: { total: { editable: true, inputType: "currency" } } }] } };
@@ -41,6 +53,41 @@ function assignment(prompt = "Move Location to Lab 2") {
     },
   }, null, 2);
 }
+
+for (const [name, prompt] of [
+  ["Name/Age Q5", "Complete the pseudocode.\n`pseudocode\nDECLARE Name : STRING\nDECLARE Age : INTEGER\n________ Name\n________ Age\n`"],
+  ["Price/DeliveryCharge/Total Q9", "Complete the pseudocode.\n`pseudocode\nDECLARE Price : REAL\nDECLARE DeliveryCharge : REAL\nDECLARE Total : REAL\nINPUT Price\nINPUT DeliveryCharge\n---\n---\n`"],
+] as const) test(`repairs the production ${name} prompt before storage`, () => {
+  const result = parseAssignmentImportJson(assignment(prompt));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.match(result.assignment.questions[0].prompt, /^```pseudocode$/m);
+    assert.match(result.assignment.questions[0].prompt, /^```$/m);
+  }
+});
+
+test("repairs single-backtick fences independently in localized prompts", () => {
+  const value = JSON.parse(assignment());
+  value.assignment.questions[0].textI18n = {
+    en: "Look:\n`pseudocode\nOUTPUT Name\n`\nExplain.",
+    zh: "请看：\n`pseudocode\nOUTPUT Name\n`\n请解释。",
+  };
+  const result = parseAssignmentImportJson(JSON.stringify(value));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.match(result.assignment.questions[0].textI18n?.en ?? "", /^```pseudocode$/m);
+    assert.match(result.assignment.questions[0].textI18n?.zh ?? "", /^```pseudocode$/m);
+  }
+});
+
+test("repairs the legacy question text alias before it becomes the stored prompt", () => {
+  const value = JSON.parse(assignment());
+  value.assignment.questions[0].text = "Trace:\n`pseudocode\nOUTPUT X\n`";
+  delete value.assignment.questions[0].prompt;
+  const result = parseAssignmentImportJson(JSON.stringify(value));
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.assignment.questions[0].prompt, "Trace:\n```pseudocode\nOUTPUT X\n```");
+});
 
 test("valid JSON passes through without a repaired state", () => {
   const raw = assignment();
