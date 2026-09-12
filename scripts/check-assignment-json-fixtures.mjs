@@ -102,7 +102,7 @@ async function checkHelperPromptDoesNotAdvertiseUnsupportedTypes() {
     return;
   }
 
-  for (const requiredText of ["responseMode: \"PSEUDOCODE\"", "pseudocodeDialect: \"CAMBRIDGE_9618_2026\"", "write, complete, trace, debug, or explain pseudocode/code-style answers", "Do not add pseudocode metadata to ordinary prose questions"]) {
+  for (const requiredText of ["responseMode to \"PSEUDOCODE\"", "pseudocodeDialect to \"CAMBRIDGE_9618_2026\"", "only when the student's response itself should be written as pseudocode or code", "fenced pseudocode sample in its prompt while keeping responseMode as \"TEXT\"", "value/result or output, an explanation, identification of errors", "Fenced pseudocode presentation in the prompt is independent from responseMode"]) {
     if (!promptMatch[1].includes(requiredText)) {
       fail(`assignment import helper prompt is missing pseudocode guidance: ${requiredText}`);
       return;

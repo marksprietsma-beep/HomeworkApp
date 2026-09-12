@@ -5,6 +5,7 @@ export const ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE = String.raw`Pseudocode sampl
 - The closing delimiter is exactly THREE backtick characters: ${THREE_BACKTICKS}
 - A single backtick is invalid. Two backticks are invalid. Do not substitute inline-code syntax.
 - These fences are presentation syntax inside an ordinary JSON prompt string and are independent from responseMode.
+- A fenced pseudocode sample in a question prompt does not require a pseudocode answer. Keep responseMode as "TEXT" when students should give prose, a value/result or output, an explanation, identify errors, or provide other ordinary text.
 - Preserve indentation. Represent every line break inside the serialized JSON string using \n; do not insert raw line breaks inside a JSON string.
 - Apply this rule independently inside textI18n.en and textI18n.zh when either localized prompt contains a multi-line sample.
 - Exact serialized JSON example (the response must contain the three literal backticks shown here):
