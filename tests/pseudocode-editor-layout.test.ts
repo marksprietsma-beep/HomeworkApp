@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { synchroniseEditorScroll } from "../lib/pseudocode-editor-layout";
 
@@ -11,4 +12,20 @@ test("synchroniseEditorScroll copies both axes to every rendered layer", () => {
 
   assert.deepEqual(highlight, source);
   assert.deepEqual(secondLayer, source);
+});
+
+test("pseudocode layers are clipped to an isolated editor below the opaque action bar", () => {
+  const editorSource = readFileSync(
+    "app/assignments/[assignmentId]/work/pseudocode-answer-editor.tsx",
+    "utf8",
+  );
+  const workPageSource = readFileSync(
+    "app/assignments/[assignmentId]/work/page.tsx",
+    "utf8",
+  );
+
+  assert.match(editorSource, /className="relative isolate min-h-80 overflow-hidden [^"]*\[contain:paint\]/);
+  assert.match(editorSource, /aria-hidden="true" className="[^"]*absolute inset-y-0 left-0/);
+  assert.match(workPageSource, /className="sticky bottom-4 z-30 [^"]* bg-white /);
+  assert.doesNotMatch(workPageSource, /className="sticky bottom-4[^"]*bg-white\/95/);
 });

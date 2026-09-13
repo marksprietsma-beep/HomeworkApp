@@ -545,7 +545,7 @@ export default async function ParticipantWorkPage({
           );
         })}
 
-        <div className="sticky bottom-4 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+        <div className="sticky bottom-4 z-30 rounded-3xl border border-slate-200 bg-white p-4 shadow-lg">
           <div className="flex flex-col gap-3 sm:flex-row">
             {work.submission?.status !== "SUBMITTED" ? <button type="submit" name="submissionIntent" value="DRAFT" className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 sm:w-auto">Save draft</button> : null}
             <button type="submit" name="submissionIntent" value="SUBMITTED" className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto">Submit response</button>
