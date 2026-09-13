@@ -104,7 +104,7 @@ export function PseudocodeAnswerEditor({ id, name, defaultValue, dialect }: Pseu
         <p className="font-medium">Cambridge 9618 pseudocode mode preserves spacing, highlights exam keywords and shows non-blocking syntax hints{dialect ? ` (${dialect})` : ""}.</p>
         <button type="button" onClick={handleFormat} className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-amber-950 shadow-sm transition hover:border-amber-400 hover:bg-amber-100">Format pseudocode</button>
       </div>
-      <div className="relative min-h-80 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
+      <div className="relative isolate min-h-80 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm [contain:paint] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
         <div ref={gutterRef} aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-20 w-12 overflow-hidden border-r border-slate-200 bg-slate-50 py-3 text-right font-mono text-base font-normal leading-6 tracking-normal text-slate-400 [font-synthesis:none] [font-variant-ligatures:none]">
           {value.split("\n").map((_, index) => <span key={index} className="block pr-2" style={{ height: lineHeights[index] ?? 24 }}>{index + 1}</span>)}
         </div>
