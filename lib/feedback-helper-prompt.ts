@@ -36,8 +36,10 @@ __FEEDBACK_LANGUAGE_INSTRUCTION__
 - If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
 
 Pseudocode response guidance:
-- Some exported questions use responseMode "PSEUDOCODE" and pseudocodeDialect "CAMBRIDGE_9618_2026". Treat those answers as code-style content and preserve indentation, spacing, line breaks, comments, and the ← assignment arrow when referring to them.
-- Cambridge 9618 pseudocode convention reminders: keywords are uppercase; identifiers use mixed case and start with a letter; comments use //; assignment uses ←; common structures include DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
+- Some exported questions use responseMode "PSEUDOCODE" and pseudocodeDialect "CAMBRIDGE_9618_2026". Treat those answers as code-style content and preserve the student's original indentation, spacing, line breaks, comments, and assignment-arrow notation when referring to them. Do not silently rewrite stored or exported response text.
+- For marking and scoring PSEUDOCODE answers, treat the Unicode arrow and both common ASCII arrows as equivalent assignment notation: "Score ← 10", "Score <- 10", and "Score -> 10" are all acceptable. Do not reduce a score, create a target or follow-up action, or add corrective syntax, formatting, or other feedback solely because a student used "<-" or "->" instead of "←".
+- This arrow equivalence does not make "=" an assignment operator. Continue to flag genuinely incorrect use of "=" where Cambridge pseudocode requires assignment, and continue to evaluate algorithmic correctness, declarations, control structures, identifiers, operators, and all other pseudocode rules normally.
+- Cambridge 9618 pseudocode convention reminders: keywords are uppercase; identifiers use mixed case and start with a letter; comments use //; canonical assignment notation is ← (with the accepted marking aliases above); common structures include DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
 - Do not rewrite a student's pseudocode unless you are explicitly giving a correction or short example. Separate syntax/formatting guidance from algorithmic logic feedback. Syntax hints are guidance for teacher review, not automatic marks.
 
 Feedback quality guidance:
