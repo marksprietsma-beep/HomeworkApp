@@ -14,6 +14,8 @@ export function AutosaveForm({ assignmentId, enabled, action, children }: {
   const dirtyRef = useRef(false);
   const inFlightRef = useRef(false);
   const followUpRef = useRef(false);
+  const revisionRef = useRef(0);
+  const savedRevisionRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
@@ -22,13 +24,15 @@ export function AutosaveForm({ assignmentId, enabled, action, children }: {
     if (!enabled || !form || !dirtyRef.current) return;
     if (inFlightRef.current) { followUpRef.current = true; return; }
     inFlightRef.current = true;
-    dirtyRef.current = false;
+    const revision = revisionRef.current;
     setSaveState("saving");
     try {
       const response = await fetch(`/api/assignments/${assignmentId}/autosave`, {
         method: "POST", body: new FormData(form), keepalive: true,
       });
       if (!response.ok) throw new Error("Autosave failed");
+      savedRevisionRef.current = Math.max(savedRevisionRef.current, revision);
+      dirtyRef.current = revisionRef.current > savedRevisionRef.current;
       setSaveState(dirtyRef.current ? "dirty" : "saved");
     } catch {
       dirtyRef.current = true;
@@ -42,8 +46,29 @@ export function AutosaveForm({ assignmentId, enabled, action, children }: {
     }
   }, [assignmentId, enabled]);
 
+  const flushFinal = useCallback(async () => {
+    const form = formRef.current;
+    if (!enabled || !form || !dirtyRef.current) return;
+    // Do not wait for a normal request: hand the latest snapshot to the server
+    // immediately while the browser can still dispatch a keepalive request.
+    const revision = revisionRef.current;
+    try {
+      const response = await fetch(`/api/assignments/${assignmentId}/autosave`, {
+        method: "POST", body: new FormData(form), keepalive: true,
+      });
+      if (!response.ok) throw new Error("Final autosave failed");
+      savedRevisionRef.current = Math.max(savedRevisionRef.current, revision);
+      dirtyRef.current = revisionRef.current > savedRevisionRef.current;
+      if (!dirtyRef.current) setSaveState("saved");
+    } catch {
+      dirtyRef.current = true;
+      setSaveState("failed");
+    }
+  }, [assignmentId, enabled]);
+
   function markDirty() {
     if (!enabled) return;
+    revisionRef.current += 1;
     dirtyRef.current = true;
     if (inFlightRef.current) followUpRef.current = true;
     setSaveState("dirty");
@@ -54,9 +79,9 @@ export function AutosaveForm({ assignmentId, enabled, action, children }: {
   useEffect(() => {
     if (!enabled) return;
     const flush = () => {
-      if (document.visibilityState === "hidden" && dirtyRef.current) void save();
+      if (document.visibilityState === "hidden" && dirtyRef.current) void flushFinal();
     };
-    const pageHide = () => { if (dirtyRef.current) void save(); };
+    const pageHide = () => { if (dirtyRef.current) void flushFinal(); };
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!dirtyRef.current) return;
       event.preventDefault();
@@ -71,7 +96,7 @@ export function AutosaveForm({ assignmentId, enabled, action, children }: {
       window.removeEventListener("pagehide", pageHide);
       window.removeEventListener("beforeunload", beforeUnload);
     };
-  }, [enabled, save]);
+  }, [enabled, flushFinal]);
 
   const label = saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved just now" : saveState === "failed" ? "Autosave failed — keep this page open and use Save draft" : saveState === "dirty" ? "Unsaved changes" : "Autosave ready";
   const color = saveState === "failed" ? "text-red-700" : saveState === "saved" ? "text-emerald-700" : "text-slate-600";

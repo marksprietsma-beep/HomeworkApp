@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserState } from "../../../../../lib/auth";
 import { ParticipantSubmissionError, persistParticipantSubmission } from "../../../../../lib/participant-submission";
+import { runAutosaveSequentially } from "../../../../../lib/autosave-request-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ as
 
   const { selectedUser } = await getCurrentUserState();
   try {
-    const submission = await persistParticipantSubmission({
-      assignmentId,
-      formData: await request.formData(),
-      student: selectedUser,
-      intent: "AUTOSAVE",
-    });
+    const formData = await request.formData();
+    const submission = await runAutosaveSequentially(`${selectedUser?.id ?? "anonymous"}:${assignmentId}`, () =>
+      persistParticipantSubmission({ assignmentId, formData, student: selectedUser, intent: "AUTOSAVE" }),
+    );
     return NextResponse.json({ saved: true, updatedAt: submission.updatedAt.toISOString() });
   } catch (error) {
     if (error instanceof ParticipantSubmissionError) {
