@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { initialProfileImageActionState, removeOwnProfileImage, updateOwnProfileImage } from "./actions";
+import { initialProfileImageActionState } from "./action-state";
+import { removeOwnProfileImage, updateOwnProfileImage } from "./actions";
 
 function Result({ state }: { state: typeof initialProfileImageActionState }) {
   return state.error || state.success ? <p role={state.error ? "alert" : "status"} className={`text-sm font-semibold ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.success}</p> : null;
