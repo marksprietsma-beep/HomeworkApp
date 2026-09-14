@@ -23,9 +23,13 @@ test("pseudocode layers are clipped to an isolated editor below the opaque actio
     "app/assignments/[assignmentId]/work/page.tsx",
     "utf8",
   );
+  const autosaveFormSource = readFileSync(
+    "app/assignments/[assignmentId]/work/autosave-form.tsx",
+    "utf8",
+  );
 
   assert.match(editorSource, /className="relative isolate min-h-80 overflow-hidden [^"]*\[contain:paint\]/);
   assert.match(editorSource, /aria-hidden="true" className="[^"]*absolute inset-y-0 left-0/);
-  assert.match(workPageSource, /className="sticky bottom-4 z-30 [^"]* bg-white /);
-  assert.doesNotMatch(workPageSource, /className="sticky bottom-4[^"]*bg-white\/95/);
+  assert.match(autosaveFormSource, /className="sticky bottom-4 z-30 [^"]* bg-white /);
+  assert.doesNotMatch(`${workPageSource}\n${autosaveFormSource}`, /className="sticky bottom-4[^"]*bg-white\/95/);
 });
