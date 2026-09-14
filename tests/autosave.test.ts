@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { PrismaClient } from "@prisma/client";
 import { runAutosaveSequentially } from "../lib/autosave-request-queue";
 import { participantSubmissionAdvisoryLockQuery } from "../lib/participant-submission-lock";
 
@@ -12,6 +13,7 @@ const persistence = readFileSync("lib/participant-submission.ts", "utf8");
 test("manual saves and autosave use the same persistence path", () => {
   assert.match(endpoint, /persistParticipantSubmission/);
   assert.match(manualAction, /persistParticipantSubmission/);
+  assert.match(persistence, /tx\.\$executeRaw\(participantSubmissionAdvisoryLockQuery/);
   assert.match(persistence, /validateStructuredAnswer/);
   assert.match(persistence, /submissionAnswer\.upsert/);
 });
@@ -32,6 +34,20 @@ test("advisory lock binds both JavaScript numbers to PostgreSQL INT4 arguments",
     "::int, ",
     "::int)",
   ]);
+});
+
+test("Prisma executes the PostgreSQL advisory lock without deserializing its void result", {
+  skip: !process.env.DATABASE_URL && "DATABASE_URL is required for the PostgreSQL integration regression",
+}, async () => {
+  const client = new PrismaClient();
+
+  try {
+    await client.$transaction(async (tx) => {
+      await tx.$executeRaw(participantSubmissionAdvisoryLockQuery(42, 314));
+    });
+  } finally {
+    await client.$disconnect();
+  }
 });
 
 test("controller debounces, coalesces in-flight edits, and performs lifecycle flushes", () => {
