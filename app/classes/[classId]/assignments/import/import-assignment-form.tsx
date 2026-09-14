@@ -93,55 +93,31 @@ const placeholderJson = `{
   }
 }`;
 
-const assignmentChatGptPrompt = String.raw`Create an assignment for Clarion. Return only strict, valid, serialized JSON. Do not wrap the overall JSON response in Markdown fences or add commentary.
+const assignmentChatGptPrompt = String.raw`Create a Clarion assignment from the teacher context below. Return only one complete, strict JSON object with no outer Markdown fence or commentary.
 
-Separate teacher generation context from student-facing assignment content. Use the teacher choices below to create the homework, but do not copy these choices, metadata, planning notes, syllabus context, question mix, difficulty, marks expectations, or glossary choices into assignment.instructions.
+Teacher context:
+- Subject: [fill in]
+- Topic and learning objectives/syllabus: [fill in]
+- Student level/year group: [fill in]
+- Number and mix of questions: [fill in]
+- Difficulty and marks/points expectations: [fill in]
+- Bilingual en/zh output? [yes/no]
 
-Teacher generation context to use:
-- Subject: [fill in subject]
-- Topic: [fill in topic]
-- Syllabus context or learning objectives: [fill in syllabus/learning objectives]
-- Student level/year group: [fill in year group or level]
-- Number of questions: [fill in count]
-- Desired question mix: [for example, short written answer, longer written answer, multiple choice]
-- Difficulty: [fill in difficulty]
-- Marks/points expectations: [fill in total marks or per-question guidance]
-- Bilingual assignment wanted? [yes/no; if yes, keep the required English fields and add optional i18n fields using only en and zh for title, instructions, question text, multiple-choice options, and key vocabulary/glossary. Use natural Simplified Chinese, not literal machine-style translation.]
-
-Choose the format deliberately: use assignment-import-v1 for ordinary text, pseudocode, and multiple-choice homework. Use assignment-import-v2 only when at least one question needs a structured table/grid or T-account.
-
-Use the Clarion assignment import structure:
-- Root object with formatVersion set to "assignment-import-v1" for ordinary homework or "assignment-import-v2" for structured responses, and an assignment object.
-- Assignment fields: title, optional titleI18n, instructions, optional instructionsI18n, optional dueDate as YYYY-MM-DD or null, status as DRAFT or PUBLISHED, questions, and optional keyVocabulary. Always generate status as DRAFT; the teacher makes the publication decision in Clarion after reviewing the preview.
-- assignment.instructions must be concise, student-facing instructions only. Good examples: "Answer all questions. Show your working where appropriate. Use full sentences for explanation questions." or "Use the key vocabulary to help answer each question."
-- Do not put teacher generation context into assignment.instructions. If metadata genuinely belongs in the JSON, express it through title, questions, points, dueDate, status, or keyVocabulary instead of adding a long teacher-facing paragraph.
-- Questions must preserve stable string ids such as q1 exactly, use sequential order values, type values of OPEN_TEXT or MULTIPLE_CHOICE, student-facing prompt text, optional textI18n, and optional positive integer points/marks.
-- Use OPEN_TEXT for any written answer, including longer explanation or evaluation questions. Set responseMode to "PSEUDOCODE" and pseudocodeDialect to "CAMBRIDGE_9618_2026" only when the student's response itself should be written as pseudocode or code, such as when asked to write, complete, or debug and rewrite pseudocode. A question may contain a fenced pseudocode sample in its prompt while keeping responseMode as "TEXT" when the expected student response is prose, a value/result or output, an explanation, identification of errors, or other ordinary text. Fenced pseudocode presentation in the prompt is independent from responseMode.
-- For a structured question, keep type OPEN_TEXT, set responseMode to "STRUCTURED", and include responseSchema with schemaVersion 1. kind "table" uses columns [{id,label,optional align/width}] and rows [{id,label,optional style,cells keyed by column id}]. kind "t_account" uses title and entries [{id,side (debit or credit),label,optional detail,optional amount}]. Cells allow editable boolean, inputType text/number/currency, static value, or blank. Row styles are normal, section_header, subtotal, total, or spacer. All row/column/entry IDs must be stable, unique identifiers beginning with a letter; editable answer IDs are deterministically row.column or entry.detail/entry.amount. Use semantic metadata only: never emit HTML, CSS, JavaScript, formulas, or visual-coordinate-only IDs.
-- For Cambridge 9618 pseudocode questions, preserve indentation and line breaks. Use uppercase keywords, mixed-case identifiers starting with a letter, // comments, the ← assignment arrow, and structures such as DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, FOR/NEXT, REPEAT/UNTIL, WHILE/ENDWHILE, PROCEDURE/ENDPROCEDURE, FUNCTION/ENDFUNCTION, file handling commands, and OOP keywords where relevant.
+Contract:
+- Use "assignment-import-v1" for TEXT, PSEUDOCODE, and MULTIPLE_CHOICE work. Use "assignment-import-v2" only if at least one OPEN_TEXT question has responseMode "STRUCTURED" and a responseSchema.
+- The root contains formatVersion and assignment. assignment contains title, concise student-facing instructions, "status":"DRAFT", ordered questions, optional "dueDate":null or a YYYY-MM-DD string, and optional keyVocabulary. Never copy teacher planning context into instructions.
+- Give questions stable ids (q1, q2...), sequential order, type OPEN_TEXT or MULTIPLE_CHOICE, prompt, optional positive integer points, and optional textI18n. MULTIPLE_CHOICE requires stable-id options and no other question type may have options.
+- For bilingual work, retain required English fields and add only en/zh titleI18n, instructionsI18n, question/option textI18n, and glossary termI18n/definitionI18n. Use natural Simplified Chinese. English-only output remains valid.
+- OPEN_TEXT defaults to responseMode "TEXT". Use "PSEUDOCODE" with pseudocodeDialect "CAMBRIDGE_9618_2026" only when the student must write or rewrite code. A prompt may show pseudocode while expecting TEXT prose, a result/output, an explanation, or error identification.
+- Cambridge pseudocode uses preserved indentation, uppercase keywords, mixed-case identifiers beginning with a letter, // comments, the ← assignment arrow, and standard Cambridge structures such as DECLARE, CONSTANT, ARRAY, TYPE, IF/ENDIF, CASE/ENDCASE, loops, procedures/functions, file handling, and OOP keywords where relevant.
 ${ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE}
-- MULTIPLE_CHOICE questions must include options with stable ids and text, plus optional textI18n on each option. Do not add options to OPEN_TEXT questions.
-- Optional image metadata may be included as image with path, caption, and altText. Use metadata only; do not include binary image data.
-- Optional keyVocabulary/glossary entries may include englishTerm, chineseTerm, englishDefinition, chineseDefinition, optional termI18n/definitionI18n, category, and questionIds. If bilingual output is requested, use natural Simplified Chinese, not literal machine-style translation. Continue producing English-only JSON when bilingual output is not requested.
+- STRUCTURED questions use v2, type OPEN_TEXT, responseMode "STRUCTURED", and responseSchema schemaVersion 1. A table has columns and rows with cells keyed by column id; a t_account has title and debit/credit entries. IDs must be stable, unique, semantic identifiers beginning with a letter. Cells/entry fields may be editable text, number, or currency values, static values, or blanks. Rows may be normal, section_header, subtotal, total, or spacer. Do not emit HTML, CSS, JavaScript, formulas, or coordinate-only IDs.
+- Optional image metadata contains path, caption, and altText only. Optional vocabulary may contain English/Chinese terms and definitions, i18n text, category, and questionIds.
+- Do not include answers, rubrics, scores, unsupported fields, or teacher-only notes.
 
-Do not include answers, rubrics, scores, explanations outside the JSON, unsupported fields, or teacher-only prompt context. Make the content appropriate for the teacher generation context above while keeping the saved student instructions short and practical.
+Serialize the complete object as JSON. Escape quotes that occur inside string content as \", literal backslashes as \\, and line breaks as \n. Do not escape underscores, colons, angle brackets, or ordinary punctuation. Validate the exact final text with JSON.parse before returning it.
 
-JSON string-safety requirement:
-- Return serialized JSON, not a JavaScript object literal.
-- Any quotation mark that is part of text inside a JSON string must be escaped as \".
-- Any literal backslash inside a JSON string must be escaped as \\.
-- Represent intended line breaks inside JSON string values using valid JSON escaping such as \n.
-- This especially applies to quoted examples, code/string literals, translations, pseudocode, and phrases such as \"Lab 2\" inside question prompts.
-- Before returning, validate the exact final serialized text, not merely the conceptual object structure.
-
-Final JSON validation before returning:
-1. Build the complete assignment object first.
-2. Serialize it as strict JSON.
-3. Validate the exact serialized response with JSON.parse (or an equivalent strict JSON parser).
-4. Check all embedded quotation marks, backslashes, and line breaks inside string values are JSON-escaped correctly.
-5. Check every { has a matching }, every [ has a matching ], and array/object items are comma-separated correctly.
-6. Do not return the response unless the exact final text is valid parseable JSON.
-7. ${ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS}`;
+${ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS}`;
 
 
 const questionTypeLabels: Record<AssignmentImportQuestion["type"], string> = {
@@ -175,6 +151,12 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
       (total, question) => total + (question.points ?? 0),
       0,
     ) ?? 0;
+  const jsonParseError = parseResult.ok
+    ? null
+    : parseResult.errors.find((item) => item.code === "invalid_json") ?? null;
+  const correctionPrompt = jsonParseError
+    ? `Repair the malformed Clarion assignment JSON below.\n\nParser error:\n${jsonParseError.message}\n\nReturn the complete assignment object as strict serialized JSON. Preserve its intended content and schema values, but correct every JSON syntax error. Escape quotation marks inside string values. Do not return Markdown fences, commentary, or a partial fragment. Validate the exact response with JSON.parse before returning it.\n\nMalformed JSON:\n${rawJson}`
+    : "";
 
   function updateImagePreview(questionId: string, file: File | null) {
     setImagePreviewUrls((current) => ({
@@ -260,6 +242,18 @@ export function ImportAssignmentForm({ classId }: ImportAssignmentFormProps) {
                 );
               })}
             </ul>
+            {jsonParseError ? (
+              <ChatGptJsonHelper
+                variant="direct-copy"
+                eyebrow="JSON repair"
+                title="Ask ChatGPT to correct the complete object"
+                description="Copy a concise correction request containing the parser error and your pasted JSON."
+                prompt={correctionPrompt}
+                copyLabel="Copy correction prompt"
+                successMessage="Correction prompt copied."
+                failureMessage="Could not copy the correction prompt. View it below and copy it manually."
+              />
+            ) : null}
           </div>
         ) : assignment ? (
           <form action={formAction} className="mt-5 grid gap-5">

@@ -99,65 +99,61 @@ test("valid JSON passes through without a repaired state", () => {
   }
 });
 
-test("repairs unescaped quoted text without changing content or ids", () => {
-  const raw = assignment('Move Location to "Lab 2"').replace('\\"Lab 2\\"', '"Lab 2"');
-  const result = parseAssignmentImportJson(raw);
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.repaired, true);
-    assert.equal(result.assignment.questions[0].id, "q6");
-    assert.equal(result.assignment.questions[0].prompt, 'Move Location to "Lab 2"');
-    assert.match(result.repairedJson ?? "", /\\"Lab 2\\"/);
-  }
-});
-
-test("repairs the production quote failure when prose continues after the quoted term", () => {
-  const expected = 'Change the Location to "Lab 2" and explain why this room is appropriate.';
-  const raw = assignment(expected).replace('\\"Lab 2\\"', '"Lab 2"');
-  const result = parseAssignmentImportJson(raw);
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.repaired, true);
-    assert.equal(result.assignment.questions[0].id, "q6");
-    assert.equal(result.assignment.questions[0].prompt, expected);
-  }
-});
-
-test("repairs the exact production quote failure when quoted text is followed by a comma", () => {
-  const expected = 'Location to "Lab 2", Reading to 18.5 and Active to TRUE.';
-  const raw = assignment(expected).replace('\\"Lab 2\\"', '"Lab 2"');
-  const result = parseAssignmentImportJson(raw);
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.repaired, true);
-    assert.equal(result.assignment.questions[0].id, "q6");
-    assert.equal(result.assignment.questions[0].prompt, expected);
-  }
-});
-
-test("repairs equivalent unescaped quotes in Chinese i18n text", () => {
-  const raw = assignment();
-  const object = JSON.parse(raw);
-  object.assignment.questions[0].textI18n = { en: "Go to Lab 2", zh: '将位置改为“Lab 2”中的 "Lab 2"' };
-  const malformed = JSON.stringify(object).replace('\\"Lab 2\\"', '"Lab 2"');
-  const result = parseAssignmentImportJson(malformed);
-  assert.equal(result.ok, true);
-  if (result.ok) assert.equal(result.assignment.questions[0].textI18n?.zh, object.assignment.questions[0].textI18n.zh);
-});
-
-test("repairs the production quote failure in English and Chinese translations", () => {
-  const object = JSON.parse(assignment());
-  object.assignment.questions[0].textI18n = {
-    en: 'Change the Location to "Lab 2" before saving the record.',
-    zh: '保存记录前，将位置更改为 "Lab 2"。',
-  };
-  const malformed = JSON.stringify(object).replaceAll('\\"Lab 2\\"', '"Lab 2"');
+test("repairs only unambiguous stray backslashes from production output", () => {
+  const malformed = assignment("Use <name> and <colour>.")
+    .replace('"status":', '"dueDate"\\: null,\n    "status":')
+    .replace('OPEN_TEXT', 'OPEN\\_TEXT')
+    .replaceAll('<', '\\<')
+    .replaceAll('>', '\\>');
   const result = parseAssignmentImportJson(malformed);
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.assignment.questions[0].id, "q6");
-    assert.deepEqual(result.assignment.questions[0].textI18n, object.assignment.questions[0].textI18n);
+    assert.equal(result.repaired, true);
+    assert.equal(result.assignment.questions[0].type, "OPEN_TEXT");
+    assert.equal(result.assignment.questions[0].prompt, "Use <name> and <colour>.");
+    assert.match(result.repairedJson ?? "", /"dueDate": null/);
   }
+});
+
+test("does not alter valid escaped backslashes before repairable characters", () => {
+  const expected = String.raw`Keep \\_ and \\<name>`;
+  const result = parseAssignmentImportJson(assignment(expected));
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.assignment.questions[0].prompt, expected);
+});
+
+for (const quotedText of [
+  'The variable Code stores the string "CS2026EXAM".',
+  'Compare "password", "Valid", "s", and "edu".',
+]) test(`rejects ambiguous unescaped quotes: ${quotedText}`, () => {
+  const malformed = assignment(quotedText).replaceAll('\\"', '"');
+  const result = parseAssignmentImportJson(malformed);
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.match(result.errors[0].message, /There may be several/);
+    assert.doesNotMatch(result.errors[0].message, /near question/);
+    assert.match(result.errors[0].message, /correction prompt/);
+  }
+});
+
+test("valid bilingual assignments with escaped quoted text parse unchanged", () => {
+  const object = JSON.parse(assignment('Store the string "CS2026EXAM".'));
+  object.assignment.titleI18n = { en: "String task", zh: "字符串任务" };
+  object.assignment.questions[0].textI18n = { en: 'Output "Valid".', zh: '输出字符串“Valid”。' };
+  const result = parseAssignmentImportJson(JSON.stringify(object));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.repaired, undefined);
+    assert.equal(result.assignment.questions[0].prompt, 'Store the string "CS2026EXAM".');
+    assert.equal(result.assignment.questions[0].textI18n?.en, 'Output "Valid".');
+  }
+});
+
+test("valid pseudocode samples containing quoted OUTPUT strings parse", () => {
+  const prompt = 'Trace this pseudocode:\n```pseudocode\nOUTPUT "Valid"\n```\nState the output.';
+  const result = parseAssignmentImportJson(assignment(prompt));
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.assignment.questions[0].prompt, prompt);
 });
 
 test("repairs fences and trailing commas", () => {
@@ -167,11 +163,11 @@ test("repairs fences and trailing commas", () => {
   if (result.ok) assert.equal(result.repaired, true);
 });
 
-test("rejects ambiguous broken JSON and reports likely question", () => {
+test("rejects ambiguous broken JSON without blaming one question", () => {
   const malformed = assignment().replace('"prompt": "Move', '"prompt": "Move" "extra": "');
   const result = parseAssignmentImportJson(malformed);
   assert.equal(result.ok, false);
-  if (!result.ok) assert.match(result.errors[0].message, /near question q6/);
+  if (!result.ok) assert.doesNotMatch(result.errors[0].message, /near question/);
 });
 
 test("repaired JSON still goes through strict schema validation", () => {
