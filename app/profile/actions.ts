@@ -8,6 +8,7 @@ import { prisma } from "../../lib/prisma";
 import { ownStudentProfileWhere } from "../../lib/student-management";
 import { parseAppearancePreferences, updateOwnAppearancePreferences } from "../../lib/appearance";
 import type { AppearanceActionState, ProfileImageActionState } from "./action-state";
+import { getProfileImageValidationError } from "../../lib/profile-image-policy";
 
 function refreshProfileViews() { revalidatePath("/profile"); revalidatePath("/students"); revalidatePath("/"); }
 
@@ -35,7 +36,9 @@ export async function updateOwnProfileImage(_state: ProfileImageActionState, for
   try {
     const viewer = await requireRole(UserRole.STUDENT);
     const file = formData.get("profileImage");
-    if (!(file instanceof File) || file.size === 0) throw new Error("Choose a PNG, JPEG, or WEBP image.");
+    if (!(file instanceof Blob)) throw new LocalMediaValidationError("Choose a PNG, JPEG, or WEBP image.");
+    const validationError = getProfileImageValidationError(file);
+    if (validationError) throw new LocalMediaValidationError(validationError);
     const stored = await storeProfileImage(file);
     storedPath = stored.path;
     const ownProfileWhere = ownStudentProfileWhere(viewer);
