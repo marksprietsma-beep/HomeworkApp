@@ -13,6 +13,31 @@ test("assignment helper locks down pseudocode fences and strict JSON characters"
   assert.ok(ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE.includes('"prompt":"Consider the pseudocode:\\n```pseudocode\\nDECLARE X : INTEGER\\nOUTPUT X\\n```\\nExplain what the code does."'));
 });
 
+test("assignment helper uses safe quotes in prose and escaped ASCII quotes in code", () => {
+  assert.match(
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE,
+    /ordinary human-readable question prose, do not use ASCII double quotes/,
+  );
+  assert.match(
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE,
+    /Use Unicode curly quotes for quoted words, labels, output phrases, and examples/,
+  );
+  assert.ok(
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE.includes(
+      '"prompt":"If Age is 13 or more, output “Teenager or older”; otherwise output “Under 13”."',
+    ),
+  );
+  assert.match(
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE,
+    /Reserve ASCII double quotes for JSON syntax and genuine code\/string literals/,
+  );
+  assert.ok(
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE.includes(
+      '"prompt":"```pseudocode\\nOUTPUT \\"Valid\\"\\n```"',
+    ),
+  );
+});
+
 test("assignment helper chooses pseudocode mode from the required answer, not prompt presentation", () => {
   const formSource = readFileSync(
     "app/classes/[classId]/assignments/import/import-assignment-form.tsx",
