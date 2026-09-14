@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getProfileImageValidationError } from "./profile-image-policy";
 
 export const LOCAL_MEDIA_ROUTE_PREFIX = "/media";
 export const LOCAL_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
@@ -96,9 +97,8 @@ export async function storeAssignmentQuestionImage(
 
 /** Stores a passive raster profile image under a feature-owned directory. */
 export async function storeProfileImage(file: Blob): Promise<StoredLocalImage> {
-  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-    throw new LocalMediaValidationError("Profile image must be PNG, JPEG, or WEBP.");
-  }
+  const validationError = getProfileImageValidationError(file);
+  if (validationError) throw new LocalMediaValidationError(validationError);
   const bytes = Buffer.from(await file.arrayBuffer());
   const imageType = validateLocalImageBytes(bytes);
   if (imageType.mimeType === "image/gif") {
