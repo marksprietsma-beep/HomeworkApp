@@ -3,6 +3,7 @@ import { studentAssignmentAccessWhere } from "./access-control";
 import { prisma } from "./prisma";
 import { submissionStateAfterSave } from "./question-response-mode";
 import { structuredFields, validateStructuredAnswer } from "./structured-response";
+import { participantSubmissionAdvisoryLockQuery } from "./participant-submission-lock";
 
 export class ParticipantSubmissionError extends Error {
   constructor(message: string, public readonly code: "FORBIDDEN" | "NOT_FOUND" | "ALREADY_SUBMITTED") {
@@ -42,7 +43,7 @@ export async function persistParticipantSubmission({
   return prisma.$transaction(async (tx) => {
     // Serialize this student's assignment writes in PostgreSQL as well as in the
     // route process, so concurrent app instances cannot reorder answer snapshots.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${assignmentId}, ${student.id})`;
+    await tx.$queryRaw(participantSubmissionAdvisoryLockQuery(assignmentId, student.id));
     const current = await tx.submission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: student.id } },
       select: { id: true, status: true, submittedAt: true },

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { runAutosaveSequentially } from "../lib/autosave-request-queue";
+import { participantSubmissionAdvisoryLockQuery } from "../lib/participant-submission-lock";
 
 const controller = readFileSync("app/assignments/[assignmentId]/work/autosave-form.tsx", "utf8");
 const endpoint = readFileSync("app/api/assignments/[assignmentId]/autosave/route.ts", "utf8");
@@ -19,8 +20,18 @@ test("autosave is draft-only and atomically refuses submitted work", () => {
   assert.match(persistence, /intent === "AUTOSAVE" && current\?\.status === SubmissionStatus\.SUBMITTED/);
   assert.match(persistence, /where: \{ id: current\.id, status: SubmissionStatus\.DRAFT \}/);
   assert.match(persistence, /status: SubmissionStatus\.DRAFT, submittedAt: null/);
-  assert.match(persistence, /pg_advisory_xact_lock/);
   assert.match(endpoint, /"ALREADY_SUBMITTED" \? 404 : 409|error\.code === "NOT_FOUND" \? 404 : 409/);
+});
+
+test("advisory lock binds both JavaScript numbers to PostgreSQL INT4 arguments", () => {
+  const query = participantSubmissionAdvisoryLockQuery(42, 314);
+
+  assert.deepEqual(query.values, [42, 314]);
+  assert.deepEqual(query.strings, [
+    "SELECT pg_advisory_xact_lock(",
+    "::int, ",
+    "::int)",
+  ]);
 });
 
 test("controller debounces, coalesces in-flight edits, and performs lifecycle flushes", () => {
