@@ -9,6 +9,7 @@ import { completeFeedbackFollowUpAction, saveParticipantSubmission } from "./act
 import { PseudocodeAnswerEditor } from "./pseudocode-answer-editor";
 import { QuestionPrompt } from "../../../components/question-prompt";
 import { StructuredResponseRenderer } from "../../../components/structured-response-renderer";
+import { AutosaveForm } from "./autosave-form";
 
 export const dynamic = "force-dynamic";
 
@@ -443,7 +444,7 @@ export default async function ParticipantWorkPage({
         </section>
       ) : null}
 
-      <form action={saveAction} className="mt-6 grid gap-5">
+      <AutosaveForm assignmentId={work.id} enabled={work.submission?.status !== "SUBMITTED"} action={saveAction}>
         {work.questions.map((question) => {
           const choices = getMultipleChoiceChoices(question.options);
 
@@ -545,13 +546,7 @@ export default async function ParticipantWorkPage({
           );
         })}
 
-        <div className="sticky bottom-4 z-30 rounded-3xl border border-slate-200 bg-white p-4 shadow-lg">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {work.submission?.status !== "SUBMITTED" ? <button type="submit" name="submissionIntent" value="DRAFT" className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 sm:w-auto">Save draft</button> : null}
-            <button type="submit" name="submissionIntent" value="SUBMITTED" className="w-full rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto">Submit response</button>
-          </div>
-        </div>
-      </form>
+      </AutosaveForm>
     </main>
   );
 }

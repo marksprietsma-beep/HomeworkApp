@@ -1,13 +1,11 @@
 "use server";
 
-import { Prisma, SubmissionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserState } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
-import { submissionStateAfterSave } from "../../../../lib/question-response-mode";
-import { validateStructuredAnswer, structuredFields } from "../../../../lib/structured-response";
-import { studentAssignmentAccessWhere, studentFeedbackActionAccessWhere } from "../../../../lib/access-control";
+import { studentFeedbackActionAccessWhere } from "../../../../lib/access-control";
+import { persistParticipantSubmission } from "../../../../lib/participant-submission";
 
 export async function saveParticipantSubmission(
   assignmentId: number,
@@ -15,77 +13,8 @@ export async function saveParticipantSubmission(
 ) {
   const { selectedUser } = await getCurrentUserState();
 
-  if (!selectedUser || selectedUser.role !== "STUDENT") {
-    throw new Error("Select a local development participant before saving.");
-  }
-
-  const assignment = await prisma.homeworkAssignment.findFirst({
-    where: studentAssignmentAccessWhere(assignmentId, selectedUser),
-    select: {
-      id: true,
-      submissions: { where: { studentId: selectedUser.id }, take: 1, select: { status: true, submittedAt: true } },
-      questions: {
-        select: {
-          id: true,
-          responseMode: true,
-          responseSchema: true,
-        },
-      },
-    },
-  });
-
-  if (!assignment) {
-    throw new Error("Assignment is not published for the selected participant.");
-  }
-
   const saveAsDraft = formData.get("submissionIntent") === "DRAFT";
-  const nextState = submissionStateAfterSave(assignment.submissions[0] ?? null, saveAsDraft, new Date());
-
-  await prisma.$transaction(async (tx) => {
-    const submission = await tx.submission.upsert({
-      where: {
-        assignmentId_studentId: {
-          assignmentId,
-          studentId: selectedUser.id,
-        },
-      },
-      update: {
-        status: nextState.status as SubmissionStatus,
-        submittedAt: nextState.submittedAt,
-      },
-      create: {
-        assignmentId,
-        studentId: selectedUser.id,
-        status: nextState.status as SubmissionStatus,
-        submittedAt: nextState.submittedAt,
-      },
-      select: { id: true },
-    });
-
-    for (const question of assignment.questions) {
-      const rawAnswer = formData.get(`question-${question.id}`);
-      const answerText = question.responseMode === "STRUCTURED" ? "" : typeof rawAnswer === "string" ? rawAnswer : "";
-      const answerData = question.responseMode === "STRUCTURED"
-        ? validateStructuredAnswer(question.responseSchema, { schemaVersion: 1, values: Object.fromEntries(structuredFields(question.responseSchema).map((field) => [field.id, String(formData.get(`structured-${question.id}-${field.id}`) ?? "")])) })
-        : null;
-
-      await tx.submissionAnswer.upsert({
-        where: {
-          submissionId_questionId: {
-            submissionId: submission.id,
-            questionId: question.id,
-          },
-        },
-        update: { answerText, answerData: answerData as Prisma.InputJsonValue ?? Prisma.JsonNull },
-        create: {
-          submissionId: submission.id,
-          questionId: question.id,
-          answerText,
-          answerData: answerData as Prisma.InputJsonValue ?? undefined,
-        },
-      });
-    }
-  });
+  await persistParticipantSubmission({ assignmentId, formData, student: selectedUser, intent: saveAsDraft ? "DRAFT" : "SUBMITTED" });
 
   revalidatePath("/");
   revalidatePath(`/assignments/${assignmentId}/work`);
