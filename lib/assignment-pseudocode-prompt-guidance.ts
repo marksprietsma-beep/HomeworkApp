@@ -14,7 +14,8 @@ export const ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE = String.raw`Pseudocode sampl
 Strict JSON character rules:
 - Do not escape underscores. OPEN_TEXT, MULTIPLE_CHOICE, and CAMBRIDGE_9618_2026 must remain exactly those values.
 - Do not escape colons and do not add backslashes before ordinary punctuation. Keep dueDate as normal JSON syntax, for example "dueDate":null.
-- Quotes that are part of string content must be JSON-escaped, for example: "prompt":"Store the text \"Ready\" in Status."
+- In ordinary human-readable question prose, do not use ASCII double quotes inside string values. Use Unicode curly quotes for quoted words, labels, output phrases, and examples, for example: "prompt":"If Age is 13 or more, output “Teenager or older”; otherwise output “Under 13”."
+- Reserve ASCII double quotes for JSON syntax and genuine code/string literals. Inside serialized pseudocode or code samples, JSON-escape those ASCII quotes as \"...\", for example: "prompt":"${THREE_BACKTICKS}pseudocode\nOUTPUT \"Valid\"\n${THREE_BACKTICKS}"
 - Return strict serialized JSON only. Validate the exact final response using JSON.parse or an equivalent strict parser before returning it.`;
 
 export const ASSIGNMENT_JSON_OUTPUT_INSTRUCTIONS = `Do not wrap the overall JSON response in Markdown fences. Triple-backtick pseudocode fences are permitted only inside JSON string values where required by the pseudocode sample presentation rules. Do not include comments, explanations, trailing commas, or any text outside the root JSON object.
