@@ -43,7 +43,9 @@ export async function persistParticipantSubmission({
   return prisma.$transaction(async (tx) => {
     // Serialize this student's assignment writes in PostgreSQL as well as in the
     // route process, so concurrent app instances cannot reorder answer snapshots.
-    await tx.$queryRaw(participantSubmissionAdvisoryLockQuery(assignmentId, student.id));
+    // Use executeRaw because PostgreSQL exposes the blocking lock function as a
+    // void result. queryRaw asks Prisma to deserialize that void column (P2010).
+    await tx.$executeRaw(participantSubmissionAdvisoryLockQuery(assignmentId, student.id));
     const current = await tx.submission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: student.id } },
       select: { id: true, status: true, submittedAt: true },
