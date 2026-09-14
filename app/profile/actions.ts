@@ -7,11 +7,7 @@ import { LocalMediaValidationError, removeOwnedProfileImage, storeProfileImage }
 import { prisma } from "../../lib/prisma";
 import { ownStudentProfileWhere } from "../../lib/student-management";
 import { parseAppearancePreferences, updateOwnAppearancePreferences } from "../../lib/appearance";
-
-export type ProfileImageActionState = { error: string | null; success: string | null };
-export const initialProfileImageActionState: ProfileImageActionState = { error: null, success: null };
-export type AppearanceActionState = { error: string | null; success: string | null };
-export const initialAppearanceActionState: AppearanceActionState = { error: null, success: null };
+import type { AppearanceActionState, ProfileImageActionState } from "./action-state";
 
 function refreshProfileViews() { revalidatePath("/profile"); revalidatePath("/students"); revalidatePath("/"); }
 

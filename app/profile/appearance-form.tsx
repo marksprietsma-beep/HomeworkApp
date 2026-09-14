@@ -2,7 +2,8 @@
 
 import { TextSizePreference, ThemePreference } from "@prisma/client";
 import { useActionState } from "react";
-import { initialAppearanceActionState, updateOwnAppearance } from "./actions";
+import { initialAppearanceActionState } from "./action-state";
+import { updateOwnAppearance } from "./actions";
 
 const themes = [
   { value: ThemePreference.LIGHT, label: "Light", description: "Always use Clarion's light appearance." },
