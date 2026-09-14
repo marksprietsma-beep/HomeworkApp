@@ -19,25 +19,12 @@ test("assignment helper chooses pseudocode mode from the required answer, not pr
     "utf8",
   );
 
+  assert.match(formSource, /only when the student must write or rewrite code/);
+  assert.match(formSource, /A prompt may show pseudocode while expecting TEXT prose/);
+  assert.match(formSource, /a result\/output, an explanation, or error identification/);
   assert.match(
-    formSource,
-    /only when the student's response itself should be written as pseudocode or code/,
-  );
-  assert.match(
-    formSource,
-    /write, complete, or debug and rewrite pseudocode/,
-  );
-  assert.match(
-    formSource,
-    /fenced pseudocode sample in its prompt while keeping responseMode as \"TEXT\"/,
-  );
-  assert.match(
-    formSource,
-    /value\/result or output, an explanation, identification of errors/,
-  );
-  assert.match(
-    formSource,
-    /Fenced pseudocode presentation in the prompt is independent from responseMode/,
+    ASSIGNMENT_PSEUDOCODE_PROMPT_GUIDANCE,
+    /A fenced pseudocode sample in a question prompt does not require a pseudocode answer/,
   );
 });
 
@@ -49,7 +36,7 @@ test("assignment helper opens with clarified overall-response Markdown wording",
 
   assert.match(
     formSource,
-    /Create an assignment for Clarion\. Return only strict, valid, serialized JSON\. Do not wrap the overall JSON response in Markdown fences or add commentary\./,
+    /Return only one complete, strict JSON object with no outer Markdown fence or commentary/,
   );
 });
 
