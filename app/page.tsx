@@ -127,6 +127,16 @@ function dueStatusBadgeClass(tone: LocalDashboardData["assignedWork"][number]["d
   }[tone];
 }
 
+function feedbackStatusBadgeClass(tone: LocalDashboardData["classes"][number]["assignments"][number]["feedbackStatus"]["tone"]) {
+  return {
+    slate: "bg-slate-100 text-slate-700 ring-slate-200",
+    red: "bg-red-50 text-red-800 ring-red-200",
+    amber: "bg-amber-100 text-amber-900 ring-amber-200",
+    blue: "bg-blue-50 text-blue-800 ring-blue-200",
+    emerald: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  }[tone];
+}
+
 const studentStatusLabels: Record<
   LocalDashboardData["assignedWork"][number]["studentStatus"],
   string
@@ -657,6 +667,9 @@ function DashboardShell({
                               {assignment.questionCount} questions ·{" "}
                               {assignment.submissionCount} submissions
                             </p>
+                            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ring-1 ${feedbackStatusBadgeClass(assignment.feedbackStatus.tone)}`}>
+                              {assignment.feedbackStatus.label}
+                            </span>
                             <Link
                               href={`/classes/${classItem.id}/assignments/${assignment.id}/responses`}
                               className="font-semibold text-slate-950 underline-offset-4 hover:underline"

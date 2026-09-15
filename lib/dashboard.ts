@@ -9,6 +9,7 @@ import {
 import { getAssignmentDueStatus, type AssignmentDueStatusSummary } from "./assignment-due-status";
 import { isAdmin, isStudent, isTeacher } from "./permissions";
 import { prisma } from "./prisma";
+import { getDashboardFeedbackStatus, type DashboardFeedbackStatus } from "./dashboard-feedback-status";
 
 export type DashboardClass = {
   id: number;
@@ -28,6 +29,7 @@ export type DashboardClass = {
     classId: number;
     questionCount: number;
     submissionCount: number;
+    feedbackStatus: DashboardFeedbackStatus;
     dueAt: Date | null;
     createdAt: Date;
   }[];
@@ -131,23 +133,27 @@ export async function getLocalDashboardData(user: {
             },
           },
           submissions: {
-            where: { studentId: user.id },
+            where: isStudent(user) ? { studentId: user.id } : { status: SubmissionStatus.SUBMITTED },
             select: {
               id: true,
+              studentId: true,
               status: true,
               submittedAt: true,
             },
-            take: 1,
+            take: isStudent(user) ? 1 : undefined,
           },
           participantFeedback: {
-            where: { studentId: user.id, releaseState: "RELEASED" },
+            where: isStudent(user) ? { studentId: user.id, releaseState: "RELEASED" } : undefined,
             orderBy: [
               { feedbackImport: { importedAt: "desc" } },
               { updatedAt: "desc" },
             ],
-            take: 1,
+            take: isStudent(user) ? 1 : undefined,
             select: {
               id: true,
+              studentId: true,
+              submissionId: true,
+              releaseState: true,
               feedbackImport: { select: { importedAt: true } },
               followUpActions: {
                 orderBy: { id: "asc" },
@@ -309,6 +315,10 @@ export async function getLocalDashboardData(user: {
         createdAt: assignment.createdAt,
         questionCount: assignment._count.questions,
         submissionCount: assignment._count.submissions,
+        feedbackStatus: getDashboardFeedbackStatus(
+          assignment.submissions.map((submission) => ({ id: submission.id, studentId: submission.studentId })),
+          assignment.participantFeedback.map((feedback) => ({ studentId: feedback.studentId, submissionId: feedback.submissionId, releaseState: feedback.releaseState })),
+        ),
       })),
     };
   });
