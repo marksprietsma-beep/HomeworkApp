@@ -1,0 +1,3 @@
+export type ReminderAssignment = { id: number; title: string; dueAt: Date | null; submissions: { studentId: number; status: string }[]; class: { name: string; enrollments: { student: { id: number; email: string; displayName: string; role: string; accountStatus: string } }[] } };
+export function consolidateOutstandingAssignments(assignments: ReminderAssignment[]): { student: ReminderAssignment["class"]["enrollments"][number]["student"]; tasks: { id: number; title: string; className: string; dueAt: Date | null }[] }[];
+export function reminderIdempotencyKey(runKey: string, studentId: number): string;

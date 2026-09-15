@@ -80,6 +80,7 @@ enum FeedbackReleaseState {
 enum EmailNotificationType {
   HOMEWORK_PUBLISHED
   FEEDBACK_RELEASED
+  HOMEWORK_REMINDER
 }
 
 enum EmailDeliveryStatus {

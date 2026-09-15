@@ -1,0 +1,1 @@
+ALTER TYPE "EmailNotificationType" ADD VALUE 'HOMEWORK_REMINDER';
