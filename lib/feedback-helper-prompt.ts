@@ -28,12 +28,16 @@ Feedback import contract:
 - Preserve assignment id, class id, participant/source participant id, submission id, and question ids exactly from the exported response data. IDs must not be renamed, invented for existing records, converted to strings, translated, or reformatted.
 - Do not invent students, submissions, question IDs, responses, or extra unsupported fields.
 - For each participant who should receive feedback, include participant.id copied from exported participants[].id, participant.name where available, submission.id copied from that participant's submission.id or submission null, overallFeedback, strengths, targets, questionFeedback when relevant to the response, and followUpActions where appropriate.
+- For every participantFeedback entry, overallFeedback is REQUIRED and must be a non-empty string.
+- For every participantFeedback entry, strengths is REQUIRED and must be a non-empty array containing at least one non-empty string.
+- For every participantFeedback entry, targets is REQUIRED and must be a non-empty array containing at least one non-empty string.
+- Never return strengths: [] or targets: [].
 __FEEDBACK_LANGUAGE_INSTRUCTION__
 - Bilingual i18n text fields use string values. Bilingual i18n strengths/targets fields use arrays of strings for en and zh. Omit missing languages rather than returning empty strings or empty Chinese lines.
 - If bilingual feedback is requested, write natural Simplified Chinese suitable for students, not literal machine-style translation. Do not invent translations for IDs or change any IDs.
 - Question-level feedback must use exported question IDs exactly and may include strengths, targets, and follow-up actions. Prefer participant-level followUpActions by default; use question-level followUpActions only when the action must be tied to a specific question.
 - For pseudocode/code-style questions, questionFeedback may also include optional string fields pseudocodeNotes, syntaxGuidance, and formattingGuidance. Use them only when helpful; do not require them for every question. Existing feedback fields are still required.
-- If a participant has no submission, use submission null and avoid question-level feedback unless there is a clear reason.
+- If a participant has submission: null, do not invent academic strengths. Include a neutral factual strength such as "No submitted work was available to assess strengths.", still provide at least one practical target or next step, and avoid question-level feedback unless there is a clear reason.
 
 Pseudocode response guidance:
 - Some exported questions use responseMode "PSEUDOCODE" and pseudocodeDialect "CAMBRIDGE_9618_2026". Treat those answers as code-style content and preserve the student's original indentation, spacing, line breaks, comments, and assignment-arrow notation when referring to them. Do not silently rewrite stored or exported response text.
@@ -59,6 +63,12 @@ Follow-up action requirements:
 - Each follow-up action must include id, type, prompt, and required. Add promptI18n with en and zh when bilingual feedback is requested.
 - Follow-up action type must be ACKNOWLEDGEMENT, SHORT_REFLECTION, or ANSWER_FOLLOW_UP_QUESTION.
 - Use required true unless the action is genuinely optional. Prefer participant-level followUpActions unless question-level followUpActions are essential to avoid unnecessary deep nesting.
+
+Feedback-specific quality-control check before returning:
+- Check every participantFeedback entry has a non-empty overallFeedback string.
+- Check every participantFeedback entry has a strengths array with at least one non-empty string.
+- Check every participantFeedback entry has a targets array with at least one non-empty string.
+- Do not return the JSON until every participantFeedback entry passes all three checks.
 
 ${CHATGPT_JSON_QUALITY_CONTROL_REQUIREMENT}
 
