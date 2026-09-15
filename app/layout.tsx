@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { appearanceForViewer, appearanceRootAttributes } from "../lib/appearance";
 import { getCurrentUser } from "../lib/auth";
+import { PersistentHomeAction } from "./components/persistent-home-action";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +24,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" {...appearanceRootAttributes(appearance)}>
-      <body>{children}</body>
+      <body>
+        <PersistentHomeAction authenticated={user !== null} />
+        {children}
+      </body>
     </html>
   );
 }
