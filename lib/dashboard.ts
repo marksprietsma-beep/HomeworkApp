@@ -137,8 +137,8 @@ export async function getLocalDashboardData(user: {
             select: {
               id: true,
               studentId: true,
-              status: true,
-              submittedAt: true,
+              status: isStudent(user),
+              submittedAt: isStudent(user),
             },
             take: isStudent(user) ? 1 : undefined,
           },
@@ -150,25 +150,31 @@ export async function getLocalDashboardData(user: {
             ],
             take: isStudent(user) ? 1 : undefined,
             select: {
-              id: true,
+              id: isStudent(user),
               studentId: true,
               submissionId: true,
               releaseState: true,
-              feedbackImport: { select: { importedAt: true } },
-              followUpActions: {
-                orderBy: { id: "asc" },
-                select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
-              },
-              questionFeedback: {
-                select: {
-                  id: true,
-                  questionId: true,
-                  followUpActions: {
+              feedbackImport: isStudent(user)
+                ? { select: { importedAt: true } }
+                : false,
+              followUpActions: isStudent(user)
+                ? {
                     orderBy: { id: "asc" },
                     select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
-                  },
-                },
-              },
+                  }
+                : false,
+              questionFeedback: isStudent(user)
+                ? {
+                    select: {
+                      id: true,
+                      questionId: true,
+                      followUpActions: {
+                        orderBy: { id: "asc" },
+                        select: { id: true, type: true, prompt: true, promptI18n: true, status: true },
+                      },
+                    },
+                  }
+                : false,
             },
           },
           _count: {
@@ -198,7 +204,20 @@ export async function getLocalDashboardData(user: {
           );
           const submission = assignment.submissions[0] ?? null;
 
-          const feedbackEntry = assignment.participantFeedback[0] ?? null;
+          // These fields are selected only for student views; staff queries use
+          // the minimal progress-only selection above.
+          const feedbackEntry = (assignment.participantFeedback[0] as unknown as
+            | {
+                id: number;
+                feedbackImport: { importedAt: Date };
+                followUpActions: { id: number; type: string; prompt: string; promptI18n: unknown; status: string }[];
+                questionFeedback: {
+                  id: number;
+                  questionId: number;
+                  followUpActions: { id: number; type: string; prompt: string; promptI18n: unknown; status: string }[];
+                }[];
+              }
+            | undefined) ?? null;
           const feedbackActions = feedbackEntry
             ? [
                 ...feedbackEntry.followUpActions.map((action) => ({
