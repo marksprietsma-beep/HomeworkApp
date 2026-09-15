@@ -543,12 +543,17 @@ function DashboardShell({
               </>
             ) : null}
             {(isAdmin(selectedUser) || isTeacher(selectedUser)) ? (
-              <Link
+              <><Link
+                href="/homework-reminders"
+                className="inline-flex rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm ring-1 ring-amber-200 transition hover:bg-amber-200"
+              >
+                Send homework reminders
+              </Link><Link
                 href="/curriculum-library"
                 className="inline-flex rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-100"
               >
                 Curriculum library
-              </Link>
+              </Link></>
             ) : null}
             {canActAsClassTeacher(selectedUser) ? (
               <Link
